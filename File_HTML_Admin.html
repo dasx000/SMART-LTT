@@ -1,0 +1,639 @@
+<div class="flex h-screen w-full overflow-hidden bg-gray-100 relative">
+
+    <!-- Mobile Overlay -->
+    <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden transition-opacity"></div>
+
+    <!-- Sidebar -->
+    <aside id="sidebarAdmin" class="w-64 bg-green-800 text-white flex flex-col shadow-2xl flex-shrink-0 fixed inset-y-0 left-0 z-50 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out">
+        <div class="h-20 flex items-center justify-between px-4 border-b border-green-700">
+            <div class="flex items-center">
+                <i class="fa-solid fa-seedling text-3xl text-green-300 mr-3"></i>
+                <div>
+                    <h1 class="text-xl font-bold tracking-wider">e-LTT CWS</h1>
+                    <p class="text-[10px] text-green-300">Kabupaten Way Kanan</p>
+                </div>
+            </div>
+            <!-- Close button for mobile -->
+            <button onclick="toggleSidebar()" class="md:hidden text-green-300 hover:text-white p-2">
+                <i class="fa-solid fa-xmark text-2xl"></i>
+            </button>
+        </div>
+        <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+            <a href="#" id="nav-dashboard" onclick="navigasi('dashboard'); toggleSidebar(true)"
+                class="nav-item flex items-center px-4 py-3 bg-green-700 rounded-lg text-white font-bold transition">
+                <i class="fa-solid fa-chart-pie w-6"></i> Smart Dashboard
+            </a>
+            <a href="#" id="nav-verifikasi" onclick="navigasi('verifikasi'); toggleSidebar(true)"
+                class="nav-item flex items-center px-4 py-3 text-green-200 hover:bg-green-700 hover:text-white rounded-lg transition">
+                <i class="fa-solid fa-clipboard-check w-6"></i> Verifikasi
+            </a>
+            <a href="#" id="nav-manajemen" onclick="navigasi('manajemen'); toggleSidebar(true)"
+                class="nav-item flex items-center px-4 py-3 text-green-200 hover:bg-green-700 hover:text-white rounded-lg transition">
+                <i class="fa-solid fa-users-gear w-6"></i> Manajemen Penyuluh
+            </a>
+            <a href="#" id="nav-logs" onclick="navigasi('logs'); toggleSidebar(true)"
+                class="nav-item flex items-center px-4 py-3 text-green-200 hover:bg-green-700 hover:text-white rounded-lg transition">
+                <i class="fa-solid fa-clock-rotate-left w-6"></i> Log Sinkronisasi
+            </a>
+        </nav>
+        <div class="p-4 border-t border-green-700">
+            <button onclick="logoutAdmin()"
+                class="w-full flex items-center justify-center px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-white transition">
+                <i class="fa-solid fa-power-off mr-2"></i> Keluar
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col h-screen overflow-y-auto">
+
+        <!-- Responsive Header -->
+        <header class="bg-white shadow-sm flex flex-col sm:flex-row sm:h-20 items-start sm:items-center justify-between px-4 sm:px-8 py-3 sm:py-0 z-10 sticky top-0">
+            <div class="flex items-center justify-between w-full sm:w-auto mb-3 sm:mb-0">
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleSidebar()" class="md:hidden text-green-700 p-2 -ml-2 rounded-lg hover:bg-green-50">
+                        <i class="fa-solid fa-bars text-xl"></i>
+                    </button>
+                    <div>
+                        <h2 class="text-lg sm:text-2xl font-bold text-gray-800" id="headerTitle">Ringkasan Eksekutif</h2>
+                        <p class="text-[10px] sm:text-xs text-gray-500 hidden sm:block">Pemantauan Realisasi LTT & Sinkronisasi e-Pusluh</p>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center justify-end w-full sm:w-auto gap-2 sm:gap-4">
+                <button onclick="muatUlangDashboard()"
+                    class="bg-blue-50 text-blue-600 border border-blue-200 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-bold hover:bg-blue-600 hover:text-white transition shadow-sm">
+                    <i class="fa-solid fa-rotate-right sm:mr-1"></i> <span class="hidden sm:inline">Refresh Data</span>
+                </button>
+                <div class="flex items-center gap-2 sm:gap-3 border-l pl-2 sm:pl-4">
+                    <div class="text-right hidden sm:block">
+                        <p class="text-sm font-bold text-gray-800" id="namaAdmin">Memuat...</p>
+                        <p class="text-[10px] text-gray-500 uppercase">Admin Kabupaten</p>
+                    </div>
+                    <div class="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center font-bold text-sm sm:text-lg">
+                        <i class="fa-solid fa-user-shield"></i>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- ===== SECTION: DASHBOARD ===== -->
+        <div id="sectionDashboard">
+            <div class="p-8">
+
+                <!-- Tab Filter -->
+                <div class="flex items-center justify-between mb-6 border-b pb-2">
+                    <div class="flex gap-2 flex-wrap" id="tabContainer">
+                        <button onclick="setTab(this, null)"
+                            class="tab-btn px-5 py-2 text-sm font-bold bg-green-600 text-white rounded-t-lg transition-all">Ringkasan</button>
+                        <button onclick="setTab(this, 'rekap-padi')"
+                            class="tab-btn px-5 py-2 text-sm font-bold text-gray-500 hover:text-green-600 transition-all">Padi</button>
+                        <button onclick="setTab(this, 'jagung')"
+                            class="tab-btn px-5 py-2 text-sm font-bold text-gray-500 hover:text-green-600 transition-all">Jagung</button>
+                        <button onclick="setTab(this, 'ubi-kayu')"
+                            class="tab-btn px-5 py-2 text-sm font-bold text-gray-500 hover:text-green-600 transition-all">Ubi Kayu</button>
+                    </div>
+                    <div class="flex items-center gap-2 mx-auto md:mx-0">
+                        <div class="hidden md:block h-8 w-[2px] bg-gray-200 mr-2"></div>
+                        <span id="labelPeriodeDashboard" class="text-[13px] md:text-[15px] font-black text-green-700 bg-green-50 px-5 py-2 rounded-full border-2 border-green-200 uppercase tracking-widest whitespace-nowrap shadow-sm">
+                            REKAP DATA -
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-calendar-days text-green-600 text-sm"></i>
+                        <select id="filterBulanDashboard" onchange="muatDashboard()"
+                            class="text-xs font-bold text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-1.5 outline-none focus:border-green-500 cursor-pointer shadow-sm">
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Panel: Dashboard Normal -->
+                <div id="panelDashboard">
+
+                    <!-- KPI Cards (6 Cards Breakdown) -->
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-6 mb-8">
+                        <!-- TANAM SECTION -->
+                        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
+                            <div class="absolute top-0 right-0 p-2 opacity-10"><i class="fa-solid fa-wheat-awn text-4xl text-blue-600"></i></div>
+                            <div onclick="tampilkanDetailPadi('tanam')" 
+                                class="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-lg mr-3 flex-shrink-0 cursor-pointer hover:scale-110 transition-transform shadow-sm"
+                                title="Klik untuk rincian">
+                                <i class="fa-solid fa-seedling"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-400 font-bold uppercase">TANAM PADI</p>
+                                <h3 class="text-xl font-bold text-gray-800" id="tanamPadi">-</h3>
+                            </div>
+                        </div>
+                        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
+                            <div class="absolute top-0 right-0 p-2 opacity-10"><i class="fa-solid fa-leaf text-4xl text-blue-600"></i></div>
+                            <div class="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-lg mr-3 flex-shrink-0">
+                                <i class="fa-solid fa-seedling"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-400 font-bold uppercase">TANAM JAGUNG</p>
+                                <h3 class="text-xl font-bold text-gray-800" id="tanamJagung">-</h3>
+                            </div>
+                        </div>
+                        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
+                            <div class="absolute top-0 right-0 p-2 opacity-10"><i class="fa-solid fa-root-bellow text-4xl text-blue-600"></i></div>
+                            <div class="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-lg mr-3 flex-shrink-0">
+                                <i class="fa-solid fa-seedling"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-400 font-bold uppercase">TANAM UBI KAYU</p>
+                                <h3 class="text-xl font-bold text-gray-800" id="tanamUbi">-</h3>
+                            </div>
+                        </div>
+
+                        <!-- PANEN SECTION -->
+                        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
+                            <div class="absolute top-0 right-0 p-2 opacity-10"><i class="fa-solid fa-wheat-awn-circle-exclamation text-4xl text-yellow-600"></i></div>
+                            <div onclick="tampilkanDetailPadi('panen')" 
+                                class="w-10 h-10 bg-yellow-50 text-yellow-600 rounded-lg flex items-center justify-center text-lg mr-3 flex-shrink-0 cursor-pointer hover:scale-110 transition-transform shadow-sm"
+                                title="Klik untuk rincian">
+                                <i class="fa-solid fa-wheat-awn"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-400 font-bold uppercase">PANEN PADI</p>
+                                <h3 class="text-xl font-bold text-gray-800" id="panenPadi">-</h3>
+                            </div>
+                        </div>
+                        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
+                            <div class="absolute top-0 right-0 p-2 opacity-10"><i class="fa-solid fa-leaf text-4xl text-yellow-600"></i></div>
+                            <div class="w-10 h-10 bg-yellow-50 text-yellow-600 rounded-lg flex items-center justify-center text-lg mr-3 flex-shrink-0">
+                                <i class="fa-solid fa-wheat-awn"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-400 font-bold uppercase">PANEN JAGUNG</p>
+                                <h3 class="text-xl font-bold text-gray-800" id="panenJagung">-</h3>
+                            </div>
+                        </div>
+                        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
+                            <div class="absolute top-0 right-0 p-2 opacity-10"><i class="fa-solid fa-root-bellow text-4xl text-yellow-600"></i></div>
+                            <div class="w-10 h-10 bg-yellow-50 text-yellow-600 rounded-lg flex items-center justify-center text-lg mr-3 flex-shrink-0">
+                                <i class="fa-solid fa-wheat-awn"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-400 font-bold uppercase">PANEN UBI KAYU</p>
+                                <h3 class="text-xl font-bold text-gray-800" id="panenUbi">-</h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div class="md:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                            <h3 class="text-sm font-bold text-gray-800 mb-4">Tren Luas Tambah Tanam Harian (7 Hari
+                                Terakhir)
+                            </h3>
+                            <div id="chartTrenLTT" class="w-full h-64"></div>
+                        </div>
+                        <div class="md:col-span-1 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                            <h3 class="text-sm font-bold text-gray-800 mb-4">Komposisi Komoditas (Bulan Ini)</h3>
+                            <div id="chartKomoditas" class="w-full h-64 flex justify-center items-center"></div>
+                        </div>
+                    </div>
+
+                    <!-- Target vs Realisasi -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
+                        <div class="flex flex-wrap items-center justify-between gap-4 mb-5">
+                            <div>
+                                <h3 class="text-sm font-bold text-gray-800">Target vs Realisasi per Kecamatan</h3>
+                                <p class="text-xs text-gray-400 mt-0.5">Sumber: Data_Target & realisasi bulan terpilih</p>
+                            </div>
+                            <div class="flex flex-wrap gap-2 items-center">
+                                <!-- Toggle Tanam / Panen -->
+                                <div class="flex bg-gray-100 rounded-lg p-1 gap-1">
+                                    <button id="btnTP-tanam" onclick="filterTarget('tanam')"
+                                        class="text-xs font-bold px-3 py-1 rounded-md bg-green-600 text-white transition">Tanam</button>
+                                    <button id="btnTP-panen" onclick="filterTarget('panen')"
+                                        class="text-xs font-bold px-3 py-1 rounded-md text-gray-500 hover:bg-white transition">Panen</button>
+                                </div>
+                                <!-- Tab Komoditi -->
+                                <div class="flex flex-wrap gap-1">
+                                    <button id="btnKom-LTTReguler" onclick="filterKomTarget('LTTReguler')"
+                                        class="text-[11px] font-bold px-3 py-1 rounded-full bg-green-600 text-white border border-green-600 transition">LTT Reguler</button>
+                                    <button id="btnKom-PadiGogo" onclick="filterKomTarget('PadiGogo')"
+                                        class="text-[11px] font-bold px-3 py-1 rounded-full bg-white text-gray-500 border border-gray-200 hover:border-green-400 transition">LTT Padi Gogo</button>
+                                    <button id="btnKom-Oplah2025" onclick="filterKomTarget('Oplah2025')"
+                                        class="text-[11px] font-bold px-3 py-1 rounded-full bg-white text-gray-500 border border-gray-200 hover:border-green-400 transition">LTT Oplah 2025</button>
+                                    <button id="btnKom-Jagung" onclick="filterKomTarget('Jagung')"
+                                        class="text-[11px] font-bold px-3 py-1 rounded-full bg-white text-gray-500 border border-gray-200 hover:border-green-400 transition">Jagung</button>
+                                    <button id="btnKom-UbiKayu" onclick="filterKomTarget('UbiKayu')"
+                                        class="text-[11px] font-bold px-3 py-1 rounded-full bg-white text-gray-500 border border-gray-200 hover:border-green-400 transition">Ubi Kayu</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="loadingTarget" class="flex items-center justify-center h-40 text-gray-400 text-sm gap-2">
+                            <i class="fa-solid fa-circle-notch fa-spin"></i> Memuat data target...
+                        </div>
+                        <div id="emptyTarget" class="hidden flex-col items-center justify-center h-40 text-center">
+                            <i class="fa-solid fa-bullseye text-gray-300 text-4xl mb-2"></i>
+                            <p class="text-sm font-bold text-gray-400">Belum ada data target</p>
+                            <p class="text-xs text-gray-300">Admin BPP belum mengisi target bulan ini</p>
+                        </div>
+                        <div id="chartTargetVsRealisasi" class="hidden w-full" style="min-height:320px"></div>
+                        
+                        <!-- Tabel Detail Target vs Realisasi -->
+                        <div id="tableTargetVsRealisasiContainer" class="hidden w-full mt-6 overflow-x-auto border-t border-gray-100 pt-6">
+                            <table class="w-full text-left border-collapse text-sm">
+                                <thead>
+                                    <tr class="bg-gray-50 text-gray-600 uppercase tracking-wider border-b border-gray-200 text-xs">
+                                        <th class="p-3 font-bold w-1/4">Kecamatan</th>
+                                        <th class="p-3 text-right font-bold w-1/6">Target (Ha)</th>
+                                        <th class="p-3 text-right font-bold w-1/6">Realisasi (Ha)</th>
+                                        <th class="p-3 text-left font-bold w-5/12 pl-4">Capaian</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabelTargetVsRealisasi">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div> <!-- end panelDashboard -->
+
+                <!-- Panel: Rekap Padi e-Pusluh -->
+                <div id="panelRekap" class="hidden">
+
+                    <!-- Header + Filter -->
+                    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-800" id="judulPanelRekap">Rekap Padi Harian (e-Pusluh)</h3>
+                            <p class="text-xs text-gray-500">Data harian laporan petugas lapangan.</p>
+                        </div>
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <input type="date" id="tglRekap" onchange="muatRekap()"
+                                class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-300">
+                            <select id="filterJenisLTT" onchange="muatRekap()"
+                                class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-300 bg-white">
+                                <option value="">Semua Jenis LTT</option>
+                            </select>
+                            <button id="btnUnduhExcel" onclick="unduhExcelKecamatan()"
+                                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2">
+                                <i class="fa-solid fa-file-excel"></i> Excel
+                            </button>
+                            <button id="btnRefreshRekap" onclick="muatRekap(true)" title="Refresh Data"
+                                class="bg-white border border-gray-200 hover:bg-gray-50 text-gray-600 px-3 py-2 rounded-lg text-sm font-bold transition flex items-center justify-center">
+                                <i id="iconRefreshRekap" class="fa-solid fa-rotate"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- KPI Cards Rekap Padi -->
+                    <div class="grid grid-cols-2 gap-6 mb-8">
+                        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
+                            <div class="absolute top-0 right-0 p-2 opacity-10"><i class="fa-solid fa-wheat-awn text-4xl text-blue-600"></i></div>
+                            <div onclick="tampilkanDetailRekapPadi('tanam')" 
+                                class="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center text-xl mr-4 cursor-pointer hover:scale-110 transition-transform shadow-sm"
+                                title="Klik rincian">
+                                <i class="fa-solid fa-seedling"></i>
+                            </div>
+                            <div>
+                                <p class="text-[13px] text-gray-400 font-bold uppercase">LUAS TANAM <span id="labelTanamType"></span></p>
+                                <h3 class="text-2xl font-bold text-gray-800"><span id="rTanam">-</span> <span class="text-sm font-normal text-gray-500">Ha</span></h3>
+                            </div>
+                        </div>
+                        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
+                            <div class="absolute top-0 right-0 p-2 opacity-10"><i class="fa-solid fa-wheat-awn-circle-exclamation text-4xl text-yellow-600"></i></div>
+                            <div onclick="tampilkanDetailRekapPadi('panen')" 
+                                class="w-12 h-12 bg-yellow-50 text-yellow-600 rounded-xl flex items-center justify-center text-xl mr-4 cursor-pointer hover:scale-110 transition-transform shadow-sm"
+                                title="Klik rincian">
+                                <i class="fa-solid fa-wheat-awn"></i>
+                            </div>
+                            <div>
+                                <p class="text-[13px] text-gray-400 font-bold uppercase">LUAS PANEN <span id="labelPanenType"></span></p>
+                                <h3 class="text-2xl font-bold text-gray-800"><span id="rPanen">-</span> <span class="text-sm font-normal text-gray-500">Ha</span></h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabel Rekap per Kecamatan -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+                        <div class="p-5 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                            <div>
+                                <h3 class="font-bold text-gray-800">Rekap per Kecamatan</h3>
+                                <p class="text-xs text-gray-400">Akumulasi seluruh desa dalam kecamatan</p>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead id="theadKecamatan">
+                                    <tr
+                                        class="bg-gray-100 text-gray-600 text-xs uppercase tracking-wider border-b border-gray-200">
+                                        <th class="p-3">Kecamatan</th>
+                                        <th class="p-3">Jenis LTT</th>
+                                        <th class="p-3 text-right">Tanam (Ha)</th>
+                                        <th class="p-3 text-right">Panen (Ha)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabelKecamatan">
+                                    <tr>
+                                        <td colspan="4" class="p-8 text-center text-gray-400">Pilih tanggal dan klik
+                                            Tampilkan.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+
+                </div> <!-- end panelRekap -->
+
+            </div>
+        </div> <!-- end sectionDashboard -->
+
+        <!-- ===== SECTION: VERIFIKASI KABUPATEN ===== -->
+        <div id="sectionVerifikasi" class="hidden">
+            <div class="p-8">
+
+                <!-- Header -->
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-800">Verifikasi Laporan LTT Wilayah Binaan Kecamatan</h2>
+                        <p class="text-xs text-gray-500">Klik tombol untuk memverifikasi laporan yang sudah disetujui BPP</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span id="verifikasiLoading" class="hidden text-sm text-green-600">
+                            <i class="fa-solid fa-circle-notch fa-spin"></i>
+                        </span>
+                        <button onclick="muatVerifikasi(true)"
+                            class="bg-blue-50 text-blue-600 border border-blue-200 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-600 hover:text-white transition">
+                            <i class="fa-solid fa-rotate-right mr-1"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <!-- KPI Cards -->
+                <div class="grid grid-cols-2 gap-6 mb-6">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center">
+                        <div class="w-14 h-14 bg-green-100 text-green-600 rounded-lg flex items-center justify-center text-2xl mr-4">
+                            <i class="fa-solid fa-check-double"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-400 font-bold uppercase">Terverifikasi Kabupaten</p>
+                            <h3 class="text-2xl font-bold text-gray-800">
+                                <span id="angkaPctVerified"><i class="fa-solid fa-circle-notch fa-spin text-base text-gray-300"></i></span>
+                                <span class="text-sm font-normal text-gray-500"> %</span>
+                            </h3>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center">
+                        <div class="w-14 h-14 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center text-2xl mr-4">
+                            <i class="fa-solid fa-hourglass-half"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-400 font-bold uppercase">Siap Diverifikasi Kab</p>
+                            <h3 class="text-2xl font-bold text-orange-600">
+                                <span id="angkaMenunggu"><i class="fa-solid fa-circle-notch fa-spin text-base text-gray-300"></i></span>
+                                <span class="text-sm font-normal text-gray-500"> Laporan</span>
+                            </h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Info Banner -->
+                <div class="bg-green-50 border border-green-200 rounded-xl p-4 mb-5">
+                    <p class="text-xs font-bold text-green-800 mb-2"><i class="fa-solid fa-circle-info mr-1"></i> Informasi Verifikasi</p>
+                    <p class="text-xs text-green-700 mb-2">Verifikasi Kabupaten hanya dapat dilakukan jika seluruh laporan di kecamatan sudah diverifikasi oleh Admin BPP terlebih dahulu.</p>
+                    <div class="flex flex-wrap gap-4 text-xs text-gray-600">
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-red-500 inline-block flex-shrink-0"></span> Ada laporan belum diverifikasi BPP</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-green-500 inline-block flex-shrink-0"></span> Siap diverifikasi Kabupaten</span>
+                    </div>
+                </div>
+
+                <!-- Filter + Search -->
+                <div class="flex flex-wrap gap-3 mb-4 items-center">
+                    <select id="filterStatusVerif" onchange="filterTabelVerifikasi()"
+                        class="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-300">
+                        <option value="">Semua Status</option>
+                        <option value="siap">Siap Diverifikasi</option>
+                        <option value="belum">Belum Siap</option>
+                    </select>
+                    <div class="relative flex-1 min-w-[200px] max-w-xs">
+                        <input type="text" id="cariKecVerif" oninput="filterTabelVerifikasi()" placeholder="Cari kecamatan..."
+                            class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-300">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-400 text-xs"></i>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider border-b border-gray-200">
+                                <th class="p-4">Aksi</th>
+                                <th class="p-4 text-center w-12">Status</th>
+                                <th class="p-4">Kecamatan</th>
+                                <th class="p-4 text-center">Total Laporan</th>
+                                <th class="p-4">Keterangan</th>
+                                <th class="p-4 text-center">Diverifikasi Kab</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelVerifikasiKec" class="text-sm">
+                            <tr><td colspan="6" class="p-10 text-center text-gray-400">Memuat data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div> <!-- end sectionVerifikasi -->
+
+        <!-- ===== SECTION: MANAJEMEN PENYULUH ===== -->
+        <div id="sectionManajemen" class="hidden">
+            <div class="p-8">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">Manajemen Akun Penyuluh</h2>
+                        <p class="text-sm text-gray-500">Kelola akses Admin Kabupaten, BPP, dan PPL</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="muatDaftarUser(true)"
+                            class="bg-blue-50 text-blue-600 border border-blue-200 px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-2 hover:bg-blue-600 hover:text-white">
+                            <i class="fa-solid fa-rotate-right"></i> Refresh
+                        </button>
+                        <button onclick="bukaModalUser()"
+                            class="bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-xl font-bold transition flex items-center gap-2 shadow-lg shadow-green-600/20">
+                            <i class="fa-solid fa-user-plus"></i> Tambah User Baru
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Filter Card -->
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 flex flex-wrap gap-4 items-center">
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Cari Nama / NIP</label>
+                        <div class="relative">
+                            <input type="text" id="cariUser" oninput="filterTabelUser()" placeholder="Ketik nama atau NIP..."
+                                class="w-full pl-9 pr-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-400"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Role</label>
+                        <select id="filterRole" onchange="filterTabelUser()" class="border rounded-lg text-sm px-3 py-2 focus:ring-2 focus:ring-green-500 outline-none bg-white">
+                            <option value="">Semua Role</option>
+                            <option value="Admin_Kab">Admin Kabupaten</option>
+                            <option value="BPP">BPP (Kecamatan)</option>
+                            <option value="PPL">PPL (Penyuluh)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Kecamatan</label>
+                        <select id="filterKecUser" onchange="filterTabelUser()" class="border rounded-lg text-sm px-3 py-2 focus:ring-2 focus:ring-green-500 outline-none bg-white">
+                            <option value="">Semua Kecamatan</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- User Table -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50/50 border-b border-gray-100">
+                                    <th class="p-4 text-[10px] font-bold text-gray-400 uppercase text-center w-12">No</th>
+                                    <th class="p-4 text-[10px] font-bold text-gray-400 uppercase">Nama & NIP</th>
+                                    <th class="p-4 text-[10px] font-bold text-gray-400 uppercase">Role</th>
+                                    <th class="p-4 text-[10px] font-bold text-gray-400 uppercase text-center">Wilayah Kerja</th>
+                                    <th class="p-4 text-[10px] font-bold text-gray-400 uppercase text-center">Status</th>
+                                    <th class="p-4 text-[10px] font-bold text-gray-400 uppercase text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelUser">
+                                <tr>
+                                    <td colspan="6" class="p-12 text-center text-gray-400 italic">
+                                        <i class="fa-solid fa-circle-notch fa-spin text-2xl text-green-500 mb-2 block"></i>
+                                        Memuat daftar user...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+<!-- ===== SECTION: LOGS SINKRONISASI ===== -->
+<div id="sectionLogs" class="hidden">
+    <div class="p-8">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-800">Log Sinkronisasi e-Pusluh</h2>
+                <p class="text-sm text-gray-500">Pantau aktivitas penarikan data padi otomatis</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="muatLogsSinkron(true)"
+                    class="bg-blue-50 text-blue-600 border border-blue-200 px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-2 hover:bg-blue-600 hover:text-white">
+                    <i class="fa-solid fa-rotate-right" id="iconRefreshLogs"></i> Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Logs Table -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50/50 border-b border-gray-100">
+                            <th class="p-4 text-[10px] font-bold text-gray-400 uppercase">Waktu Sinkronisasi</th>
+                            <th class="p-4 text-[10px] font-bold text-gray-400 uppercase">ID Sync</th>
+                            <th class="p-4 text-[10px] font-bold text-gray-400 uppercase text-right">Total Tarik</th>
+                            <th class="p-4 text-[10px] font-bold text-gray-400 uppercase text-right">Data Berisi</th>
+                            <th class="p-4 text-[10px] font-bold text-gray-400 uppercase text-right">Data Nihil</th>
+                            <th class="p-4 text-[10px] font-bold text-gray-400 uppercase text-center">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelLogs">
+                        <tr>
+                            <td colspan="6" class="p-12 text-center text-gray-400 italic">
+                                <i class="fa-solid fa-circle-notch fa-spin text-2xl text-green-500 mb-2 block"></i>
+                                Memuat logs...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+    </div> <!-- end main content div -->
+</div> <!-- end flex container div -->
+
+<!-- Modal: Form User -->
+<div id="modalUser" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+    <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden transform scale-95 transition-transform duration-300">
+        <div class="bg-green-600 p-6 text-white flex justify-between items-center">
+            <h3 class="font-bold text-lg" id="modalUserTitle">Tambah User Baru</h3>
+            <button onclick="tutupModalUser()" class="hover:bg-white/20 w-8 h-8 rounded-full flex items-center justify-center transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <form id="formUser" onsubmit="simpanUser(event)" class="p-6 space-y-4">
+            <input type="hidden" id="userId">
+            
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Nama Lengkap</label>
+                <input type="text" id="userNama" required placeholder="Nama Lengkap & Gelar"
+                    class="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition">
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Username / NIP</label>
+                    <input type="text" id="userNIP" required placeholder="NIP/Username"
+                        class="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Password / PIN</label>
+                    <input type="password" id="userPIN" required placeholder="PIN Login"
+                        class="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Role Akun</label>
+                <select id="userRole" required onchange="handleRoleChange()"
+                    class="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition bg-white">
+                    <option value="PPL">PPL (Penyuluh Lapangan)</option>
+                    <option value="BPP">BPP (Admin Kecamatan)</option>
+                    <option value="Admin_Kab">Admin Kabupaten</option>
+                </select>
+            </div>
+
+            <div id="divWilayah" class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Kecamatan</label>
+                    <select id="userKec" class="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition bg-white">
+                        <!-- Diisi dinamis -->
+                    </select>
+                </div>
+                <div id="divDesa">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Desa (Optional)</label>
+                    <input type="text" id="userDesa" placeholder="Wilayah Kerja"
+                        class="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Status</label>
+                <select id="userStatus" required
+                    class="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition bg-white">
+                    <option value="Aktif">Aktif</option>
+                    <option value="Nonaktif">Nonaktif</option>
+                </select>
+            </div>
+
+            <div class="pt-4 flex gap-3">
+                <button type="button" onclick="tutupModalUser()"
+                    class="flex-1 py-3 border border-gray-200 rounded-xl font-bold text-gray-500 hover:bg-gray-50 transition">Batal</button>
+                <button type="submit" id="btnSimpanUser"
+                    class="flex-1 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition shadow-lg shadow-green-600/20">
+                    Simpan Akun
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

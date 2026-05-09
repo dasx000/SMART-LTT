@@ -1,0 +1,1454 @@
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.41.0/dist/apexcharts.min.js"></script>
+<script>
+    let userAktif = null;
+    let allLaporan = [];
+    let allLaporanBPP = [];
+    let tabAktif = null;
+    let chartTren = null;
+    let chartDonut = null;
+    let timerLogin = null;
+    let lastDashData = null;
+    let lastRekapData = null;
+    let allUserData = [];
+    let listKecamatan = [];
+    let cacheRekap = {}; // Caching untuk tab rekap Padi, Jagung, Ubi Kayu
+
+    // =========================================================================
+    // 1. INITIALIZATION & SESSION CHECK
+    // =========================================================================
+    window.onload = function () {
+        cekSesi();
+    };
+
+    function cekSesi() {
+        const userData = localStorage.getItem('user_eLTT');
+        if (!userData) {
+            tampilkanLayar('layar-login');
+            document.getElementById('viewLoading').classList.add('hidden');
+            document.getElementById('viewLogin').classList.remove('hidden');
+            return;
+        }
+
+        try {
+            userAktif = JSON.parse(userData);
+            prosesBerhasilLogin(userAktif);
+        } catch (e) {
+            localStorage.removeItem('user_eLTT');
+            tampilkanLayar('layar-login');
+            document.getElementById('viewLoading').classList.add('hidden');
+            document.getElementById('viewLogin').classList.remove('hidden');
+        }
+    }
+
+    function tampilkanLayar(idLayar) {
+        document.getElementById('layar-login').classList.add('hidden');
+        document.getElementById('layar-ppl').classList.add('hidden');
+        document.getElementById('layar-bpp').classList.add('hidden');
+        document.getElementById('layar-admin').classList.add('hidden');
+        
+        document.getElementById(idLayar).classList.remove('hidden');
+    }
+
+    function toggleSidebar(forceClose = false) {
+        const sidebar = document.getElementById('sidebarAdmin');
+        const overlay = document.getElementById('sidebarOverlay');
+        if (!sidebar || !overlay) return;
+
+        if (forceClose) {
+            sidebar.classList.add('-translate-x-full');
+            overlay.classList.add('hidden');
+        } else {
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+        }
+    }
+
+    function prosesBerhasilLogin(userData) {
+        userAktif = userData;
+        localStorage.setItem('user_eLTT', JSON.stringify(userData));
+
+        if (userData.role === 'Penyuluh') {
+            tampilkanLayar('layar-ppl');
+            inisialisasiPPL();
+        } else if (userData.role === 'Admin_BPP') {
+            tampilkanLayar('layar-bpp');
+            inisialisasiBPP();
+        } else if (userData.role === 'Admin_Kab') {
+            tampilkanLayar('layar-admin');
+            inisialisasiAdmin();
+        } else {
+            Swal.fire('Akses Ditolak', 'Role tidak dikenali.', 'error');
+            logout();
+        }
+    }
+
+    // =========================================================================
+    // 2. LOGIN LOGIC
+    // =========================================================================
+    function handleLogin(e) {
+        e.preventDefault();
+        if (!navigator.onLine) {
+            Swal.fire('Koneksi Terputus!', 'Periksa sinyal internet Anda.', 'error');
+            return;
+        }
+        const nip = document.getElementById('nip').value;
+        const pin = document.getElementById('pin').value;
+
+        setBtnState(true, 'Memverifikasi...');
+        clearTimeout(timerLogin);
+        timerLogin = setTimeout(function () {
+            setBtnState(false, 'Masuk Sekarang');
+            Swal.fire('Waktu Habis', 'Server tidak merespons. Coba lagi.', 'warning');
+        }, 30000);
+
+        google.script.run
+            .withSuccessHandler(function (response) {
+                clearTimeout(timerLogin);
+                setBtnState(false, 'Masuk Sekarang');
+                if (response.status === 'success') {
+                    prosesBerhasilLogin(response.data);
+                } else {
+                    Swal.fire('Gagal Login', response.message, 'error');
+                }
+            })
+            .withFailureHandler(function (error) {
+                clearTimeout(timerLogin);
+                setBtnState(false, 'Masuk Sekarang');
+                Swal.fire('Server Error', error.message || error, 'error');
+            })
+            .prosesLogin(nip, pin);
+    }
+
+    function setBtnState(loading, text) {
+        const btn = document.getElementById('btnLogin');
+        if (!btn) return;
+        document.getElementById('loginText').innerText = text;
+        btn.disabled = loading;
+        btn.classList.toggle('opacity-75', loading);
+        document.getElementById('loginSpinner').classList.toggle('hidden', !loading);
+    }
+
+    // =========================================================================
+    // 3. PPL DASHBOARD LOGIC
+    // =========================================================================
+    function inisialisasiPPL() {
+        document.getElementById('namaPenyuluh').innerText = userAktif.nama;
+        document.getElementById('wilayahPenyuluh').innerText = "WKPP: " + userAktif.desa;
+        jalankanLogikaWaktu();
+    }
+
+    function jalankanLogikaWaktu() {
+        const jam = new Date().getHours();
+        if (jam >= 14) {
+            document.getElementById('statusWaktu').classList.replace('border-green-500', 'border-red-500');
+            document.getElementById('teksStatusWaktu').innerText = "Ditutup (Otomatis Nihil)";
+            document.getElementById('teksStatusWaktu').classList.replace('text-green-600', 'text-red-600');
+            document.getElementById('ikonStatusWaktu').classList.replace('fa-lock-open', 'fa-lock');
+            document.getElementById('ikonStatusWaktu').classList.replace('text-green-500', 'text-red-500');
+
+            document.querySelectorAll('.btn-komoditas').forEach(btn => {
+                btn.classList.add('opacity-40', 'grayscale');
+                btn.onclick = function (e) {
+                    e.stopPropagation();
+                    Swal.fire('Batas Waktu Habis!', 'Pelaporan ditutup pukul 14:00 WIB.', 'info');
+                };
+            });
+        }
+        
+        const tanggal = new Date().getDate();
+        if (tanggal >= 6 && tanggal <= 24) {
+            document.getElementById('bgTarget').classList.add('grayscale', 'opacity-60');
+            document.getElementById('ikonGembokTarget').classList.remove('hidden');
+        }
+    }
+
+    function bukaForm(komoditas) {
+        document.getElementById('formArea').classList.remove('hidden');
+        if (komoditas === 'Padi') {
+            document.getElementById('judulForm').innerText = "Data Sinkronisasi Padi";
+            document.getElementById('formInputan').classList.add('hidden');
+            document.getElementById('areaPadiReadOnly').classList.remove('hidden');
+            let desaAcuan = userAktif.desa.split(',')[0].trim();
+            google.script.run.withSuccessHandler(function (res) {
+                if (res.sudahSinkron) {
+                    document.getElementById('pesanBelumSinkron').classList.add('hidden');
+                    document.getElementById('dataPadiTersinkron').classList.remove('hidden');
+                    document.getElementById('infoDesaPadi').innerText = "Desa: " + desaAcuan;
+                } else {
+                    document.getElementById('pesanBelumSinkron').classList.remove('hidden');
+                    document.getElementById('dataPadiTersinkron').classList.add('hidden');
+                }
+            }).cekStatusPadiHarian(desaAcuan);
+        } else {
+            document.getElementById('judulForm').innerText = "Lapor LTT " + komoditas;
+            document.getElementById('inputKomoditas').value = komoditas;
+            document.getElementById('areaPadiReadOnly').classList.add('hidden');
+            document.getElementById('formInputan').classList.remove('hidden');
+            const selectDesa = document.getElementById('inputDesa');
+            selectDesa.innerHTML = `<option value="" disabled selected>-- Pilih Desa --</option>`;
+            userAktif.desa.split(',').forEach(d => {
+                selectDesa.innerHTML += `<option value="${d.trim()}">${d.trim()}</option>`;
+            });
+        }
+    }
+
+    function tutupForm() {
+        document.getElementById('formArea').classList.add('hidden');
+        document.getElementById('formInputan').reset();
+    }
+
+    function submitData(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btnSubmit');
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Menyimpan...`;
+
+        const formData = {
+            pelapor: userAktif.nama,
+            kecamatan: userAktif.kecamatan,
+            desa: document.getElementById('inputDesa').value,
+            komoditas: document.getElementById('inputKomoditas').value,
+            jenis_ltt: 'LTT',
+            target_tanam: 0,
+            target_panen: 0,
+            luas_bera: 0,
+            olah_lahan: 0,
+            luas_tanam: parseFloat(document.getElementById('inputTanam').value) || 0,
+            luas_panen: parseFloat(document.getElementById('inputPanen').value) || 0,
+            keterangan: document.getElementById('inputKeterangan').value || '-'
+        };
+
+        google.script.run
+            .withSuccessHandler(function (res) {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Kirim Laporan`;
+                if (res.status === 'success') {
+                    Swal.fire('Berhasil!', 'Data tersimpan.', 'success').then(() => tutupForm());
+                } else {
+                    Swal.fire('Gagal!', res.message, 'error');
+                }
+            })
+            .withFailureHandler(function (err) {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Kirim Laporan`;
+                Swal.fire('Error', err.message || err, 'error');
+            })
+            .submitLaporan(formData);
+    }
+
+    // =========================================================================
+    // 4. ADMIN DASHBOARD LOGIC
+    // =========================================================================
+    function inisialisasiAdmin() {
+        document.getElementById('namaAdmin').innerText = userAktif.nama;
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('tglRekap').value = today;
+        generateOpsiFilter();
+        muatDashboard();
+        muatChartTarget();
+    }
+
+    function generateOpsiFilter() {
+        const sel = document.getElementById('filterBulanDashboard');
+        if (!sel) return;
+        const namaBulan = ['Januari','Februari','Maret','April','Mei','Juni',
+                           'Juli','Agustus','September','Oktober','November','Desember'];
+        const now = new Date();
+        sel.innerHTML = '';
+        for (let i = 0; i <= 2; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const opt = document.createElement('option');
+            opt.value = `${d.getFullYear()}-${d.getMonth() + 1}`;
+            opt.text = `${namaBulan[d.getMonth()]} ${d.getFullYear()}`;
+            sel.appendChild(opt);
+        }
+    }
+
+    function navigasi(section) {
+        ['sectionDashboard', 'sectionVerifikasi', 'sectionManajemen', 'sectionLogs'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.classList.add('hidden');
+        });
+        document.querySelectorAll('.nav-item').forEach(a => a.classList.remove('bg-green-700', 'text-white', 'font-bold'));
+
+        if (section === 'verifikasi') {
+            document.getElementById('sectionVerifikasi').classList.remove('hidden');
+            document.getElementById('nav-verifikasi').classList.add('bg-green-700', 'text-white', 'font-bold');
+            muatVerifikasi();
+        } else if (section === 'manajemen') {
+            document.getElementById('sectionManajemen').classList.remove('hidden');
+            document.getElementById('nav-manajemen').classList.add('bg-green-700', 'text-white', 'font-bold');
+            muatDaftarUser();
+        } else if (section === 'logs') {
+            document.getElementById('sectionLogs').classList.remove('hidden');
+            document.getElementById('nav-logs').classList.add('bg-green-700', 'text-white', 'font-bold');
+            muatLogsSinkron();
+        } else {
+            document.getElementById('sectionDashboard').classList.remove('hidden');
+            document.getElementById('nav-dashboard').classList.add('bg-green-700', 'text-white', 'font-bold');
+        }
+    }
+
+    function muatDashboard(forceRefresh = false) {
+        const sel = document.getElementById('filterBulanDashboard');
+        const labelPeriode = document.getElementById('labelPeriodeDashboard');
+        const params = {};
+        if (forceRefresh) params.forceRefresh = true;
+        if (sel && sel.value) {
+            const parts = sel.value.split('-');
+            params.tahun = parseInt(parts[0]);
+            params.bulan = parseInt(parts[1]);
+            
+            // Update Teks Label
+            const text = sel.options[sel.selectedIndex].text;
+            if (labelPeriode) labelPeriode.innerText = `REKAP DATA ${text.toUpperCase()}`;
+        }
+        muatChartTarget();
+        google.script.run
+            .withSuccessHandler(function (dash) {
+                lastDashData = dash;
+                if (document.getElementById('tanamPadi')) document.getElementById('tanamPadi').innerText = (dash.komposisiTanam['Padi'] || 0) + ' Ha';
+                if (document.getElementById('tanamJagung')) document.getElementById('tanamJagung').innerText = (dash.komposisiTanam['Jagung'] || 0) + ' Ha';
+                if (document.getElementById('tanamUbi')) document.getElementById('tanamUbi').innerText = (dash.komposisiTanam['Ubi Kayu'] || 0) + ' Ha';
+                if (document.getElementById('panenPadi')) document.getElementById('panenPadi').innerText = (dash.komposisiPanen['Padi'] || 0) + ' Ha';
+                if (document.getElementById('panenJagung')) document.getElementById('panenJagung').innerText = (dash.komposisiPanen['Jagung'] || 0) + ' Ha';
+                if (document.getElementById('panenUbi')) document.getElementById('panenUbi').innerText = (dash.komposisiPanen['Ubi Kayu'] || 0) + ' Ha';
+                if (document.getElementById('angkaPctVerified')) document.getElementById('angkaPctVerified').innerText = dash.pctVerified;
+                if (document.getElementById('angkaMenunggu')) document.getElementById('angkaMenunggu').innerText = dash.countMenunggu;
+                renderChart(dash);
+            })
+            .getDashboardKab(params);
+    }
+
+    function tampilkanDetailPadi(type) {
+        if (!lastDashData || !lastDashData.breakdownPadi) return;
+        const data = lastDashData.breakdownPadi[type];
+        const title = type === 'tanam' ? 'RINCIAN TANAM PADI (JENIS LTT)' : 'RINCIAN PANEN PADI (JENIS LTT)';
+        const color = type === 'tanam' ? 'text-blue-600' : 'text-yellow-600';
+        
+        let html = `<div class="text-left space-y-3 mt-4">`;
+        let hasData = false;
+        for (let jenis in data) {
+            if (data[jenis] > 0) {
+                hasData = true;
+                html += `
+                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <span class="font-bold text-gray-700 uppercase text-xs">${jenis}</span>
+                    <span class="font-bold ${color}">${data[jenis].toLocaleString('id-ID')} Ha</span>
+                </div>`;
+            }
+        }
+        if (!hasData) html += `<div class="text-center text-gray-400 p-4 italic">Tidak ada data rincian.</div>`;
+        html += `</div>`;
+
+        Swal.fire({
+            title: `<span class="text-sm font-bold text-gray-800 uppercase tracking-wider">${title}</span>`,
+            html: html,
+            showConfirmButton: false,
+            showCloseButton: true,
+            customClass: { popup: 'rounded-2xl shadow-2xl border-0' }
+        });
+    }
+
+    function tampilkanDetailRekapPadi(type) {
+        if (!lastRekapData || !lastRekapData.breakdown) return;
+        const data = lastRekapData.breakdown;
+        const title = type === 'tanam' ? 'RINCIAN TANAM (JENIS LTT)' : 'RINCIAN PANEN (JENIS LTT)';
+        const color = type === 'tanam' ? 'text-blue-600' : 'text-yellow-600';
+        const tgl = document.getElementById('tglRekap').value;
+        
+        let html = `<div class="text-left space-y-3 mt-4">`;
+        let hasData = false;
+        for (let jenis in data) {
+            const val = data[jenis][type];
+            if (val > 0) {
+                hasData = true;
+                html += `
+                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-100 animate__animated animate__fadeInUp">
+                    <span class="font-bold text-gray-700 uppercase text-xs">${jenis}</span>
+                    <span class="font-bold ${color}">${val.toLocaleString('id-ID')} Ha</span>
+                </div>`;
+            }
+        }
+        if (!hasData) html += `<div class="text-center text-gray-400 p-4 italic">Tidak ada data rincian untuk tanggal ${tgl}.</div>`;
+        html += `</div>`;
+
+        Swal.fire({
+            title: `<span class="text-sm font-bold text-gray-800 uppercase tracking-wider">${title}</span><br><span class="text-[10px] text-gray-400 font-normal">Periode: ${tgl}</span>`,
+            html: html,
+            showConfirmButton: false,
+            showCloseButton: true,
+            customClass: { popup: 'rounded-2xl shadow-2xl border-0' }
+        });
+    }
+
+
+    function renderChart(dash) {
+        if (chartTren) chartTren.destroy();
+        if (chartDonut) chartDonut.destroy();
+        chartTren = new ApexCharts(document.querySelector('#chartTrenLTT'), {
+            series: [
+                { name: 'Padi', data: dash.trenPadi },
+                { name: 'Jagung', data: dash.trenJagung },
+                { name: 'Ubi Kayu', data: dash.trenUbiKayu }
+            ],
+            chart: { height: 256, type: 'area', toolbar: { show: false } },
+            colors: ['#3b82f6', '#eab308', '#f97316'],
+            stroke: { curve: 'smooth', width: 2 },
+            fill: { type: 'gradient', gradient: { opacityFrom: 0.4, opacityTo: 0.05 } },
+            xaxis: { categories: dash.trenLabels },
+            legend: { position: 'bottom' }
+        });
+        chartDonut = new ApexCharts(document.querySelector('#chartKomoditas'), {
+            series: dash.komposisi,
+            labels: ['Padi', 'Jagung', 'Ubi Kayu'],
+            chart: { type: 'donut', height: 256 },
+            colors: ['#3b82f6', '#eab308', '#f97316']
+        });
+        chartTren.render();
+        chartDonut.render();
+    }
+
+
+    let lastRekapKecData = null;
+
+    let currentRekapTab = 'rekap-padi';
+
+    function muatRekap(force = false) {
+        const tgl = document.getElementById('tglRekap').value;
+        const jenisLTT = currentRekapTab === 'rekap-padi' ? document.getElementById('filterJenisLTT').value : '';
+        const btnIcon = document.getElementById('iconRefreshRekap');
+
+        // Konstruksi Cache Key
+        const cacheKey = currentRekapTab + '_' + tgl + '_' + (jenisLTT || 'semua');
+
+        // Jika tidak force refresh dan ada di cache, langsung tampilkan
+        if (!force && cacheRekap[cacheKey]) {
+            const data = cacheRekap[cacheKey];
+            lastRekapData = data.harian;
+            lastRekapKecData = data.kecamatan;
+            
+            // Render UI Harian
+            document.getElementById('rTanam').innerText = lastRekapData.totalTanam;
+            document.getElementById('rPanen').innerText = lastRekapData.totalPanen;
+            
+            if (currentRekapTab === 'rekap-padi') {
+                const typeText = jenisLTT ? '(' + jenisLTT + ')' : '(Semua)';
+                document.getElementById('labelTanamType').innerText = typeText;
+                document.getElementById('labelPanenType').innerText = typeText;
+            } else {
+                document.getElementById('labelTanamType').innerText = '(Semua)';
+                document.getElementById('labelPanenType').innerText = '(Semua)';
+            }
+            
+            // Render Tabel
+            renderTabelKecamatan(lastRekapKecData, currentRekapTab === 'rekap-padi');
+            return;
+        }
+
+        // Tampilkan loading dan animasi refresh
+        if (btnIcon) btnIcon.classList.add('fa-spin');
+        
+        document.getElementById('tabelKecamatan').innerHTML = '<tr><td colspan="4" class="p-8 text-center"><i class="fa-solid fa-circle-notch fa-spin text-2xl text-green-500 mb-2 block"></i> Menghitung rekap data...</td></tr>';
+
+        // Helper untuk simpan ke cache jika kedua request selesai
+        let tempHarian = null;
+        let tempKec = null;
+
+        function cobaSimpanCache() {
+            if (tempHarian && tempKec) {
+                cacheRekap[cacheKey] = { harian: tempHarian, kecamatan: tempKec };
+                if (btnIcon) btnIcon.classList.remove('fa-spin');
+            }
+        }
+
+        if (currentRekapTab === 'rekap-padi') {
+            google.script.run.withSuccessHandler(function (d) {
+                tempHarian = d;
+                lastRekapData = d;
+                document.getElementById('rTanam').innerText = d.totalTanam;
+                document.getElementById('rPanen').innerText = d.totalPanen;
+                const typeText = jenisLTT ? '(' + jenisLTT + ')' : '(Semua)';
+                document.getElementById('labelTanamType').innerText = typeText;
+                document.getElementById('labelPanenType').innerText = typeText;
+                
+                // Update dropdown jika Padi
+                const sel = document.getElementById('filterJenisLTT');
+                const prev = sel.value;
+                sel.innerHTML = '<option value="">Semua Jenis LTT</option>';
+                d.jenisLTTList.forEach(j => {
+                    sel.innerHTML += `<option value="${j}" ${j === prev ? 'selected' : ''}>${j}</option>`;
+                });
+                cobaSimpanCache();
+            }).getRekapPadiHarian(tgl, jenisLTT);
+
+            google.script.run.withSuccessHandler(function (d) {
+                tempKec = d;
+                lastRekapKecData = d;
+                renderTabelKecamatan(d, true);
+                cobaSimpanCache();
+            }).getRekapPadiPerKecamatan(tgl, jenisLTT);
+        } else {
+            const komoditas = currentRekapTab === 'jagung' ? 'Jagung' : 'Ubi Kayu';
+            google.script.run.withSuccessHandler(function (d) {
+                tempHarian = d;
+                lastRekapData = d;
+                document.getElementById('rTanam').innerText = d.totalTanam;
+                document.getElementById('rPanen').innerText = d.totalPanen;
+                document.getElementById('labelTanamType').innerText = '(Semua)';
+                document.getElementById('labelPanenType').innerText = '(Semua)';
+                cobaSimpanCache();
+            }).getRekapPalawijaHarian(tgl, komoditas);
+
+            google.script.run.withSuccessHandler(function (d) {
+                tempKec = d;
+                lastRekapKecData = d;
+                renderTabelKecamatan(d, false);
+                cobaSimpanCache();
+            }).getRekapPalawijaPerKecamatan(tgl, komoditas);
+        }
+    }
+
+    async function unduhExcelKecamatan() {
+        if (!lastRekapKecData || lastRekapKecData.rows.length === 0) {
+            Swal.fire('Peringatan', 'Muat data terlebih dahulu sebelum mengunduh.', 'warning');
+            return;
+        }
+
+        const btn = document.getElementById('btnUnduhExcel');
+        const oldHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Memproses...';
+
+        try {
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Rekap Kecamatan');
+
+            const tgl = document.getElementById('tglRekap').value;
+            const isPadi = currentRekapTab === 'rekap-padi';
+            const komoditasName = isPadi ? 'PADI' : (currentRekapTab === 'jagung' ? 'JAGUNG' : 'UBI KAYU');
+            const jenis = isPadi ? (document.getElementById('filterJenisLTT').value || 'Semua') : 'Semua';
+
+            const now = new Date();
+            const tglDownload = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ' ' + now.toLocaleTimeString('id-ID');
+            const tglLaporan = tgl;
+            const jenisLTT = jenis;
+
+            // 1. Judul & Metadata
+            const colRange = isPadi ? 'A1:D1' : 'A1:C1';
+            worksheet.mergeCells(colRange);
+            worksheet.getCell('A1').value = `REKAPITULASI ${komoditasName} PER KECAMATAN`;
+            worksheet.getCell('A1').font = { bold: true, size: 14 };
+            worksheet.getCell('A1').alignment = { horizontal: 'center' };
+
+            const metadataRange = isPadi ? 'A2:D2' : 'A2:C2';
+            worksheet.mergeCells(metadataRange);
+            worksheet.getCell('A2').value = isPadi ? `Tanggal Laporan: ${tglLaporan} | Jenis LTT: ${jenisLTT}` : `Tanggal Laporan: ${tglLaporan}`;
+            worksheet.getCell('A2').alignment = { horizontal: 'center' };
+
+            const infoRange = isPadi ? 'A3:D3' : 'A3:C3';
+            worksheet.mergeCells(infoRange);
+            worksheet.getCell('A3').value = `Tanggal Download: ${tglDownload}`;
+            worksheet.getCell('A3').font = { italic: true, size: 9, color: { argb: 'FF666666' } };
+            worksheet.getCell('A3').alignment = { horizontal: 'center' };
+
+            // 2. Header (Baris 4)
+            const headers = isPadi ? ['KECAMATAN', 'JENIS LTT', 'LUAS TANAM (HA)', 'LUAS PANEN (HA)'] : ['KECAMATAN', 'LUAS TANAM (HA)', 'LUAS PANEN (HA)'];
+            const headerRow = worksheet.addRow(headers);
+            headerRow.eachCell(cell => {
+                cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF16A34A' } };
+                cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+            });
+
+            // 3. Data
+            let dataBaris = [];
+            if (isPadi) {
+                dataBaris = lastRekapKecData.rows.map(r => [
+                    r[0] || '-', 
+                    r[1] || '-', 
+                    Number(r[2]) || 0, 
+                    Number(r[3]) || 0
+                ]);
+            } else {
+                dataBaris = lastRekapKecData.rows.map(r => [
+                    r[0] || '-', 
+                    Number(r[2]) || 0, 
+                    Number(r[3]) || 0
+                ]);
+            }
+            
+            worksheet.addRows(dataBaris);
+
+            // 4. Styling & Zebra Stripes
+            const startDataRow = 5;
+            worksheet.eachRow((row, rowNumber) => {
+                if (rowNumber >= startDataRow) {
+                    row.eachCell((cell, colNumber) => {
+                        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+                        if ((isPadi && colNumber >= 3) || (!isPadi && colNumber >= 2)) cell.alignment = { horizontal: 'right' };
+                        cell.font = { color: { argb: 'FF000000' }, size: 10 };
+                        
+                        // Zebra Stripes (Warna Abu-abu Muda untuk baris genap)
+                        if (rowNumber % 2 === 0) {
+                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9FAFB' } };
+                        }
+                    });
+                }
+            });
+
+            // 5. Baris Total
+            const totalRowData = isPadi ? 
+                ['TOTAL KABUPATEN', '', Number(lastRekapKecData.totalTanam), Number(lastRekapKecData.totalPanen)] : 
+                ['TOTAL KABUPATEN', Number(lastRekapKecData.totalTanam), Number(lastRekapKecData.totalPanen)];
+            
+            const totalRow = worksheet.addRow(totalRowData);
+            if (isPadi) worksheet.mergeCells(`A${totalRow.number}:B${totalRow.number}`);
+            
+            totalRow.eachCell(cell => {
+                cell.font = { bold: true, size: 11 };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } };
+                cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+                cell.alignment = { vertical: 'middle' };
+            });
+
+            // 6. Column Width
+            worksheet.getColumn(1).width = 25;
+            if (isPadi) {
+                worksheet.getColumn(2).width = 20;
+                worksheet.getColumn(3).width = 20;
+                worksheet.getColumn(4).width = 20;
+            } else {
+                worksheet.getColumn(2).width = 20;
+                worksheet.getColumn(3).width = 20;
+            }
+
+            // 7. Generate and Download
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const fileJenis = isPadi ? jenisLTT : komoditasName.replace(' ', '_');
+            a.download = `Rekap_Kecamatan_${tgl}_${fileJenis}.xlsx`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+
+            Swal.fire({ icon: 'success', title: 'Berhasil', text: 'File Excel berhasil diunduh.', toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 });
+
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Gagal', 'Terjadi kesalahan saat membuat file Excel.', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = oldHtml;
+        }
+    }
+
+    function renderTabelKecamatan(d, isPadi = true) {
+        const tbody = document.getElementById('tabelKecamatan');
+        const thead = document.getElementById('theadKecamatan');
+
+        if (isPadi) {
+            thead.innerHTML = `<tr class="bg-gray-100 text-gray-600 text-xs uppercase tracking-wider border-b border-gray-200">
+                <th class="p-3">Kecamatan</th>
+                <th class="p-3">Jenis LTT</th>
+                <th class="p-3 text-right">Tanam (Ha)</th>
+                <th class="p-3 text-right">Panen (Ha)</th>
+            </tr>`;
+        } else {
+            thead.innerHTML = `<tr class="bg-gray-100 text-gray-600 text-xs uppercase tracking-wider border-b border-gray-200">
+                <th class="p-3">Kecamatan</th>
+                <th class="p-3 text-right">Tanam (Ha)</th>
+                <th class="p-3 text-right">Panen (Ha)</th>
+            </tr>`;
+        }
+
+        if (!d.rows || d.rows.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="${isPadi ? 4 : 3}" class="p-8 text-center text-gray-400">Tidak ada data.</td></tr>`;
+            return;
+        }
+
+        let lastKec = '';
+        tbody.innerHTML = d.rows.map((r, i) => {
+            const rowClass = 'hover:bg-green-50';
+            const zebraClass = i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50';
+            const tampilKec = (r[0] !== lastKec) ? `<span class="font-bold text-gray-800">${r[0]}</span>` : '';
+            const borderTop = (r[0] !== lastKec && i > 0) ? 'border-t-2 border-gray-100' : '';
+            lastKec = r[0];
+
+            if (isPadi) {
+                return `
+                <tr class="border-b border-gray-50 transition ${zebraClass} ${rowClass} ${borderTop}">
+                    <td class="p-3 text-sm">${tampilKec}</td>
+                    <td class="p-3 text-xs text-gray-600">${r[1]}</td>
+                    <td class="p-3 text-right text-sm font-bold ${r[2] > 0 ? 'text-blue-600' : 'text-gray-600'}">${r[2]} Ha</td>
+                    <td class="p-3 text-right text-sm font-bold ${r[3] > 0 ? 'text-yellow-600' : 'text-gray-600'}">${r[3]} Ha</td>
+                </tr>`;
+            } else {
+                return `
+                <tr class="border-b border-gray-50 transition ${zebraClass} ${rowClass} ${borderTop}">
+                    <td class="p-3 text-sm">${tampilKec}</td>
+                    <td class="p-3 text-right text-sm font-bold ${r[2] > 0 ? 'text-blue-600' : 'text-gray-600'}">${r[2]} Ha</td>
+                    <td class="p-3 text-right text-sm font-bold ${r[3] > 0 ? 'text-yellow-600' : 'text-gray-600'}">${r[3]} Ha</td>
+                </tr>`;
+            }
+        }).join('')
+            + `<tr class="bg-green-50 border-t-2 border-green-200 font-bold text-sm">
+                <td class="p-3 text-center" colspan="${isPadi ? 2 : 1}">TOTAL KABUPATEN</td>
+                <td class="p-3 text-right text-blue-700">${d.totalTanam} Ha</td>
+                <td class="p-3 text-right text-yellow-700">${d.totalPanen} Ha</td>
+            </tr>`;
+    }
+
+    // =========================================================================
+    // 5. UTILITY & LOGOUT
+    // =========================================================================
+    function inisialisasiBPP() {
+        document.getElementById('namaAdminBPP').innerText = userAktif.nama;
+        document.getElementById('judulBPP').innerText = 'BPP ' + userAktif.kecamatan.toUpperCase();
+        generateOpsiFilterBPP();
+        muatTargetBPP();
+        muatDashboardBPP(userAktif.kecamatan);
+    }
+
+    function muatUlangBPP() {
+        muatDashboardBPP(userAktif.kecamatan);
+    }
+
+    function muatDashboardBPP(kecamatan) {
+        google.script.run
+            .withSuccessHandler(function (dash) {
+                allLaporanBPP = dash.laporanMenunggu;
+                document.getElementById('angkaLaporanHariIni').innerHTML = dash.laporanHariIni + ' Data';
+                document.getElementById('angkaMenungguBPP').innerText = dash.countMenunggu + ' Data';
+                document.getElementById('angkaSudahLapor').innerText = dash.sudahLapor + ' / ' + dash.totalPPL + ' Orang';
+                const daftarEl = document.getElementById('daftarMerahPPL');
+                if (dash.pplBelumLapor.length === 0) {
+                    daftarEl.innerHTML = '<span class="bg-green-100 text-green-700 text-xs font-bold px-3 py-1.5 rounded-full">Semua sudah lapor!</span>';
+                } else {
+                    daftarEl.innerHTML = dash.pplBelumLapor.map(nama => `<span class="bg-white border border-red-300 text-red-600 text-xs font-bold px-3 py-1.5 rounded-full">${nama}</span>`).join('');
+                }
+                renderTabelBPP();
+            })
+            .getDashboardBPP(kecamatan);
+    }
+
+    function renderTabelBPP() {
+        const tbody = document.getElementById('tabelVerifikasiBPP');
+        if (allLaporanBPP.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="p-10 text-center text-gray-400">Tidak ada laporan.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = allLaporanBPP.map(r => `
+            <tr class="border-b border-gray-50 hover:bg-green-50 transition">
+                <td class="p-4 text-center"><input type="checkbox" value="${r[0]}" class="cek-laporan-bpp w-4 h-4 text-green-600 rounded"></td>
+                <td class="p-4">${r[1]}</td>
+                <td class="p-4"><p class="font-bold text-gray-800">${r[2]}</p><p class="text-[10px] text-gray-500">Desa ${r[3]}</p></td>
+                <td class="p-4"><span class="px-2 py-1 bg-yellow-100 text-yellow-700 text-[11px] font-bold rounded">${r[4]}</span></td>
+                <td class="p-4 text-right font-bold text-blue-600">${r[5]} Ha</td>
+                <td class="p-4 text-right font-bold text-orange-600">${r[6]} Ha</td>
+                <td class="p-4 text-xs text-gray-500">${r[7]}</td>
+            </tr>
+        `).join('');
+    }
+
+    function verifikasiBPP() {
+        const checkboxes = document.querySelectorAll('.cek-laporan-bpp:checked');
+        if (checkboxes.length === 0) return Swal.fire('Pilih Data!', '', 'warning');
+        let idTerpilih = [];
+        checkboxes.forEach(cb => idTerpilih.push(cb.value));
+        Swal.fire({ title: 'Sahkan?', showCancelButton: true }).then(res => {
+            if (res.isConfirmed) {
+                google.script.run.withSuccessHandler(() => muatUlangBPP()).prosesVerifikasiMassal(idTerpilih, 'Admin_BPP');
+            }
+        });
+    }
+
+    function toggleCekSemuaBPP(source) {
+        document.querySelectorAll('.cek-laporan-bpp').forEach(cb => cb.checked = source.checked);
+    }
+
+    function logoutBPP() { logout(); }
+
+    // =========================================================
+    // TARGET BPP — Form Input
+    // =========================================================
+
+    function generateOpsiFilterBPP() {
+        const sel = document.getElementById('filterBulanTarget');
+        if (!sel) return;
+        const namaBulan = ['Januari','Februari','Maret','April','Mei','Juni',
+                           'Juli','Agustus','September','Oktober','November','Desember'];
+        const now = new Date();
+        sel.innerHTML = '';
+        for (let i = 0; i <= 2; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const opt = document.createElement('option');
+            opt.value = `${d.getFullYear()}-${d.getMonth() + 1}`;
+            opt.text = `${namaBulan[d.getMonth()]} ${d.getFullYear()}`;
+            sel.appendChild(opt);
+        }
+        sel.addEventListener('change', muatTargetBPP);
+    }
+
+    function muatTargetBPP() {
+        const sel = document.getElementById('filterBulanTarget');
+        if (!sel || !sel.value) return;
+        const parts = sel.value.split('-');
+        const params = { tahun: parseInt(parts[0]), bulan: parseInt(parts[1]), kecamatan: userAktif.kecamatan };
+        google.script.run
+            .withSuccessHandler(function(data) {
+                const fields = ['LTTReguler_Tanam','LTTReguler_Panen','PadiGogo_Tanam','PadiGogo_Panen',
+                                'Oplah2025_Tanam','Oplah2025_Panen','Jagung_Tanam','Jagung_Panen',
+                                'UbiKayu_Tanam','UbiKayu_Panen'];
+                fields.forEach(f => {
+                    const el = document.getElementById('tgt_' + f);
+                    if (el) el.value = data ? (data[f] || '') : '';
+                });
+            })
+            .getTargetKecamatan(params);
+    }
+
+    function simpanTargetBPP() {
+        const sel = document.getElementById('filterBulanTarget');
+        if (!sel || !sel.value) return;
+        const parts = sel.value.split('-');
+        const formData = {
+            tahun: parseInt(parts[0]),
+            bulan: parseInt(parts[1]),
+            kecamatan: userAktif.kecamatan,
+            LTTReguler_Tanam: document.getElementById('tgt_LTTReguler_Tanam').value,
+            LTTReguler_Panen: document.getElementById('tgt_LTTReguler_Panen').value,
+            PadiGogo_Tanam:   document.getElementById('tgt_PadiGogo_Tanam').value,
+            PadiGogo_Panen:   document.getElementById('tgt_PadiGogo_Panen').value,
+            Oplah2025_Tanam:  document.getElementById('tgt_Oplah2025_Tanam').value,
+            Oplah2025_Panen:  document.getElementById('tgt_Oplah2025_Panen').value,
+            Jagung_Tanam:     document.getElementById('tgt_Jagung_Tanam').value,
+            Jagung_Panen:     document.getElementById('tgt_Jagung_Panen').value,
+            UbiKayu_Tanam:    document.getElementById('tgt_UbiKayu_Tanam').value,
+            UbiKayu_Panen:    document.getElementById('tgt_UbiKayu_Panen').value,
+        };
+        const btn = document.getElementById('btnSimpanTargetText');
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-1"></i> Menyimpan...';
+        google.script.run
+            .withSuccessHandler(function(res) {
+                btn.innerHTML = 'Simpan Target';
+                if (res.status === 'success') {
+                    Swal.fire({ icon: 'success', title: 'Tersimpan!', text: 'Target berhasil disimpan.', timer: 1800, showConfirmButton: false });
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Gagal', text: res.message || 'Terjadi kesalahan.' });
+                }
+            })
+            .withFailureHandler(function() {
+                btn.innerHTML = 'Simpan Target';
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Koneksi ke server gagal.' });
+            })
+            .simpanTarget(formData);
+    }
+
+    // =========================================================
+    // TARGET vs REALISASI — Chart Admin
+    // =========================================================
+
+    let dataTarget = null;
+    let filterJenisTarget = 'LTTReguler';
+    let filterTanamPanen  = 'tanam';
+    let chartTarget       = null;
+
+    const LABEL_KOMODITI = {
+        LTTReguler: 'LTT Reguler',
+        PadiGogo:   'LTT Padi Gogo',
+        Oplah2025:  'LTT Oplah 2025',
+        Jagung:     'Jagung',
+        UbiKayu:    'Ubi Kayu',
+    };
+
+    function muatChartTarget() {
+        const sel = document.getElementById('filterBulanDashboard');
+        const params = {};
+        if (sel && sel.value) {
+            const parts = sel.value.split('-');
+            params.tahun = parseInt(parts[0]);
+            params.bulan = parseInt(parts[1]);
+        }
+        document.getElementById('loadingTarget').classList.remove('hidden');
+        document.getElementById('chartTargetVsRealisasi').classList.add('hidden');
+        document.getElementById('emptyTarget').classList.add('hidden');
+        google.script.run
+            .withSuccessHandler(function(data) {
+                dataTarget = data;
+                renderChartTarget();
+            })
+            .getDashboardTarget(params);
+    }
+
+    function renderChartTarget() {
+        document.getElementById('loadingTarget').classList.add('hidden');
+        if (!dataTarget) return;
+
+        const side = filterTanamPanen;
+        const jenisKey = filterJenisTarget;
+
+        // Kumpulkan semua kecamatan dari gabungan target + realisasi
+        const semuaKec = [...new Set([
+            ...Object.keys(dataTarget.target),
+            ...Object.keys(dataTarget.realisasi)
+        ])].sort();
+
+        if (semuaKec.length === 0) {
+            document.getElementById('emptyTarget').classList.remove('hidden');
+            document.getElementById('emptyTarget').classList.add('flex');
+            document.getElementById('tableTargetVsRealisasiContainer').classList.add('hidden');
+            return;
+        }
+
+        const seriesTarget    = [];
+        const seriesRealisasi = [];
+        const colors          = [];
+
+        semuaKec.forEach(kec => {
+            const t = (dataTarget.target[kec]    && dataTarget.target[kec][jenisKey])    ? (dataTarget.target[kec][jenisKey][side]    || 0) : 0;
+            const r = (dataTarget.realisasi[kec] && dataTarget.realisasi[kec][jenisKey]) ? (dataTarget.realisasi[kec][jenisKey][side] || 0) : 0;
+            seriesTarget.push(t);
+            seriesRealisasi.push(r);
+            const pct = t > 0 ? (r / t) * 100 : 100;
+            let barHex = '#16a34a'; // Default Green
+            if (pct < 50) barHex = '#ef4444'; // Red
+            else if (pct < 80) barHex = '#eab308'; // Yellow
+            colors.push(barHex);
+        });
+
+        if (chartTarget) { chartTarget.destroy(); chartTarget = null; }
+
+        const chartEl = document.getElementById('chartTargetVsRealisasi');
+        chartEl.classList.remove('hidden');
+
+        chartTarget = new ApexCharts(chartEl, {
+            chart: { type: 'bar', height: 340, toolbar: { show: false }, fontFamily: 'inherit' },
+            series: [
+                { name: 'Target', data: seriesTarget },
+                { name: 'Realisasi', data: seriesRealisasi },
+            ],
+            xaxis: { categories: semuaKec, labels: { style: { fontSize: '10px' }, rotate: -30 } },
+            colors: ['#3b82f6', '#16a34a'],
+            fill: {
+                colors: [
+                    '#3b82f6',
+                    function({ dataPointIndex }) { return colors[dataPointIndex]; }
+                ]
+            },
+            plotOptions: { bar: { borderRadius: 3, columnWidth: '65%', dataLabels: { position: 'top' } } },
+            dataLabels: { enabled: false },
+            legend: { position: 'top', fontSize: '12px' },
+            tooltip: {
+                y: { formatter: (val) => val.toLocaleString('id-ID') + ' Ha' },
+                custom: function({ series, dataPointIndex, w }) {
+                    const kec = semuaKec[dataPointIndex];
+                    const t   = series[0][dataPointIndex];
+                    const r   = series[1][dataPointIndex];
+                    const pct = t > 0 ? Math.round((r / t) * 100) : '-';
+                    let warna = '#16a34a';
+                    if (typeof pct === 'number') {
+                        if (pct < 50) warna = '#ef4444';
+                        else if (pct < 80) warna = '#eab308';
+                    }
+                    return `<div class="p-3 text-xs font-sans">
+                        <div class="font-bold text-gray-800 mb-1">${kec}</div>
+                        <div>Target: <b>${t.toLocaleString('id-ID')} Ha</b></div>
+                        <div>Realisasi: <b>${r.toLocaleString('id-ID')} Ha</b></div>
+                        <div style="color:${warna}">Capaian: <b>${pct}%</b></div>
+                    </div>`;
+                }
+            },
+            yaxis: { labels: { formatter: (v) => v.toLocaleString('id-ID') + ' Ha', style: { fontSize: '10px' } } },
+        });
+        chartTarget.render();
+
+        // Render Tabel Detail Target vs Realisasi
+        let tableHTML = '';
+        semuaKec.forEach((kec, i) => {
+            const t = seriesTarget[i];
+            const r = seriesRealisasi[i];
+            const pct = t > 0 ? Math.round((r / t) * 100) : '-';
+            
+            let colorClass = 'text-gray-500';
+            let badgeClass = 'bg-gray-100 text-gray-600';
+            let barColor = 'bg-gray-200';
+            
+            if (pct !== '-') {
+                if (pct >= 80) {
+                    colorClass = 'text-green-600 font-bold';
+                    badgeClass = 'bg-green-100 text-green-700';
+                    barColor = 'bg-green-500';
+                } else if (pct >= 50) {
+                    colorClass = 'text-yellow-600 font-bold';
+                    badgeClass = 'bg-yellow-100 text-yellow-700';
+                    barColor = 'bg-yellow-500';
+                } else {
+                    colorClass = 'text-red-600 font-bold';
+                    badgeClass = 'bg-red-100 text-red-700';
+                    barColor = 'bg-red-500';
+                }
+            }
+
+            let barWidth = pct !== '-' ? Math.min(pct, 100) : 0;
+
+            tableHTML += `
+            <tr class="border-b border-gray-50 hover:bg-gray-50 transition">
+                <td class="p-3 font-bold text-gray-800 w-1/4">${kec}</td>
+                <td class="p-3 text-right w-1/6">${t.toLocaleString('id-ID')}</td>
+                <td class="p-3 text-right ${colorClass} w-1/6">${r.toLocaleString('id-ID')}</td>
+                <td class="p-3 w-5/12">
+                    <div class="flex items-center gap-3 w-full">
+                        <div class="flex-grow bg-gray-100 rounded-full h-2.5 overflow-hidden border border-gray-200">
+                            <div class="${barColor} h-2.5 rounded-full transition-all duration-500" style="width: ${barWidth}%"></div>
+                        </div>
+                        <span class="w-12 text-center px-2 py-1 ${badgeClass} text-[10px] font-bold rounded-full flex-shrink-0">${pct !== '-' ? pct + '%' : '-'}</span>
+                    </div>
+                </td>
+            </tr>`;
+        });
+        document.getElementById('tabelTargetVsRealisasi').innerHTML = tableHTML;
+        document.getElementById('tableTargetVsRealisasiContainer').classList.remove('hidden');
+    }
+
+    function filterTarget(side) {
+        filterTanamPanen = side;
+        ['tanam','panen'].forEach(s => {
+            const el = document.getElementById('btnTP-' + s);
+            if (!el) return;
+            el.classList.toggle('bg-green-600', s === side);
+            el.classList.toggle('text-white',   s === side);
+            el.classList.toggle('text-gray-500', s !== side);
+        });
+        renderChartTarget();
+    }
+
+    function filterKomTarget(jenisKey) {
+        filterJenisTarget = jenisKey;
+        Object.keys(LABEL_KOMODITI).forEach(k => {
+            const el = document.getElementById('btnKom-' + k);
+            if (!el) return;
+            el.classList.toggle('bg-green-600',    k === jenisKey);
+            el.classList.toggle('text-white',      k === jenisKey);
+            el.classList.toggle('border-green-600', k === jenisKey);
+            el.classList.toggle('text-gray-500',   k !== jenisKey);
+            el.classList.toggle('bg-white',        k !== jenisKey);
+            el.classList.toggle('border-gray-200', k !== jenisKey);
+        });
+        renderChartTarget();
+    }
+
+    function logout() {
+        localStorage.removeItem('user_eLTT');
+        userAktif = null;
+
+        if (chartTren) { chartTren.destroy(); chartTren = null; }
+        if (chartDonut) { chartDonut.destroy(); chartDonut = null; }
+
+        ['layar-ppl', 'layar-bpp', 'layar-admin'].forEach(id => {
+            document.getElementById(id).classList.add('hidden');
+        });
+
+        document.getElementById('layar-login').classList.remove('hidden');
+        document.getElementById('viewLoading').classList.add('hidden');
+        document.getElementById('viewLogin').classList.remove('hidden');
+        document.getElementById('nip').value = '';
+        document.getElementById('pin').value = '';
+    }
+
+    function logoutAdmin() {
+        Swal.fire({
+            title: 'Keluar?',
+            text: 'Anda akan kembali ke layar login.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, Keluar',
+            confirmButtonColor: '#16a34a',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) logout();
+        });
+    }
+
+    function muatUlangDashboard() {
+        muatDashboard(true);
+    }
+
+    function setTab(el, filter) {
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('bg-green-600', 'text-white', 'hover:bg-green-700');
+            btn.classList.add('text-gray-500', 'hover:text-green-600');
+        });
+        el.classList.add('bg-green-600', 'text-white', 'hover:bg-green-700');
+        el.classList.remove('text-gray-500', 'hover:text-green-600');
+
+        if (filter === 'rekap-padi' || filter === 'jagung' || filter === 'ubi-kayu') {
+            document.getElementById('panelDashboard').classList.add('hidden');
+            document.getElementById('panelRekap').classList.remove('hidden');
+            
+            currentRekapTab = filter;
+
+            if (filter === 'rekap-padi') {
+                document.getElementById('judulPanelRekap').innerText = 'Rekap Padi Harian (e-Pusluh)';
+                document.getElementById('filterJenisLTT').classList.remove('hidden');
+            } else if (filter === 'jagung') {
+                document.getElementById('judulPanelRekap').innerText = 'Rekap Jagung Harian';
+                document.getElementById('filterJenisLTT').classList.add('hidden');
+            } else if (filter === 'ubi-kayu') {
+                document.getElementById('judulPanelRekap').innerText = 'Rekap Ubi Kayu Harian';
+                document.getElementById('filterJenisLTT').classList.add('hidden');
+            }
+
+            muatRekap();
+        } else {
+            document.getElementById('panelDashboard').classList.remove('hidden');
+            document.getElementById('panelRekap').classList.add('hidden');
+        }
+    }
+
+    let dataVerifKec = [];
+
+    function muatVerifikasi(force = false) {
+        // Gunakan cache jika sudah ada isinya dan tidak dipaksa refresh
+        if (dataVerifKec.length > 0 && !force) {
+            filterTabelVerifikasi(); // dataVerifKec sudah diisi di renderTabelVerifikasiKec
+            return;
+        }
+
+        document.getElementById('tabelVerifikasiKec').innerHTML = '<tr><td colspan="6" class="p-8 text-center"><i class="fa-solid fa-circle-notch fa-spin text-2xl text-green-500 mb-2 block"></i> Memuat data...</td></tr>';
+        document.getElementById('verifikasiLoading').classList.remove('hidden');
+        google.script.run
+            .withSuccessHandler(function(result) {
+                document.getElementById('verifikasiLoading').classList.add('hidden');
+                renderTabelVerifikasiKec(result);
+            })
+            .withFailureHandler(function(err) {
+                document.getElementById('verifikasiLoading').classList.add('hidden');
+                Swal.fire('Error', err.message, 'error');
+            })
+            .getAntreanKabupaten();
+    }
+
+    function renderTabelVerifikasiKec(result) {
+        document.getElementById('angkaPctVerified').innerText = result.pctVerified;
+        document.getElementById('angkaMenunggu').innerText = result.countMenunggu;
+        dataVerifKec = result.kecList || [];
+        filterTabelVerifikasi();
+    }
+
+    function filterTabelVerifikasi() {
+        const fs = (document.getElementById('filterStatusVerif') || {}).value || '';
+        const cari = ((document.getElementById('cariKecVerif') || {}).value || '').toLowerCase();
+        const filtered = dataVerifKec.filter(k => {
+            const bisaVerif = k.belumBPP === 0 && k.siapVerif > 0;
+            const matchStatus = !fs || (fs === 'siap' && bisaVerif) || (fs === 'belum' && !bisaVerif);
+            const matchCari = !cari || k.nama.toLowerCase().includes(cari);
+            return matchStatus && matchCari;
+        });
+        const tbody = document.getElementById('tabelVerifikasiKec');
+        if (!filtered.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-gray-400">Tidak ada data sesuai filter.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = filtered.map(k => {
+            const bisaVerif = k.belumBPP === 0 && k.siapVerif > 0;
+            const dot = bisaVerif
+                ? '<span class="w-4 h-4 rounded-full bg-green-500 inline-block"></span>'
+                : '<span class="w-4 h-4 rounded-full bg-red-500 inline-block"></span>';
+            const ket = bisaVerif
+                ? '<span class="text-green-600 font-medium text-xs">Sudah bisa diverifikasi</span>'
+                : (k.belumBPP > 0
+                    ? `<span class="text-red-500 text-xs font-medium">Tidak bisa diverifikasi<br><span class="text-gray-500 font-normal">Terdapat ${k.belumBPP} laporan yang belum diverifikasi oleh Admin BPP</span></span>`
+                    : '<span class="text-gray-400 text-xs">Belum ada laporan masuk</span>');
+            const idsEncoded = encodeURIComponent(JSON.stringify(k.ids));
+            const kecEsc = k.nama.replace(/'/g, "\\'");
+            const btnHtml = bisaVerif
+                ? `<button onclick="verifikasiKecamatan('${kecEsc}','${idsEncoded}')" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1"><i class="fa-solid fa-check-double"></i> Verifikasi Laporan</button>`
+                : `<button disabled class="bg-gray-100 text-gray-400 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-not-allowed"><i class="fa-solid fa-check-double"></i> Verifikasi Laporan</button>`;
+            return `<tr class="border-b border-gray-50 hover:bg-gray-50 transition">
+                <td class="p-4">${btnHtml}</td>
+                <td class="p-4 text-center">${dot}</td>
+                <td class="p-4 font-bold text-gray-800">${k.nama}</td>
+                <td class="p-4 text-center"><span class="bg-blue-50 text-blue-700 text-xs font-bold px-2 py-1 rounded-full">${k.totalLaporan}</span></td>
+                <td class="p-4">${ket}</td>
+                <td class="p-4 text-center font-bold ${k.sudahKab > 0 ? 'text-green-600' : 'text-gray-400'}">${k.sudahKab}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    function verifikasiKecamatan(kecamatan, idsEncoded) {
+        const ids = JSON.parse(decodeURIComponent(idsEncoded));
+        Swal.fire({
+            title: 'Verifikasi Kec. ' + kecamatan + '?',
+            html: `<span class="text-gray-600">${ids.length} laporan akan disahkan oleh Kabupaten.</span>`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, Verifikasi',
+            cancelButtonText: 'Batal',
+            confirmButtonColor: '#16a34a'
+        }).then(res => {
+            if (res.isConfirmed) {
+                google.script.run
+                    .withSuccessHandler(() => {
+                        Swal.fire({ title: 'Berhasil!', text: 'Laporan Kec. ' + kecamatan + ' telah disahkan.', icon: 'success', timer: 2000, showConfirmButton: false });
+                        muatVerifikasi();
+                        muatDashboard();
+                    })
+                    .withFailureHandler(err => Swal.fire('Error', err.message, 'error'))
+                    .prosesVerifikasiMassal(ids, 'Admin_Kab');
+            }
+        });
+    }
+
+    function cekBukaTarget() {
+        const tanggal = new Date().getDate();
+        if (tanggal >= 6 && tanggal <= 24) {
+            Swal.fire('Terkunci!', 'Input Target Bulanan hanya dibuka pada tanggal 1–5 dan 25–31.', 'info');
+        } else {
+            Swal.fire('Info', 'Fitur input target bulanan sedang disiapkan.', 'info');
+        }
+    }
+
+    // =========================================================================
+    // 5. USER MANAGEMENT LOGIC
+    // =========================================================================
+    function muatDaftarUser(force = false) {
+        // Jika data sudah ada dan tidak dipaksa refresh, langsung tampilkan
+        if (allUserData.length > 0 && !force) {
+            filterTabelUser();
+            return;
+        }
+
+        const tbody = document.getElementById('tabelUser');
+        tbody.innerHTML = '<tr><td colspan="6" class="p-12 text-center text-gray-400 italic"><i class="fa-solid fa-circle-notch fa-spin text-2xl text-green-500 mb-2 block"></i>Memuat daftar user...</td></tr>';
+        
+        // Ambil Data Kecamatan jika belum ada
+        if (listKecamatan.length === 0) {
+            google.script.run.withSuccessHandler(res => {
+                listKecamatan = res;
+                const html = '<option value="">Semua Kecamatan</option>' + res.map(k => `<option value="${k}">${k}</option>`).join('');
+                document.getElementById('filterKecUser').innerHTML = html;
+                document.getElementById('userKec').innerHTML = '<option value="-">Pilih Kecamatan</option>' + html;
+            }).getDaftarKecamatan();
+        }
+
+        google.script.run.withSuccessHandler(res => {
+            allUserData = res;
+            filterTabelUser();
+        }).getDaftarUser();
+    }
+
+    function filterTabelUser() {
+        const cari = document.getElementById('cariUser').value.toLowerCase();
+        const role = document.getElementById('filterRole').value;
+        const kec = document.getElementById('filterKecUser').value;
+        const tbody = document.getElementById('tabelUser');
+
+        const filtered = (allUserData || []).filter(u => {
+            const nama = (u.nama || '').toLowerCase();
+            const nip = (u.nip || '').toString();
+            const matchCari = !cari || nama.includes(cari) || nip.includes(cari);
+            const matchRole = !role || u.role === role;
+            const matchKec = !kec || u.kecamatan === kec;
+            return matchCari && matchRole && matchKec;
+        });
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="p-12 text-center text-gray-400 italic">Data user tidak ditemukan.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = filtered.map((u, i) => {
+            const badgeRole = { 'Admin_Kab': 'bg-purple-100 text-purple-700', 'BPP': 'bg-blue-100 text-blue-700', 'PPL': 'bg-green-100 text-green-700' };
+            const badgeStatus = u.status === 'Aktif' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700';
+            const wilayah = u.role === 'Admin_Kab' ? 'Kabupaten' : (u.role === 'BPP' ? u.kecamatan : `${u.kecamatan}<br><span class="text-[10px] text-gray-400">${u.desa || '-'}</span>`);
+
+            return `
+            <tr class="border-b border-gray-50 hover:bg-gray-50 transition">
+                <td class="p-4 text-center text-xs text-gray-500">${i + 1}</td>
+                <td class="p-4">
+                    <div class="font-bold text-gray-800">${u.nama}</div>
+                    <div class="text-[10px] text-gray-400 font-mono">${u.nip}</div>
+                </td>
+                <td class="p-4"><span class="px-2 py-1 ${badgeRole[u.role] || 'bg-gray-100'} text-[10px] font-bold rounded-full">${u.role}</span></td>
+                <td class="p-4 text-center text-xs">${wilayah}</td>
+                <td class="p-4 text-center"><span class="px-2 py-1 ${badgeStatus} text-[10px] font-bold rounded-full">${u.status}</span></td>
+                <td class="p-4 text-center">
+                    <div class="flex justify-center gap-2">
+                        <button onclick="editUser('${u.id}')" class="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition shadow-sm"><i class="fa-solid fa-pen-to-square"></i></button>
+                        <button onclick="hapusUser('${u.id}', '${u.nip}')" class="w-8 h-8 bg-red-50 text-red-600 rounded-lg hover:bg-red-600 hover:text-white transition shadow-sm"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    function bukaModalUser() {
+        document.getElementById('formUser').reset();
+        document.getElementById('userId').value = '';
+        document.getElementById('modalUserTitle').innerText = 'Tambah User Baru';
+        handleRoleChange();
+        
+        const modal = document.getElementById('modalUser');
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modal.children[0].classList.remove('scale-95');
+        }, 10);
+    }
+
+    function tutupModalUser() {
+        const modal = document.getElementById('modalUser');
+        modal.classList.add('opacity-0');
+        modal.children[0].classList.add('scale-95');
+        setTimeout(() => modal.classList.add('hidden'), 300);
+    }
+
+    function handleRoleChange() {
+        const role = document.getElementById('userRole').value;
+        const divWilayah = document.getElementById('divWilayah');
+        const divDesa = document.getElementById('divDesa');
+        
+        if (role === 'Admin_Kab') {
+            divWilayah.classList.add('hidden');
+        } else {
+            divWilayah.classList.remove('hidden');
+            if (role === 'BPP') {
+                divDesa.classList.add('hidden');
+            } else {
+                divDesa.classList.remove('hidden');
+            }
+        }
+    }
+
+    function editUser(id) {
+        const u = allUserData.find(x => x.id === id);
+        if (!u) return;
+
+        document.getElementById('userId').value = u.id;
+        document.getElementById('userNama').value = u.nama;
+        document.getElementById('userNIP').value = u.nip;
+        document.getElementById('userPIN').value = u.pin;
+        document.getElementById('userRole').value = u.role;
+        document.getElementById('userKec').value = u.kecamatan;
+        document.getElementById('userDesa').value = u.desa;
+        document.getElementById('userStatus').value = u.status;
+        
+        document.getElementById('modalUserTitle').innerText = 'Edit Akun User';
+        handleRoleChange();
+        
+        const modal = document.getElementById('modalUser');
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modal.children[0].classList.remove('scale-95');
+        }, 10);
+    }
+
+    function simpanUser(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btnSimpanUser');
+        const oldText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Menyimpan...';
+
+        const data = {
+            id: document.getElementById('userId').value,
+            nama: document.getElementById('userNama').value,
+            nip: document.getElementById('userNIP').value,
+            pin: document.getElementById('userPIN').value,
+            role: document.getElementById('userRole').value,
+            kecamatan: document.getElementById('userKec').value,
+            desa: document.getElementById('userDesa').value,
+            status: document.getElementById('userStatus').value
+        };
+
+        google.script.run.withSuccessHandler(res => {
+            btn.disabled = false;
+            btn.innerHTML = oldText;
+            if (res.status === 'success') {
+                Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message, timer: 2000, showConfirmButton: false });
+                tutupModalUser();
+                muatDaftarUser();
+            } else {
+                Swal.fire('Gagal', res.message, 'error');
+            }
+        }).simpanDataUser(data);
+    }
+
+    function hapusUser(id, nip) {
+        Swal.fire({
+            title: 'Hapus User?',
+            text: `Akun dengan NIP ${nip} akan dihapus permanen.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'Ya, Hapus'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                google.script.run.withSuccessHandler(res => {
+                    if (res.status === 'success') {
+                        Swal.fire('Dihapus!', res.message, 'success');
+                        muatDaftarUser();
+                    } else {
+                        Swal.fire('Gagal', res.message, 'error');
+                    }
+                }).hapusDataUser(id, nip);
+            }
+        });
+    }
+    function muatLogsSinkron(forceRefresh = false) {
+        const btnIcon = document.getElementById('iconRefreshLogs');
+        if (btnIcon) btnIcon.classList.add('fa-spin');
+        
+        const tbody = document.getElementById('tabelLogs');
+        tbody.innerHTML = '<tr><td colspan="6" class="p-12 text-center text-gray-400 italic"><i class="fa-solid fa-circle-notch fa-spin text-2xl text-green-500 mb-2 block"></i>Memuat logs...</td></tr>';
+        
+        google.script.run.withSuccessHandler(logs => {
+            if (btnIcon) btnIcon.classList.remove('fa-spin');
+            if (!logs || logs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-gray-400">Belum ada log sinkronisasi.</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = logs.map(log => {
+                const isSukses = log.status === 'Sukses';
+                const hasData = log.dataBerisi > 0;
+                
+                let rowColor = 'hover:bg-gray-50';
+                if (!isSukses) rowColor = 'bg-red-50 hover:bg-red-100';
+                else if (hasData) rowColor = 'bg-green-50/30 hover:bg-green-50';
+                
+                let statusBadge = isSukses 
+                    ? `<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-[10px] font-bold"><i class="fa-solid fa-check mr-1"></i>Sukses</span>`
+                    : `<span class="bg-red-100 text-red-700 px-2 py-1 rounded text-[10px] font-bold"><i class="fa-solid fa-xmark mr-1"></i>Error</span>`;
+                
+                // Format Waktu
+                let waktuFormat = log.waktuSinkron;
+                try {
+                    const dt = new Date(log.waktuSinkron);
+                    if (!isNaN(dt)) {
+                        waktuFormat = dt.toLocaleString('id-ID', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'});
+                    }
+                } catch(e){}
+
+                return `
+                <tr class="border-b border-gray-100 transition ${rowColor}">
+                    <td class="p-4 text-xs font-bold text-gray-700">${waktuFormat}</td>
+                    <td class="p-4 text-xs text-gray-500 font-mono">${log.idSync}</td>
+                    <td class="p-4 text-sm font-bold text-gray-800 text-right">${log.totalTarik}</td>
+                    <td class="p-4 text-sm font-bold ${hasData ? 'text-green-600' : 'text-gray-400'} text-right">${log.dataBerisi}</td>
+                    <td class="p-4 text-sm font-bold text-gray-400 text-right">${log.dataNihil}</td>
+                    <td class="p-4 text-center">${statusBadge}</td>
+                </tr>`;
+            }).join('');
+            
+        }).withFailureHandler(err => {
+            if (btnIcon) btnIcon.classList.remove('fa-spin');
+            tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-red-500">Gagal memuat log: ${err.message}</td></tr>`;
+        }).getLogsSinkron();
+    }
+</script>

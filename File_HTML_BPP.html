@@ -1,0 +1,184 @@
+<header class="bg-green-700 text-white shadow-md fixed top-0 left-0 w-full z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16 items-center">
+            <div class="flex items-center gap-3">
+                <div class="bg-white p-1.5 rounded-lg">
+                    <i class="fa-solid fa-leaf text-green-700 text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-wide" id="judulBPP">BPP...</h1>
+                    <p class="text-[10px] text-green-200">Panel Admin Kecamatan</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <button onclick="muatUlangBPP()"
+                    class="hidden sm:flex items-center gap-1 bg-green-600 hover:bg-green-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition">
+                    <i class="fa-solid fa-rotate-right"></i> Refresh
+                </button>
+                <div class="text-right hidden sm:block">
+                    <p class="text-sm font-bold" id="namaAdminBPP">Memuat...</p>
+                    <p class="text-[10px] text-green-200 uppercase">Koordinator BPP</p>
+                </div>
+                <button onclick="logoutBPP()"
+                    class="bg-red-500 hover:bg-red-600 w-9 h-9 rounded-full flex justify-center items-center transition shadow">
+                    <i class="fa-solid fa-power-off text-white"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8">
+
+    <!-- Stat Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-blue-500 flex items-center justify-between">
+            <div>
+                <p class="text-xs text-gray-500 font-bold uppercase mb-1">Laporan Masuk Hari Ini</p>
+                <h3 class="text-2xl font-bold text-gray-800" id="angkaLaporanHariIni">
+                    <i class="fa-solid fa-circle-notch fa-spin text-gray-300"></i>
+                    <span class="text-sm font-normal text-gray-500"> Data</span>
+                </h3>
+            </div>
+            <div class="w-12 h-12 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center text-xl">
+                <i class="fa-solid fa-inbox"></i>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-yellow-500 flex items-center justify-between">
+            <div>
+                <p class="text-xs text-gray-500 font-bold uppercase mb-1">Menunggu Verifikasi BPP</p>
+                <h3 class="text-2xl font-bold text-yellow-600" id="angkaMenungguBPP">
+                    <i class="fa-solid fa-circle-notch fa-spin text-gray-300"></i>
+                    <span class="text-sm font-normal text-gray-500"> Data</span>
+                </h3>
+            </div>
+            <div class="w-12 h-12 bg-yellow-50 text-yellow-500 rounded-full flex items-center justify-center text-xl">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-green-500 flex items-center justify-between">
+            <div>
+                <p class="text-xs text-gray-500 font-bold uppercase mb-1">Penyuluh Sudah Lapor</p>
+                <h3 class="text-2xl font-bold text-green-600" id="angkaSudahLapor">
+                    <i class="fa-solid fa-circle-notch fa-spin text-gray-300"></i>
+                    <span class="text-sm font-normal text-gray-500"> Orang</span>
+                </h3>
+            </div>
+            <div class="w-12 h-12 bg-green-50 text-green-500 rounded-full flex items-center justify-center text-xl">
+                <i class="fa-solid fa-user-check"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Daftar PPL Belum Lapor -->
+    <div class="bg-red-50 rounded-xl shadow-sm border border-red-200 p-5 mb-8">
+        <div class="flex items-center gap-2 mb-4">
+            <i class="fa-solid fa-triangle-exclamation text-red-500 text-xl"></i>
+            <h3 class="text-md font-bold text-red-700">Daftar PPL Belum Lapor Hari Ini</h3>
+        </div>
+        <div class="flex flex-wrap gap-2 min-h-[2rem]" id="daftarMerahPPL">
+            <span class="text-xs text-red-400 italic flex items-center gap-1">
+                <i class="fa-solid fa-circle-notch fa-spin"></i> Memuat...
+            </span>
+        </div>
+    </div>
+
+    <!-- Form Input Target -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
+        <div class="p-5 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-50 gap-3">
+            <div>
+                <h3 class="text-lg font-bold text-gray-800">Input Target Bulanan</h3>
+                <p class="text-xs text-gray-500">Isi target luas tanam & panen kecamatan Anda per komoditi.</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-calendar-days text-green-600 text-sm"></i>
+                <select id="filterBulanTarget"
+                    class="text-xs font-bold text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-1.5 outline-none focus:border-green-500 cursor-pointer shadow-sm">
+                </select>
+            </div>
+        </div>
+        <div class="p-5">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider border-b border-gray-200">
+                            <th class="p-3 text-left font-bold">Komoditi / Jenis</th>
+                            <th class="p-3 text-center font-bold text-blue-600">Target Tanam (Ha)</th>
+                            <th class="p-3 text-center font-bold text-orange-600">Target Panen (Ha)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        <tr class="hover:bg-gray-50">
+                            <td class="p-3 font-bold text-gray-700"><i class="fa-solid fa-wheat-awn text-green-500 mr-2"></i>LTT Reguler</td>
+                            <td class="p-3"><input type="number" step="0.01" min="0" id="tgt_LTTReguler_Tanam" class="w-full p-2 border border-gray-200 rounded-lg text-sm text-center outline-none focus:border-green-500 bg-blue-50" placeholder="0"></td>
+                            <td class="p-3"><input type="number" step="0.01" min="0" id="tgt_LTTReguler_Panen" class="w-full p-2 border border-gray-200 rounded-lg text-sm text-center outline-none focus:border-orange-400 bg-orange-50" placeholder="0"></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="p-3 font-bold text-gray-700"><i class="fa-solid fa-wheat-awn text-teal-500 mr-2"></i>LTT Padi Gogo</td>
+                            <td class="p-3"><input type="number" step="0.01" min="0" id="tgt_PadiGogo_Tanam" class="w-full p-2 border border-gray-200 rounded-lg text-sm text-center outline-none focus:border-green-500 bg-blue-50" placeholder="0"></td>
+                            <td class="p-3"><input type="number" step="0.01" min="0" id="tgt_PadiGogo_Panen" class="w-full p-2 border border-gray-200 rounded-lg text-sm text-center outline-none focus:border-orange-400 bg-orange-50" placeholder="0"></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="p-3 font-bold text-gray-700"><i class="fa-solid fa-wheat-awn text-cyan-500 mr-2"></i>LTT Oplah 2025</td>
+                            <td class="p-3"><input type="number" step="0.01" min="0" id="tgt_Oplah2025_Tanam" class="w-full p-2 border border-gray-200 rounded-lg text-sm text-center outline-none focus:border-green-500 bg-blue-50" placeholder="0"></td>
+                            <td class="p-3"><input type="number" step="0.01" min="0" id="tgt_Oplah2025_Panen" class="w-full p-2 border border-gray-200 rounded-lg text-sm text-center outline-none focus:border-orange-400 bg-orange-50" placeholder="0"></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="p-3 font-bold text-gray-700"><i class="fa-solid fa-corn text-yellow-500 mr-2"></i>Jagung</td>
+                            <td class="p-3"><input type="number" step="0.01" min="0" id="tgt_Jagung_Tanam" class="w-full p-2 border border-gray-200 rounded-lg text-sm text-center outline-none focus:border-green-500 bg-blue-50" placeholder="0"></td>
+                            <td class="p-3"><input type="number" step="0.01" min="0" id="tgt_Jagung_Panen" class="w-full p-2 border border-gray-200 rounded-lg text-sm text-center outline-none focus:border-orange-400 bg-orange-50" placeholder="0"></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="p-3 font-bold text-gray-700"><i class="fa-solid fa-carrot text-orange-500 mr-2"></i>Ubi Kayu</td>
+                            <td class="p-3"><input type="number" step="0.01" min="0" id="tgt_UbiKayu_Tanam" class="w-full p-2 border border-gray-200 rounded-lg text-sm text-center outline-none focus:border-green-500 bg-blue-50" placeholder="0"></td>
+                            <td class="p-3"><input type="number" step="0.01" min="0" id="tgt_UbiKayu_Panen" class="w-full p-2 border border-gray-200 rounded-lg text-sm text-center outline-none focus:border-orange-400 bg-orange-50" placeholder="0"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <button onclick="simpanTargetBPP()"
+                class="mt-5 w-full bg-green-600 text-white font-bold py-3 rounded-lg flex justify-center items-center gap-2 shadow-lg shadow-green-200 hover:bg-green-700 transition active:scale-95">
+                <i class="fa-solid fa-floppy-disk"></i>
+                <span id="btnSimpanTargetText">Simpan Target</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Tabel Verifikasi -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="p-5 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-50 gap-4">
+            <div>
+                <h3 class="text-lg font-bold text-gray-800">Verifikasi Laporan Palawija</h3>
+                <p class="text-xs text-gray-500">Periksa laporan harian sebelum ditarik oleh Admin Kabupaten.</p>
+            </div>
+            <button onclick="verifikasiBPP()"
+                class="bg-green-600 text-white px-5 py-2 rounded-lg text-sm font-bold hover:bg-green-700 transition shadow flex items-center gap-2 w-full sm:w-auto justify-center">
+                <i class="fa-solid fa-check-double"></i> Verifikasi Data Terpilih
+            </button>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-gray-100 text-gray-600 text-xs uppercase tracking-wider border-b border-gray-200">
+                        <th class="p-4 w-10 text-center">
+                            <input type="checkbox" id="cekSemuaBPP" onchange="toggleCekSemuaBPP(this)"
+                                class="w-4 h-4 text-green-600 rounded cursor-pointer">
+                        </th>
+                        <th class="p-4">Tgl Lapor</th>
+                        <th class="p-4">Pelapor & Desa</th>
+                        <th class="p-4">Komoditas</th>
+                        <th class="p-4 text-right">Tanam</th>
+                        <th class="p-4 text-right">Panen</th>
+                        <th class="p-4">Keterangan</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelVerifikasiBPP" class="text-sm">
+                    <tr><td colspan="7" class="p-10 text-center text-gray-400">Memuat data...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
