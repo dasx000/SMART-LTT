@@ -141,8 +141,8 @@ function terimaSinkronPadi(dataArray, logData) {
     var logSheet = ss.getSheetByName('Logs_Sinkron');
     if (!logSheet) {
       logSheet = ss.insertSheet('Logs_Sinkron');
-      logSheet.appendRow(['ID_Sync', 'Waktu_Sinkron', 'Total_Tarik', 'Data_Berisi', 'Data_Nihil', 'Status']);
-      logSheet.getRange('A1:F1').setFontWeight('bold').setBackground('#fce5cd');
+      logSheet.appendRow(['ID_Sync', 'Waktu_Sinkron', 'Total_Tarik', 'Data_Berisi', 'Data_Nihil', 'Tanggal_Laporan', 'Status']);
+      logSheet.getRange('A1:G1').setFontWeight('bold').setBackground('#fce5cd');
       logSheet.setFrozenRows(1);
     }
 
@@ -154,10 +154,11 @@ function terimaSinkronPadi(dataArray, logData) {
         logData.totalTarik || 0,
         logData.dataBerisi || 0,
         logData.dataNihil || 0,
+        logData.tanggalLaporan || '-',
         'Sukses (Injeksi)'
       ]);
     } else {
-      logSheet.appendRow(['Manual/Unknown', new Date(), dataArray ? dataArray.length : 0, '?', '?', 'Sukses (Tanpa LogData)']);
+      logSheet.appendRow(['Manual/Unknown', new Date(), dataArray ? dataArray.length : 0, '?', '?', '-', 'Sukses (Tanpa LogData)']);
     }
 
     var sheet = ss.getSheetByName('Data_LTT_Padi');
@@ -249,7 +250,8 @@ function getLogsSinkron() {
       totalTarik: data[i][2],
       dataBerisi: data[i][3],
       dataNihil: data[i][4],
-      status: data[i][5]
+      tanggalLaporan: data[i][5],
+      status: data[i][6]
     });
   }
   // Sort by waktuSinkron descending (newest first)
