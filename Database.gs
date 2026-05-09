@@ -144,6 +144,13 @@ function terimaSinkronPadi(dataArray, logData) {
       logSheet.appendRow(['ID_Sync', 'Waktu_Sinkron', 'Total_Tarik', 'Data_Berisi', 'Data_Nihil', 'Tanggal_Laporan', 'Status']);
       logSheet.getRange('A1:G1').setFontWeight('bold').setBackground('#fce5cd');
       logSheet.setFrozenRows(1);
+    } else {
+      // Validasi Header (Jika versi lama, paksa ganti ke versi baru 7 kolom)
+      var currentHeader = logSheet.getRange(1, 1, 1, 7).getValues()[0];
+      if (currentHeader[5] !== 'Tanggal_Laporan') {
+         logSheet.getRange(1, 1, 1, 7).setValues([['ID_Sync', 'Waktu_Sinkron', 'Total_Tarik', 'Data_Berisi', 'Data_Nihil', 'Tanggal_Laporan', 'Status']]);
+         logSheet.getRange('A1:G1').setFontWeight('bold').setBackground('#fce5cd');
+      }
     }
 
     // 2. CATAT LOG JIKA DATA ADA
@@ -229,7 +236,7 @@ function terimaSinkronPadi(dataArray, logData) {
   } catch (e) {
     if (logData) {
        var logSheetErr = ss.getSheetByName('Logs_Sinkron');
-       if(logSheetErr) logSheetErr.appendRow([logData.idSync, logData.waktuSinkron, logData.totalTarik, logData.dataBerisi, logData.dataNihil, 'Error: ' + e.toString()]);
+       if(logSheetErr) logSheetErr.appendRow([logData.idSync, logData.waktuSinkron, logData.totalTarik, logData.dataBerisi, logData.dataNihil, logData.tanggalLaporan || '-', 'Error: ' + e.toString()]);
     }
     return { status: 'error', message: e.toString() };
   } finally {
