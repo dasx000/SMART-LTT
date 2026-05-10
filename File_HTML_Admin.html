@@ -93,13 +93,13 @@
                         <button onclick="setTab(this, 'ubi-kayu')"
                             class="tab-btn px-5 py-2 text-sm font-bold text-gray-500 hover:text-green-600 transition-all">Ubi Kayu</button>
                     </div>
-                    <div class="flex items-center gap-2 mx-auto md:mx-0">
+                    <div id="wrapperLabelPeriode" class="flex items-center gap-2 mx-auto md:mx-0">
                         <div class="hidden md:block h-8 w-[2px] bg-gray-200 mr-2"></div>
                         <span id="labelPeriodeDashboard" class="text-[13px] md:text-[15px] font-black text-green-700 bg-green-50 px-5 py-2 rounded-full border-2 border-green-200 uppercase tracking-widest whitespace-nowrap shadow-sm">
                             REKAP DATA -
                         </span>
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div id="wrapperFilterBulan" class="flex items-center gap-2">
                         <i class="fa-solid fa-calendar-days text-green-600 text-sm"></i>
                         <select id="filterBulanDashboard" onchange="muatDashboard()"
                             class="text-xs font-bold text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-1.5 outline-none focus:border-green-500 cursor-pointer shadow-sm">
@@ -264,8 +264,13 @@
                             <p class="text-xs text-gray-500">Data harian laporan petugas lapangan.</p>
                         </div>
                         <div class="flex items-center gap-3 flex-wrap">
-                            <input type="date" id="tglRekap" onchange="muatRekap()"
-                                class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-300">
+                            <div class="flex items-center gap-1">
+                                <input type="date" id="tglRekapMulai" onchange="muatRekap()"
+                                    class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-300">
+                                <span class="text-sm font-bold text-gray-500">-</span>
+                                <input type="date" id="tglRekapAkhir" onchange="muatRekap()"
+                                    class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-300">
+                            </div>
                             <select id="filterJenisLTT" onchange="muatRekap()"
                                 class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-300 bg-white">
                                 <option value="">Semua Jenis LTT</option>
@@ -501,7 +506,7 @@
                                     <th class="p-4 text-[10px] font-bold text-gray-400 uppercase text-center">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody id="tabelUser">
+                    <tbody id="tabelUser">
                                 <tr>
                                     <td colspan="6" class="p-12 text-center text-gray-400 italic">
                                         <i class="fa-solid fa-circle-notch fa-spin text-2xl text-green-500 mb-2 block"></i>
@@ -510,6 +515,29 @@
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+                    <!-- Pagination User -->
+                    <div class="px-6 py-4 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4 bg-gray-50/30">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-bold text-gray-400 uppercase">Baris:</span>
+                            <select id="itemsPerPageUser" onchange="resetPageUser()" class="text-xs border rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-green-500 bg-white cursor-pointer">
+                                <option value="10">10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </div>
+                        <div class="text-xs text-gray-500">
+                            Menampilkan <span class="font-bold text-gray-700" id="infoStartUser">0</span> - <span class="font-bold text-gray-700" id="infoEndUser">0</span> dari <span class="font-bold text-gray-700" id="infoTotalUser">0</span> user
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button id="btnPrevUser" onclick="changePageUser(-1)" class="px-3 py-1.5 border rounded-lg text-xs font-bold hover:bg-white hover:text-green-600 transition disabled:opacity-30 disabled:cursor-not-allowed">
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </button>
+                            <button id="btnNextUser" onclick="changePageUser(1)" class="px-3 py-1.5 border rounded-lg text-xs font-bold hover:bg-white hover:text-green-600 transition disabled:opacity-30 disabled:cursor-not-allowed">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -555,6 +583,29 @@
                         </tr>
                     </tbody>
                 </table>
+            </div>
+            <!-- Pagination Logs -->
+            <div class="px-6 py-4 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4 bg-gray-50/30">
+                <div class="flex items-center gap-2">
+                    <span class="text-[10px] font-bold text-gray-400 uppercase">Baris:</span>
+                    <select id="itemsPerPageLogs" onchange="resetPageLogs()" class="text-xs border rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-green-500 bg-white cursor-pointer">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+                <div class="text-xs text-gray-500">
+                    Menampilkan <span class="font-bold text-gray-700" id="infoStartLogs">0</span> - <span class="font-bold text-gray-700" id="infoEndLogs">0</span> dari <span class="font-bold text-gray-700" id="infoTotalLogs">0</span> log
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="btnPrevLogs" onclick="changePageLogs(-1)" class="px-3 py-1.5 border rounded-lg text-xs font-bold hover:bg-white hover:text-green-600 transition disabled:opacity-30 disabled:cursor-not-allowed">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <button id="btnNextLogs" onclick="changePageLogs(1)" class="px-3 py-1.5 border rounded-lg text-xs font-bold hover:bg-white hover:text-green-600 transition disabled:opacity-30 disabled:cursor-not-allowed">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                </div>
             </div>
         </div>
     </div>

@@ -251,8 +251,10 @@
     // =========================================================================
     function inisialisasiAdmin() {
         document.getElementById('namaAdmin').innerText = userAktif.nama;
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('tglRekap').value = today;
+        const d = new Date();
+        const today = [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');
+        if (document.getElementById('tglRekapMulai')) document.getElementById('tglRekapMulai').value = today;
+        if (document.getElementById('tglRekapAkhir')) document.getElementById('tglRekapAkhir').value = today;
         generateOpsiFilter();
         muatDashboard();
         muatChartTarget();
@@ -365,7 +367,9 @@
         const data = lastRekapData.breakdown;
         const title = type === 'tanam' ? 'RINCIAN TANAM (JENIS LTT)' : 'RINCIAN PANEN (JENIS LTT)';
         const color = type === 'tanam' ? 'text-blue-600' : 'text-yellow-600';
-        const tgl = document.getElementById('tglRekap').value;
+        const tglMulai = document.getElementById('tglRekapMulai').value;
+        const tglAkhir = document.getElementById('tglRekapAkhir').value;
+        const tglInfo = tglMulai === tglAkhir ? tglMulai : `${tglMulai} s/d ${tglAkhir}`;
         
         let html = `<div class="text-left space-y-3 mt-4">`;
         let hasData = false;
@@ -380,11 +384,11 @@
                 </div>`;
             }
         }
-        if (!hasData) html += `<div class="text-center text-gray-400 p-4 italic">Tidak ada data rincian untuk tanggal ${tgl}.</div>`;
+        if (!hasData) html += `<div class="text-center text-gray-400 p-4 italic">Tidak ada data rincian untuk periode ${tglInfo}.</div>`;
         html += `</div>`;
 
         Swal.fire({
-            title: `<span class="text-sm font-bold text-gray-800 uppercase tracking-wider">${title}</span><br><span class="text-[10px] text-gray-400 font-normal">Periode: ${tgl}</span>`,
+            title: `<span class="text-sm font-bold text-gray-800 uppercase tracking-wider">${title}</span><br><span class="text-[10px] text-gray-400 font-normal">Periode: ${tglInfo}</span>`,
             html: html,
             showConfirmButton: false,
             showCloseButton: true,
@@ -425,15 +429,20 @@
     let currentRekapTab = 'rekap-padi';
 
     function muatRekap(force = false) {
-        const tgl = document.getElementById('tglRekap').value;
+        const tglMulai = document.getElementById('tglRekapMulai').value;
+        const tglAkhir = document.getElementById('tglRekapAkhir').value;
         const jenisLTT = currentRekapTab === 'rekap-padi' ? document.getElementById('filterJenisLTT').value : '';
         const btnIcon = document.getElementById('iconRefreshRekap');
 
-        // Konstruksi Cache Key
-        const cacheKey = currentRekapTab + '_' + tgl + '_' + (jenisLTT || 'semua');
+        const d = new Date();
+        const todayDate = [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');
+        const isTodayOnly = (tglMulai === todayDate && tglAkhir === todayDate);
 
-        // Jika tidak force refresh dan ada di cache, langsung tampilkan
-        if (!force && cacheRekap[cacheKey]) {
+        // Konstruksi Cache Key
+        const cacheKey = currentRekapTab + '_' + tglMulai + '_' + tglAkhir + '_' + (jenisLTT || 'semua');
+
+        // Hanya gunakan cache jika pencarian adalah hari ini saja
+        if (isTodayOnly && !force && cacheRekap[cacheKey]) {
             const data = cacheRekap[cacheKey];
             lastRekapData = data.harian;
             lastRekapKecData = data.kecamatan;
@@ -467,17 +476,22 @@
 
         function cobaSimpanCache() {
             if (tempHarian && tempKec) {
-                cacheRekap[cacheKey] = { harian: tempHarian, kecamatan: tempKec };
+                if (isTodayOnly) {
+                    cacheRekap[cacheKey] = { harian: tempHarian, kecamatan: tempKec };
+                }
                 if (btnIcon) btnIcon.classList.remove('fa-spin');
             }
         }
 
         if (currentRekapTab === 'rekap-padi') {
             google.script.run.withSuccessHandler(function (d) {
-                tempHarian = d;
-                lastRekapData = d;
-                document.getElementById('rTanam').innerText = d.totalTanam;
-                document.getElementById('rPanen').innerText = d.totalPanen;
+                tempHarian = d.harian;
+                tempKec = d.kecamatan;
+                lastRekapData = d.harian;
+                lastRekapKecData = d.kecamatan;
+                
+                document.getElementById('rTanam').innerText = d.harian.totalTanam;
+                document.getElementById('rPanen').innerText = d.harian.totalPanen;
                 const typeText = jenisLTT ? '(' + jenisLTT + ')' : '(Semua)';
                 document.getElementById('labelTanamType').innerText = typeText;
                 document.getElementById('labelPanenType').innerText = typeText;
@@ -486,36 +500,30 @@
                 const sel = document.getElementById('filterJenisLTT');
                 const prev = sel.value;
                 sel.innerHTML = '<option value="">Semua Jenis LTT</option>';
-                d.jenisLTTList.forEach(j => {
+                d.harian.jenisLTTList.forEach(j => {
                     sel.innerHTML += `<option value="${j}" ${j === prev ? 'selected' : ''}>${j}</option>`;
                 });
+                
+                renderTabelKecamatan(d.kecamatan, true);
                 cobaSimpanCache();
-            }).getRekapPadiHarian(tgl, jenisLTT);
+            }).getRekapPadiLengkap(tglMulai, tglAkhir, jenisLTT);
 
-            google.script.run.withSuccessHandler(function (d) {
-                tempKec = d;
-                lastRekapKecData = d;
-                renderTabelKecamatan(d, true);
-                cobaSimpanCache();
-            }).getRekapPadiPerKecamatan(tgl, jenisLTT);
         } else {
             const komoditas = currentRekapTab === 'jagung' ? 'Jagung' : 'Ubi Kayu';
             google.script.run.withSuccessHandler(function (d) {
-                tempHarian = d;
-                lastRekapData = d;
-                document.getElementById('rTanam').innerText = d.totalTanam;
-                document.getElementById('rPanen').innerText = d.totalPanen;
+                tempHarian = d.harian;
+                tempKec = d.kecamatan;
+                lastRekapData = d.harian;
+                lastRekapKecData = d.kecamatan;
+                
+                document.getElementById('rTanam').innerText = d.harian.totalTanam;
+                document.getElementById('rPanen').innerText = d.harian.totalPanen;
                 document.getElementById('labelTanamType').innerText = '(Semua)';
                 document.getElementById('labelPanenType').innerText = '(Semua)';
+                
+                renderTabelKecamatan(d.kecamatan, false);
                 cobaSimpanCache();
-            }).getRekapPalawijaHarian(tgl, komoditas);
-
-            google.script.run.withSuccessHandler(function (d) {
-                tempKec = d;
-                lastRekapKecData = d;
-                renderTabelKecamatan(d, false);
-                cobaSimpanCache();
-            }).getRekapPalawijaPerKecamatan(tgl, komoditas);
+            }).getRekapPalawijaLengkap(tglMulai, tglAkhir, komoditas);
         }
     }
 
@@ -534,14 +542,17 @@
             const workbook = new ExcelJS.Workbook();
             const worksheet = workbook.addWorksheet('Rekap Kecamatan');
 
-            const tgl = document.getElementById('tglRekap').value;
+            const tglMulai = document.getElementById('tglRekapMulai').value;
+            const tglAkhir = document.getElementById('tglRekapAkhir').value;
+            const tgl = tglMulai === tglAkhir ? tglMulai : `${tglMulai}_${tglAkhir}`;
+            const tglInfo = tglMulai === tglAkhir ? tglMulai : `${tglMulai} s/d ${tglAkhir}`;
             const isPadi = currentRekapTab === 'rekap-padi';
             const komoditasName = isPadi ? 'PADI' : (currentRekapTab === 'jagung' ? 'JAGUNG' : 'UBI KAYU');
             const jenis = isPadi ? (document.getElementById('filterJenisLTT').value || 'Semua') : 'Semua';
 
             const now = new Date();
             const tglDownload = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ' ' + now.toLocaleTimeString('id-ID');
-            const tglLaporan = tgl;
+            const tglLaporan = tglInfo;
             const jenisLTT = jenis;
 
             // 1. Judul & Metadata
@@ -1095,9 +1106,14 @@
         el.classList.add('bg-green-600', 'text-white', 'hover:bg-green-700');
         el.classList.remove('text-gray-500', 'hover:text-green-600');
 
+        const wrapperLabel = document.getElementById('wrapperLabelPeriode');
+        const wrapperFilter = document.getElementById('wrapperFilterBulan');
+
         if (filter === 'rekap-padi' || filter === 'jagung' || filter === 'ubi-kayu') {
             document.getElementById('panelDashboard').classList.add('hidden');
             document.getElementById('panelRekap').classList.remove('hidden');
+            if (wrapperLabel) wrapperLabel.classList.add('hidden');
+            if (wrapperFilter) wrapperFilter.classList.add('hidden');
             
             currentRekapTab = filter;
 
@@ -1116,6 +1132,8 @@
         } else {
             document.getElementById('panelDashboard').classList.remove('hidden');
             document.getElementById('panelRekap').classList.add('hidden');
+            if (wrapperLabel) wrapperLabel.classList.remove('hidden');
+            if (wrapperFilter) wrapperFilter.classList.remove('hidden');
         }
     }
 
@@ -1225,6 +1243,10 @@
     // =========================================================================
     // 5. USER MANAGEMENT LOGIC
     // =========================================================================
+    let currentPageUser = 1;
+    function resetPageUser() { currentPageUser = 1; filterTabelUser(); }
+    function changePageUser(dir) { currentPageUser += dir; filterTabelUser(); }
+
     function muatDaftarUser(force = false) {
         // Jika data sudah ada dan tidak dipaksa refresh, langsung tampilkan
         if (allUserData.length > 0 && !force) {
@@ -1266,19 +1288,36 @@
             return matchCari && matchRole && matchKec;
         });
 
-        if (filtered.length === 0) {
+        const itemsPerPage = parseInt(document.getElementById('itemsPerPageUser').value) || 10;
+        const totalItems = filtered.length;
+        const maxPage = Math.ceil(totalItems / itemsPerPage) || 1;
+        if (currentPageUser > maxPage) currentPageUser = maxPage;
+        if (currentPageUser < 1) currentPageUser = 1;
+
+        const startIdx = (currentPageUser - 1) * itemsPerPage;
+        const endIdx = Math.min(startIdx + itemsPerPage, totalItems);
+        const paginated = filtered.slice(startIdx, endIdx);
+
+        // Update Info Pagination
+        document.getElementById('infoStartUser').innerText = totalItems > 0 ? startIdx + 1 : 0;
+        document.getElementById('infoEndUser').innerText = endIdx;
+        document.getElementById('infoTotalUser').innerText = totalItems;
+        document.getElementById('btnPrevUser').disabled = currentPageUser <= 1;
+        document.getElementById('btnNextUser').disabled = currentPageUser >= maxPage;
+
+        if (paginated.length === 0) {
             tbody.innerHTML = '<tr><td colspan="6" class="p-12 text-center text-gray-400 italic">Data user tidak ditemukan.</td></tr>';
             return;
         }
 
-        tbody.innerHTML = filtered.map((u, i) => {
+        tbody.innerHTML = paginated.map((u, i) => {
             const badgeRole = { 'Admin_Kab': 'bg-purple-100 text-purple-700', 'BPP': 'bg-blue-100 text-blue-700', 'PPL': 'bg-green-100 text-green-700' };
             const badgeStatus = u.status === 'Aktif' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700';
             const wilayah = u.role === 'Admin_Kab' ? 'Kabupaten' : (u.role === 'BPP' ? u.kecamatan : `${u.kecamatan}<br><span class="text-[10px] text-gray-400">${u.desa || '-'}</span>`);
 
             return `
             <tr class="border-b border-gray-50 hover:bg-gray-50 transition">
-                <td class="p-4 text-center text-xs text-gray-500">${i + 1}</td>
+                <td class="p-4 text-center text-xs text-gray-500">${startIdx + i + 1}</td>
                 <td class="p-4">
                     <div class="font-bold text-gray-800">${u.nama}</div>
                     <div class="text-[10px] text-gray-400 font-mono">${u.nip}</div>
@@ -1410,72 +1449,103 @@
             }
         });
     }
+    // =========================================================================
+    // 6. LOG SINKRONISASI LOGIC
+    // =========================================================================
+    let allLogsData = [];
+    let currentPageLogs = 1;
+    function resetPageLogs() { currentPageLogs = 1; renderTabelLogs(); }
+    function changePageLogs(dir) { currentPageLogs += dir; renderTabelLogs(); }
+
     function muatLogsSinkron(forceRefresh = false) {
+        // Gunakan cache jika data sudah ada dan tidak dipaksa refresh
+        if (allLogsData.length > 0 && !forceRefresh) {
+            renderTabelLogs();
+            return;
+        }
+
         const btnIcon = document.getElementById('iconRefreshLogs');
         if (btnIcon) btnIcon.classList.add('fa-spin');
         
         const tbody = document.getElementById('tabelLogs');
-        tbody.innerHTML = '<tr><td colspan="6" class="p-12 text-center text-gray-400 italic"><i class="fa-solid fa-circle-notch fa-spin text-2xl text-green-500 mb-2 block"></i>Memuat logs...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="p-12 text-center text-gray-400 italic"><i class="fa-solid fa-circle-notch fa-spin text-2xl text-green-500 mb-2 block"></i>Memuat logs...</td></tr>';
         
         google.script.run.withSuccessHandler(logs => {
             if (btnIcon) btnIcon.classList.remove('fa-spin');
-            if (!logs || logs.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-gray-400">Belum ada log sinkronisasi.</td></tr>';
-                return;
-            }
-            
-            tbody.innerHTML = logs.map(log => {
-                const statusStr = log.status ? log.status.toString() : '';
-                const isSukses = statusStr.indexOf('Sukses') !== -1;
-                const hasData = log.dataBerisi > 0;
-                
-                let rowColor = 'hover:bg-gray-50';
-                if (!isSukses) rowColor = 'bg-red-50 hover:bg-red-100';
-                else if (hasData) rowColor = 'bg-green-50/30 hover:bg-green-50';
-                
-                let statusBadge = isSukses 
-                    ? `<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-[10px] font-bold"><i class="fa-solid fa-check mr-1"></i>Sukses</span>`
-                    : `<span class="bg-red-100 text-red-700 px-2 py-1 rounded text-[10px] font-bold"><i class="fa-solid fa-xmark mr-1"></i>Error</span>`;
-                
-                // Format Tanggal Laporan (Target: 9 Mei 2026)
-                let tglLaporFormat = log.tanggalLaporan || '-';
-                if (tglLaporFormat !== '-' && tglLaporFormat.length > 5) {
-                    // Jika formatnya "Mei 9, 2026 05:26:42" atau sejenisnya
-                    // Kita coba bersihkan jamnya jika ada
-                    tglLaporFormat = tglLaporFormat.split(' ')[0] + ' ' + tglLaporFormat.split(' ')[1] + ' ' + tglLaporFormat.split(' ')[2];
-                    tglLaporFormat = tglLaporFormat.replace(',', '');
-                    
-                    // Reorder jika formatnya "Mei 9 2026" -> "9 Mei 2026"
-                    const parts = tglLaporFormat.split(' ');
-                    if (parts.length >= 3 && isNaN(parts[0])) {
-                        tglLaporFormat = `${parts[1]} ${parts[0]} ${parts[2]}`;
-                    }
-                }
-
-                // Format Waktu Sinkronisasi
-                let waktuFormat = log.waktuSinkron || '-';
-                try {
-                    const dt = new Date(log.waktuSinkron);
-                    if (log.waktuSinkron && !isNaN(dt)) {
-                        waktuFormat = dt.toLocaleString('id-ID', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'}).replace(/\./g, ':');
-                    }
-                } catch(e){}
-
-                return `
-                <tr class="border-b border-gray-100 transition ${rowColor}">
-                    <td class="p-4 text-xs font-bold text-gray-700">${waktuFormat}</td>
-                    <td class="p-4 text-xs text-gray-500 font-mono">${log.idSync}</td>
-                    <td class="p-4 text-xs text-blue-600 font-bold">${tglLaporFormat}</td>
-                    <td class="p-4 text-sm font-bold text-gray-800 text-right">${log.totalTarik}</td>
-                    <td class="p-4 text-sm font-bold ${hasData ? 'text-green-600' : 'text-gray-400'} text-right">${log.dataBerisi}</td>
-                    <td class="p-4 text-sm font-bold text-gray-400 text-right">${log.dataNihil}</td>
-                    <td class="p-4 text-center">${statusBadge}</td>
-                </tr>`;
-            }).join('');
-            
+            allLogsData = logs || [];
+            currentPageLogs = 1;
+            renderTabelLogs();
         }).withFailureHandler(err => {
             if (btnIcon) btnIcon.classList.remove('fa-spin');
-            tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-red-500">Gagal memuat log: ${err.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-red-500">Gagal memuat log: ${err.message}</td></tr>`;
         }).getLogsSinkron();
+    }
+
+    function renderTabelLogs() {
+        const tbody = document.getElementById('tabelLogs');
+        const itemsPerPage = parseInt(document.getElementById('itemsPerPageLogs').value) || 10;
+        const totalItems = allLogsData.length;
+        const maxPage = Math.ceil(totalItems / itemsPerPage) || 1;
+        if (currentPageLogs > maxPage) currentPageLogs = maxPage;
+        if (currentPageLogs < 1) currentPageLogs = 1;
+
+        const startIdx = (currentPageLogs - 1) * itemsPerPage;
+        const endIdx = Math.min(startIdx + itemsPerPage, totalItems);
+        const paginated = allLogsData.slice(startIdx, endIdx);
+
+        // Update Info Pagination
+        document.getElementById('infoStartLogs').innerText = totalItems > 0 ? startIdx + 1 : 0;
+        document.getElementById('infoEndLogs').innerText = endIdx;
+        document.getElementById('infoTotalLogs').innerText = totalItems;
+        document.getElementById('btnPrevLogs').disabled = currentPageLogs <= 1;
+        document.getElementById('btnNextLogs').disabled = currentPageLogs >= maxPage;
+
+        if (!paginated || paginated.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-gray-400">Belum ada log sinkronisasi.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = paginated.map(log => {
+            const statusStr = log.status ? log.status.toString() : '';
+            const isSukses = statusStr.indexOf('Sukses') !== -1;
+            const hasData = log.dataBerisi > 0;
+            
+            let rowColor = 'hover:bg-gray-50';
+            if (!isSukses) rowColor = 'bg-red-50 hover:bg-red-100';
+            else if (hasData) rowColor = 'bg-green-50/30 hover:bg-green-50';
+            
+            let statusBadge = isSukses 
+                ? `<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-[10px] font-bold"><i class="fa-solid fa-check mr-1"></i>Sukses</span>`
+                : `<span class="bg-red-100 text-red-700 px-2 py-1 rounded text-[10px] font-bold"><i class="fa-solid fa-xmark mr-1"></i>Error</span>`;
+            
+            let tglLaporFormat = log.tanggalLaporan || '-';
+            if (tglLaporFormat !== '-' && tglLaporFormat.length > 5) {
+                tglLaporFormat = tglLaporFormat.split(' ')[0] + ' ' + tglLaporFormat.split(' ')[1] + ' ' + tglLaporFormat.split(' ')[2];
+                tglLaporFormat = tglLaporFormat.replace(',', '');
+                const parts = tglLaporFormat.split(' ');
+                if (parts.length >= 3 && isNaN(parts[0])) {
+                    tglLaporFormat = `${parts[1]} ${parts[0]} ${parts[2]}`;
+                }
+            }
+
+            let waktuFormat = log.waktuSinkron || '-';
+            try {
+                const dt = new Date(log.waktuSinkron);
+                if (log.waktuSinkron && !isNaN(dt)) {
+                    waktuFormat = dt.toLocaleString('id-ID', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'}).replace(/\./g, ':');
+                }
+            } catch(e){}
+
+            return `
+            <tr class="border-b border-gray-100 transition ${rowColor}">
+                <td class="p-4 text-xs font-bold text-gray-700">${waktuFormat}</td>
+                <td class="p-4 text-xs text-gray-500 font-mono">${log.idSync}</td>
+                <td class="p-4 text-xs text-blue-600 font-bold">${tglLaporFormat}</td>
+                <td class="p-4 text-sm font-bold text-gray-800 text-right">${log.totalTarik}</td>
+                <td class="p-4 text-sm font-bold ${hasData ? 'text-green-600' : 'text-gray-400'} text-right">${log.dataBerisi}</td>
+                <td class="p-4 text-sm font-bold text-gray-400 text-right">${log.dataNihil}</td>
+                <td class="p-4 text-center">${statusBadge}</td>
+            </tr>`;
+        }).join('');
     }
 </script>

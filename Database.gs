@@ -326,9 +326,6 @@ function prosesVerifikasiMassal(idLaporanArray, roleAdmin) {
   }
 }
 
-function getScriptUrl() {
-  return ScriptApp.getService().getUrl();
-}
 
 // =========================================================================
 // FUNGSI DATA DASHBOARD
@@ -748,94 +745,9 @@ function getTanggalTersediaRekap() {
     });
 }
 
-function getRekapPadiHarian(tanggal, jenisLTT) {
+function getRekapPadiLengkap(tglMulai, tglAkhir, jenisLTT) {
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  var sheet = ss.getSheetByName('Data_LTT_Padi');
-  if (!sheet || sheet.getLastRow() <= 1) {
-    return {
-      rows: [],
-      count: 0,
-      totalTanam: 0,
-      totalPanen: 0,
-      totalBera: 0,
-      totalOlah: 0,
-      jenisLTTList: [],
-      breakdown: {},
-    };
-  }
-
-  var data = sheet.getDataRange().getValues();
-  var rows = [];
-  var totalTanam = 0,
-    totalPanen = 0,
-    totalBera = 0,
-    totalOlah = 0;
-  var jenisSet = {};
-  var breakdown = {};
-
-  for (var i = 1; i < data.length; i++) {
-    var d = parseTanggalEPusluh_(data[i][1]);
-    if (!d) continue;
-    var tgl = Utilities.formatDate(d, 'Asia/Jakarta', 'yyyy-MM-dd');
-    if (tgl !== tanggal) continue;
-
-    var jenis = (data[i][6] || 'LTT').toString();
-    jenisSet[jenis] = true;
-
-    var bera = parseFloat(data[i][9]) || 0;
-    var olah = parseFloat(data[i][10]) || 0;
-    var tanam = parseFloat(data[i][11]) || 0;
-    var panen = parseFloat(data[i][12]) || 0;
-
-    // Hitung Breakdown Selalu
-    if (!breakdown[jenis]) breakdown[jenis] = { tanam: 0, panen: 0 };
-    breakdown[jenis].tanam += tanam;
-    breakdown[jenis].panen += panen;
-
-    if (jenisLTT && jenisLTT !== '' && jenis !== jenisLTT) continue;
-
-    totalBera += bera;
-    totalOlah += olah;
-    totalTanam += tanam;
-    totalPanen += panen;
-
-    rows.push([
-      (data[i][2] || '').toString(),
-      (data[i][3] || '').toString(),
-      (data[i][4] || '').toString(),
-      jenis,
-      Math.round(bera * 10) / 10,
-      Math.round(olah * 10) / 10,
-      Math.round(tanam * 10) / 10,
-      Math.round(panen * 10) / 10,
-      (data[i][13] || '-').toString(),
-    ]);
-  }
-
-  rows.sort(function (a, b) {
-    return a[1].localeCompare(b[1]) || a[2].localeCompare(b[2]);
-  });
-
-  for (var key in breakdown) {
-    breakdown[key].tanam = Math.round(breakdown[key].tanam * 10) / 10;
-    breakdown[key].panen = Math.round(breakdown[key].panen * 10) / 10;
-  }
-
-  return {
-    rows: rows,
-    count: rows.length,
-    totalTanam: Math.round(totalTanam * 10) / 10,
-    totalPanen: Math.round(totalPanen * 10) / 10,
-    totalBera: Math.round(totalBera * 10) / 10,
-    totalOlah: Math.round(totalOlah * 10) / 10,
-    jenisLTTList: Object.keys(jenisSet).sort(),
-    breakdown: breakdown,
-  };
-}
-
-function getRekapPadiPerKecamatan(tanggal, jenisLTT) {
-  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-
+  
   // 1. Ambil Daftar Semua Kecamatan
   var sheetGeo = ss.getSheetByName('Data_Geografi');
   var listKecamatan = [];
@@ -848,27 +760,17 @@ function getRekapPadiPerKecamatan(tanggal, jenisLTT) {
     listKecamatan = Array.from(kecSet).sort();
   }
   if (listKecamatan.length === 0) {
-    listKecamatan = [
-      'Bahuga',
-      'Banjit',
-      'Baradatu',
-      'Blambangan Umpu',
-      'Buay Bahuga',
-      'Bumi Agung',
-      'Gunung Labuhan',
-      'Kasui',
-      'Negara Batin',
-      'Negeri Agung',
-      'Negeri Besar',
-      'Pakuan Ratu',
-      'Rebang Tangkas',
-      'Umpu Semenguk',
-      'Way Tuba',
-    ].sort();
+    listKecamatan = ['Bahuga', 'Banjit', 'Baradatu', 'Blambangan Umpu', 'Buay Bahuga', 'Bumi Agung', 'Gunung Labuhan', 'Kasui', 'Negara Batin', 'Negeri Agung', 'Negeri Besar', 'Pakuan Ratu', 'Rebang Tangkas', 'Umpu Semenguk', 'Way Tuba'].sort();
   }
 
-  // 2. Ambil Data dan Grouping (Kecamatan + Jenis LTT)
+  // Siapkan objek output harian
+  var harian = {
+    rows: [], count: 0, totalTanam: 0, totalPanen: 0, totalBera: 0, totalOlah: 0, jenisLTTList: [], breakdown: {}
+  };
+  
   var kecJenisMap = {};
+  var jenisSet = {};
+
   var sheet = ss.getSheetByName('Data_LTT_Padi');
   if (sheet && sheet.getLastRow() > 1) {
     var data = sheet.getDataRange().getValues();
@@ -876,190 +778,163 @@ function getRekapPadiPerKecamatan(tanggal, jenisLTT) {
       var d = parseTanggalEPusluh_(data[i][1]);
       if (!d) continue;
       var tgl = Utilities.formatDate(d, 'Asia/Jakarta', 'yyyy-MM-dd');
-      if (tgl !== tanggal) continue;
+      if (tgl < tglMulai || tgl > tglAkhir) continue;
 
       var jenis = (data[i][6] || 'LTT').toString();
+      jenisSet[jenis] = true;
+
+      var bera = parseFloat(data[i][9]) || 0;
+      var olah = parseFloat(data[i][10]) || 0;
+      var tanam = parseFloat(data[i][11]) || 0;
+      var panen = parseFloat(data[i][12]) || 0;
+      var kec = (data[i][3] || '-').toString();
+
+      // Hitung Breakdown Selalu
+      if (!harian.breakdown[jenis]) harian.breakdown[jenis] = { tanam: 0, panen: 0 };
+      harian.breakdown[jenis].tanam += tanam;
+      harian.breakdown[jenis].panen += panen;
+
       if (jenisLTT && jenisLTT !== '' && jenis !== jenisLTT) continue;
 
-      var kec = (data[i][3] || '-').toString();
-      var key = kec + '|' + jenis;
+      // Harian Accumulation
+      harian.totalBera += bera;
+      harian.totalOlah += olah;
+      harian.totalTanam += tanam;
+      harian.totalPanen += panen;
+      harian.rows.push([
+        (data[i][2] || '').toString(),
+        kec,
+        (data[i][4] || '').toString(),
+        jenis,
+        Math.round(bera * 10) / 10,
+        Math.round(olah * 10) / 10,
+        Math.round(tanam * 10) / 10,
+        Math.round(panen * 10) / 10,
+        (data[i][13] || '-').toString(),
+      ]);
 
-      if (!kecJenisMap[key])
-        kecJenisMap[key] = { kec: kec, jenis: jenis, tanam: 0, panen: 0 };
-      kecJenisMap[key].tanam += parseFloat(data[i][11]) || 0;
-      kecJenisMap[key].panen += parseFloat(data[i][12]) || 0;
+      // Kecamatan Accumulation
+      var key = kec + '|' + jenis;
+      if (!kecJenisMap[key]) kecJenisMap[key] = { kec: kec, jenis: jenis, tanam: 0, panen: 0 };
+      kecJenisMap[key].tanam += tanam;
+      kecJenisMap[key].panen += panen;
     }
   }
 
-  // 3. Bangun baris untuk output
-  var rows = [];
-  var totalTanam = 0;
-  var totalPanen = 0;
+  // Format Harian output
+  harian.rows.sort(function (a, b) {
+    return a[1].localeCompare(b[1]) || a[2].localeCompare(b[2]);
+  });
+  for (var key in harian.breakdown) {
+    harian.breakdown[key].tanam = Math.round(harian.breakdown[key].tanam * 10) / 10;
+    harian.breakdown[key].panen = Math.round(harian.breakdown[key].panen * 10) / 10;
+  }
+  harian.count = harian.rows.length;
+  harian.totalTanam = Math.round(harian.totalTanam * 10) / 10;
+  harian.totalPanen = Math.round(harian.totalPanen * 10) / 10;
+  harian.totalBera = Math.round(harian.totalBera * 10) / 10;
+  harian.totalOlah = Math.round(harian.totalOlah * 10) / 10;
+  harian.jenisLTTList = Object.keys(jenisSet).sort();
 
-  listKecamatan.forEach(function (kec) {
+  // Format Kecamatan output
+  var kecRows = [];
+  var totalKecTanam = 0;
+  var totalKecPanen = 0;
+  listKecamatan.forEach(function (kecStr) {
     var entries = [];
-    for (var key in kecJenisMap) {
-      if (kecJenisMap[key].kec === kec) {
-        entries.push(kecJenisMap[key]);
-      }
+    for (var k in kecJenisMap) {
+      if (kecJenisMap[k].kec === kecStr) entries.push(kecJenisMap[k]);
     }
-
     if (entries.length === 0) {
-      // Jika tidak ada data, tampilkan satu baris kosong untuk kecamatan tersebut
-      rows.push([kec, '-', 0, 0]);
+      kecRows.push([kecStr, '-', 0, 0]);
     } else {
-      // Urutkan jenis LTT agar konsisten
-      entries.sort(function (a, b) {
-        return a.jenis.localeCompare(b.jenis);
-      });
+      entries.sort(function (a, b) { return a.jenis.localeCompare(b.jenis); });
       entries.forEach(function (e) {
-        rows.push([
-          e.kec,
-          e.jenis,
-          Math.round(e.tanam * 10) / 10,
-          Math.round(e.panen * 10) / 10,
-        ]);
-        totalTanam += e.tanam;
-        totalPanen += e.panen;
+        kecRows.push([ e.kec, e.jenis, Math.round(e.tanam * 10) / 10, Math.round(e.panen * 10) / 10 ]);
+        totalKecTanam += e.tanam;
+        totalKecPanen += e.panen;
       });
     }
   });
 
   return {
-    rows: rows,
-    totalTanam: Math.round(totalTanam * 10) / 10,
-    totalPanen: Math.round(totalPanen * 10) / 10,
+    harian: harian,
+    kecamatan: {
+      rows: kecRows,
+      totalTanam: Math.round(totalKecTanam * 10) / 10,
+      totalPanen: Math.round(totalKecPanen * 10) / 10,
+    }
   };
 }
 
 // =========================================================================
-// FUNGSI AUTO-INSTALLER
+// INISIALISASI OTOMATIS (dipanggil dari doGet setiap kali app dibuka)
+// Memastikan semua sheet wajib ada. Aman dijalankan berkali-kali.
 // =========================================================================
 
-function setupDatabaseAwal() {
+function inisialisasiDatabase_() {
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  var sheetUser = ss.getSheetByName('Data_User');
-  if (!sheetUser) {
-    sheetUser = ss.insertSheet('Data_User');
-    var headerUser = [
-      'ID_User',
-      'Nama_Penyuluh',
-      'NIP',
-      'PIN',
-      'Role',
-      'Kecamatan',
-      'Desa_Binaan',
-      'Status_Aktif',
-    ];
-    sheetUser.appendRow(headerUser);
-    sheetUser.getRange('A1:H1').setFontWeight('bold').setBackground('#d9ead3');
-    sheetUser.setFrozenRows(1);
+
+  // Sheet: Data_User
+  if (!ss.getSheetByName('Data_User')) {
+    var su = ss.insertSheet('Data_User');
+    su.appendRow(['ID_User', 'Nama_Penyuluh', 'NIP', 'PIN', 'Role', 'Kecamatan', 'Desa_Binaan', 'Status_Aktif']);
+    su.getRange('A1:H1').setFontWeight('bold').setBackground('#d9ead3');
+    su.setFrozenRows(1);
   }
-  var sheetLTT = ss.getSheetByName('Data_LTT');
-  if (!sheetLTT) {
-    sheetLTT = ss.insertSheet('Data_LTT');
-    var headerLTT = [
-      'ID_Laporan',
-      'Waktu_Lapor',
-      'Pelapor',
-      'Kecamatan',
-      'Desa',
-      'Komoditas',
-      'Jenis_LTT',
-      'Target_Tanam_Bln_Ini',
-      'Target_Panen_Bln_Ini',
-      'Luas_Lahan_Bera',
-      'Realisasi_Olah_Lahan',
-      'Realisasi_Luas_Tanam',
-      'Realisasi_Luas_Panen',
-      'Keterangan',
-      'Status_Verifikasi',
-      'Waktu_Verifikasi_BPP',
-      'Waktu_Verifikasi_Kab',
-    ];
-    sheetLTT.appendRow(headerLTT);
-    sheetLTT.getRange('A1:Q1').setFontWeight('bold').setBackground('#c9daf8');
-    sheetLTT.setFrozenRows(1);
+
+  // Sheet: Data_LTT
+  if (!ss.getSheetByName('Data_LTT')) {
+    var sl = ss.insertSheet('Data_LTT');
+    sl.appendRow(['ID_Laporan', 'Waktu_Lapor', 'Pelapor', 'Kecamatan', 'Desa', 'Komoditas', 'Jenis_LTT',
+      'Target_Tanam_Bln_Ini', 'Target_Panen_Bln_Ini', 'Luas_Lahan_Bera', 'Realisasi_Olah_Lahan',
+      'Realisasi_Luas_Tanam', 'Realisasi_Luas_Panen', 'Keterangan', 'Status_Verifikasi',
+      'Waktu_Verifikasi_BPP', 'Waktu_Verifikasi_Kab']);
+    sl.getRange('A1:Q1').setFontWeight('bold').setBackground('#c9daf8');
+    sl.setFrozenRows(1);
   }
-  var sheetPadi = ss.getSheetByName('Data_LTT_Padi');
-  if (!sheetPadi) {
-    sheetPadi = ss.insertSheet('Data_LTT_Padi');
-    var headerPadi = [
-      'ID_Laporan',
-      'Waktu_Lapor',
-      'Pelapor',
-      'Kecamatan',
-      'Desa',
-      'Komoditas',
-      'Jenis_LTT',
-      'Target_Tanam_Bln_Ini',
-      'Target_Panen_Bln_Ini',
-      'Luas_Lahan_Bera',
-      'Realisasi_Olah_Lahan',
-      'Realisasi_Luas_Tanam',
-      'Realisasi_Luas_Panen',
-      'Keterangan',
-      'Status_Verifikasi',
-      'Waktu_Verifikasi_BPP',
-      'Waktu_Verifikasi_Kab',
-    ];
-    sheetPadi.appendRow(headerPadi);
-    sheetPadi.getRange('A1:Q1').setFontWeight('bold').setBackground('#fce5cd');
-    sheetPadi.setFrozenRows(1);
+
+  // Sheet: Data_LTT_Padi
+  if (!ss.getSheetByName('Data_LTT_Padi')) {
+    var sp = ss.insertSheet('Data_LTT_Padi');
+    sp.appendRow(['ID_Laporan', 'Waktu_Lapor', 'Pelapor', 'Kecamatan', 'Desa', 'Komoditas', 'Jenis_LTT',
+      'Target_Tanam_Bln_Ini', 'Target_Panen_Bln_Ini', 'Luas_Lahan_Bera', 'Realisasi_Olah_Lahan',
+      'Realisasi_Luas_Tanam', 'Realisasi_Luas_Panen', 'Keterangan', 'Status_Verifikasi',
+      'Waktu_Verifikasi_BPP', 'Waktu_Verifikasi_Kab']);
+    sp.getRange('A1:Q1').setFontWeight('bold').setBackground('#fce5cd');
+    sp.setFrozenRows(1);
   }
-  return 'Setup Database Selesai!';
+
+  // Sheet: Data_Geografi (struktur saja, data diisi manual/import)
+  if (!ss.getSheetByName('Data_Geografi')) {
+    var sg = ss.insertSheet('Data_Geografi');
+    sg.appendRow(['ID_Kecamatan', 'Nama_Kecamatan', 'ID_Desa', 'Nama_Desa']);
+    sg.getRange('A1:D1').setFontWeight('bold').setBackground('#efefef');
+    sg.setFrozenRows(1);
+  }
+
+  // Sheet: Data_Target
+  if (!ss.getSheetByName('Data_Target')) {
+    var st = ss.insertSheet('Data_Target');
+    st.appendRow(['ID_Target', 'BulanTahun', 'Kecamatan', 'LTTReguler_Tanam', 'LTTReguler_Panen',
+      'PadiGogo_Tanam', 'PadiGogo_Panen', 'Oplah2025_Tanam', 'Oplah2025_Panen',
+      'Jagung_Tanam', 'Jagung_Panen', 'UbiKayu_Tanam', 'UbiKayu_Panen']);
+    st.getRange('A1:M1').setFontWeight('bold').setBackground('#d0e0ff');
+    st.setFrozenRows(1);
+  }
+
+  // Sheet: Ringkasan_Harian
+  if (!ss.getSheetByName('Ringkasan_Harian')) {
+    var sr = ss.insertSheet('Ringkasan_Harian');
+    sr.appendRow(['Tanggal', 'Komoditas', 'Jenis_LTT', 'Total_Tanam', 'Total_Panen']);
+    sr.getRange('A1:E1').setFontWeight('bold').setBackground('#d0e0ff');
+    sr.setFrozenRows(1);
+  }
 }
 
 // =========================================================================
 // FUNGSI DATA GEOGRAFI
 // =========================================================================
-
-/**
- * STRUKTUR DATABASE GEOGRAFI (Sheet: Data_Geografi)
- * ------------------------------------------------
- * Kolom A: ID_Kecamatan (String) - Kode BPS Kecamatan
- * Kolom B: Nama_Kecamatan (String)
- * Kolom C: ID_Desa (String) - Kode BPS Desa/Kelurahan
- * Kolom D: Nama_Desa (String)
- *
- * Catatan: Data ini digunakan untuk pemetaan pelaporan CAPIR dan validasi wilayah.
- */
-
-function setupDataGeografi() {
-  // Fungsi ini digunakan untuk inisialisasi awal data wilayah.
-  // Data mentah (JSON) telah dipindahkan/diinput ke Spreadsheet.
-  // Gunakan fungsi ini jika ingin mereset atau mengupdate daftar desa secara massal.
-
-  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  var sheet = ss.getSheetByName('Data_Geografi');
-
-  if (!sheet) {
-    sheet = ss.insertSheet('Data_Geografi');
-    var header = ['ID_Kecamatan', 'Nama_Kecamatan', 'ID_Desa', 'Nama_Desa'];
-    sheet.appendRow(header);
-    sheet.getRange('A1:D1').setFontWeight('bold').setBackground('#efefef');
-    sheet.setFrozenRows(1);
-  }
-
-  // Catatan: Jika ingin mengisi data kembali, masukkan array objek desa ke variabel rawData di bawah ini.
-  var rawData = [];
-
-  var values = rawData.map(function (item) {
-    return [
-      item.id_kecamatan,
-      item.nama_kecamatan,
-      item.id_desa,
-      item.nama_desa,
-    ];
-  });
-
-  if (values.length > 0) {
-    sheet.getRange(2, 1, values.length, 4).setValues(values);
-    return 'Data Geografi Berhasil Diperbarui: ' + values.length + ' Desa.';
-  } else {
-    return 'Fungsi dijalankan tanpa data baru. Struktur sheet tetap terjaga.';
-  }
-}
 
 // =========================================================================
 // FUNGSI MANAJEMEN USER
@@ -1209,18 +1084,6 @@ function pindahKeArsip_(ss, namaSheet, namaArsip, bulan0, tahun) {
   }
 }
 
-// Daftarkan time trigger agar arsipBulanan() jalan otomatis tiap tgl 1 jam 01:00
-function setupTriggerArsip() {
-  ScriptApp.getProjectTriggers().forEach(function (t) {
-    if (t.getHandlerFunction() === 'arsipBulanan') ScriptApp.deleteTrigger(t);
-  });
-  ScriptApp.newTrigger('arsipBulanan')
-    .timeBased()
-    .onMonthDay(1)
-    .atHour(1)
-    .create();
-  return 'Trigger arsip bulanan aktif (setiap tgl 1 jam 01:00).';
-}
 
 // =========================================================================
 // RINGKASAN HARIAN (Summary Sheet)
@@ -1248,29 +1111,39 @@ function upsertRingkasan_(
     sheet.getRange('A1:E1').setFontWeight('bold').setBackground('#d0e0ff');
     sheet.setFrozenRows(1);
   }
-  var data = sheet.getDataRange().getValues();
+  
+  var dataRange = sheet.getDataRange();
+  var data = dataRange.getValues();
+  var found = false;
+  
   for (var i = 1; i < data.length; i++) {
+    var tglSheet = data[i][0] instanceof Date 
+      ? Utilities.formatDate(data[i][0], "Asia/Jakarta", "yyyy-MM-dd") 
+      : data[i][0].toString();
+      
     if (
-      data[i][0] === tanggal &&
+      tglSheet === tanggal &&
       data[i][1] === komoditas &&
       data[i][2] === jenisLTT
     ) {
-      sheet
-        .getRange(i + 1, 4)
-        .setValue(Math.round((data[i][3] + addTanam) * 100) / 100);
-      sheet
-        .getRange(i + 1, 5)
-        .setValue(Math.round((data[i][4] + addPanen) * 100) / 100);
-      return;
+      data[i][3] = Math.round((parseFloat(data[i][3] || 0) + addTanam) * 100) / 100;
+      data[i][4] = Math.round((parseFloat(data[i][4] || 0) + addPanen) * 100) / 100;
+      found = true;
+      break;
     }
   }
-  sheet.appendRow([
-    tanggal,
-    komoditas,
-    jenisLTT,
-    Math.round(addTanam * 100) / 100,
-    Math.round(addPanen * 100) / 100,
-  ]);
+  
+  if (found) {
+    dataRange.setValues(data); // Timpa sekaligus
+  } else {
+    sheet.appendRow([
+      tanggal,
+      komoditas,
+      jenisLTT,
+      Math.round(addTanam * 100) / 100,
+      Math.round(addPanen * 100) / 100,
+    ]);
+  }
 }
 
 // Dipanggil setelah terimaSinkronPadi — rebuild baris Padi untuk tanggal yang baru disinkron
@@ -1295,27 +1168,36 @@ function rebuiltPadiRingkasan_(ss, dataArray) {
   });
 
   var sheet = ss.getSheetByName('Ringkasan_Harian');
+  var header = ['Tanggal', 'Komoditas', 'Jenis_LTT', 'Total_Tanam', 'Total_Panen'];
+  var finalData = [];
+
   if (!sheet) {
     sheet = ss.insertSheet('Ringkasan_Harian');
-    sheet.appendRow([
-      'Tanggal',
-      'Komoditas',
-      'Jenis_LTT',
-      'Total_Tanam',
-      'Total_Panen',
-    ]);
+    sheet.appendRow(header);
     sheet.getRange('A1:E1').setFontWeight('bold').setBackground('#d0e0ff');
     sheet.setFrozenRows(1);
+    finalData = [header];
   } else {
-    // Hapus baris Padi lama untuk tanggal yang terpengaruh (loop dari bawah agar index tidak geser)
+    // Bangun Virtual Sheet Array
     var ex = sheet.getDataRange().getValues();
-    for (var i = ex.length - 1; i >= 1; i--) {
-      if (ex[i][1] === 'Padi' && affDates[ex[i][0]]) sheet.deleteRow(i + 1);
+    finalData = [ex[0]]; // Simpan header
+    
+    // Filter data lama, buang baris Padi pada tanggal yang terdampak
+    for (var i = 1; i < ex.length; i++) {
+      var tglEx = ex[i][0] instanceof Date 
+        ? Utilities.formatDate(ex[i][0], "Asia/Jakarta", "yyyy-MM-dd") 
+        : ex[i][0].toString();
+        
+      if (!(ex[i][1] === 'Padi' && affDates[tglEx])) {
+        finalData.push(ex[i]);
+      }
     }
   }
+
+  // Tambahkan baris rekap Padi yang baru dihitung
   Object.keys(padiByKey).forEach(function (k) {
     var e = padiByKey[k];
-    sheet.appendRow([
+    finalData.push([
       e.tglStr,
       'Padi',
       e.jenis,
@@ -1323,6 +1205,12 @@ function rebuiltPadiRingkasan_(ss, dataArray) {
       Math.round(e.panen * 100) / 100,
     ]);
   });
+
+  // Tulis ulang sekaligus (Single Atomic Operation)
+  if (sheet.getLastRow() > 0) {
+    sheet.getRange(1, 1, sheet.getLastRow(), 5).clearContent();
+  }
+  sheet.getRange(1, 1, finalData.length, 5).setValues(finalData);
 }
 
 // Jalankan SEKALI untuk membangun Ringkasan_Harian dari semua data historis
@@ -1595,46 +1483,13 @@ function initRealisasi_() {
 // FUNGSI REKAP PALAWIJA (JAGUNG & UBI KAYU)
 // =========================================================================
 
-function getRekapPalawijaHarian(tanggal, komoditas) {
-  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  var sheet = ss.getSheetByName('Data_LTT');
-  if (!sheet || sheet.getLastRow() <= 1) {
-    return { totalTanam: 0, totalPanen: 0 };
-  }
-
-  var data = sheet.getDataRange().getValues();
-  var totalTanam = 0, totalPanen = 0;
-
-  for (var i = 1; i < data.length; i++) {
-    var tglDate = new Date(data[i][1]);
-    if (isNaN(tglDate)) continue;
-    var tgl = Utilities.formatDate(tglDate, 'Asia/Jakarta', 'yyyy-MM-dd');
-    if (tgl !== tanggal) continue;
-
-    var kom = (data[i][5] || '').toString();
-    if (kom !== komoditas) continue;
-    // status disetujui or menunggu? The user is admin, maybe all or just Disetujui? Let's say all for now like Padi.
-    
-    var tanam = parseFloat(data[i][11]) || 0;
-    var panen = parseFloat(data[i][12]) || 0;
-
-    totalTanam += tanam;
-    totalPanen += panen;
-  }
-
-  return {
-    totalTanam: Math.round(totalTanam * 10) / 10,
-    totalPanen: Math.round(totalPanen * 10) / 10
-  };
-}
-
-function getRekapPalawijaPerKecamatan(tanggal, komoditas) {
+function getRekapPalawijaLengkap(tglMulai, tglAkhir, komoditas) {
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   
   // Ambil list kecamatan
-  var sheetGeo = ss.getSheetByName('Data_Geografis');
+  var sheetGeo = ss.getSheetByName('Data_Geografi');
   var listKecamatan = [];
-  if (sheetGeo && sheetGeo.getLastRow() > 1) {
+  if (sheetGeo) {
     var geoData = sheetGeo.getDataRange().getValues();
     var kecSet = new Set();
     for (var g = 1; g < geoData.length; g++) {
@@ -1642,7 +1497,6 @@ function getRekapPalawijaPerKecamatan(tanggal, komoditas) {
     }
     listKecamatan = Array.from(kecSet).sort();
   }
-  
   if (listKecamatan.length === 0) {
     listKecamatan = [
       'Bahuga', 'Banjit', 'Baradatu', 'Blambangan Umpu', 'Buay Bahuga',
@@ -1651,7 +1505,9 @@ function getRekapPalawijaPerKecamatan(tanggal, komoditas) {
     ].sort();
   }
 
+  var harianTotalTanam = 0, harianTotalPanen = 0;
   var kecMap = {};
+
   var sheet = ss.getSheetByName('Data_LTT');
   if (sheet && sheet.getLastRow() > 1) {
     var data = sheet.getDataRange().getValues();
@@ -1659,38 +1515,52 @@ function getRekapPalawijaPerKecamatan(tanggal, komoditas) {
       var tglDate = new Date(data[i][1]);
       if (isNaN(tglDate)) continue;
       var tgl = Utilities.formatDate(tglDate, 'Asia/Jakarta', 'yyyy-MM-dd');
-      if (tgl !== tanggal) continue;
+      if (tgl < tglMulai || tgl > tglAkhir) continue;
 
       var kom = (data[i][5] || '').toString();
       if (kom !== komoditas) continue;
 
       var kec = (data[i][3] || '-').toString();
+      var tanam = parseFloat(data[i][11]) || 0;
+      var panen = parseFloat(data[i][12]) || 0;
+
+      // Harian Accumulation
+      harianTotalTanam += tanam;
+      harianTotalPanen += panen;
+
+      // Kecamatan Accumulation
       if (!kecMap[kec]) kecMap[kec] = { tanam: 0, panen: 0 };
-      
-      kecMap[kec].tanam += parseFloat(data[i][11]) || 0;
-      kecMap[kec].panen += parseFloat(data[i][12]) || 0;
+      kecMap[kec].tanam += tanam;
+      kecMap[kec].panen += panen;
     }
   }
 
-  var rows = [];
-  var totalTanam = 0;
-  var totalPanen = 0;
+  var kecRows = [];
+  var totalKecTanam = 0;
+  var totalKecPanen = 0;
 
   listKecamatan.forEach(function (kec) {
     if (!kecMap[kec]) {
-      rows.push([kec, '-', 0, 0]);
+      kecRows.push([kec, '-', 0, 0]);
     } else {
       var t = Math.round(kecMap[kec].tanam * 10) / 10;
       var p = Math.round(kecMap[kec].panen * 10) / 10;
-      rows.push([kec, '-', t, p]);
-      totalTanam += t;
-      totalPanen += p;
+      kecRows.push([kec, '-', t, p]);
+      totalKecTanam += t;
+      totalKecPanen += p;
     }
   });
 
   return {
-    rows: rows,
-    totalTanam: Math.round(totalTanam * 10) / 10,
-    totalPanen: Math.round(totalPanen * 10) / 10
+    harian: {
+      totalTanam: Math.round(harianTotalTanam * 10) / 10,
+      totalPanen: Math.round(harianTotalPanen * 10) / 10
+    },
+    kecamatan: {
+      rows: kecRows,
+      totalTanam: Math.round(totalKecTanam * 10) / 10,
+      totalPanen: Math.round(totalKecPanen * 10) / 10
+    }
   };
 }
+

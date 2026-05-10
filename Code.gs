@@ -5,6 +5,7 @@
 
 // Fungsi utama penjalan Web App
 function doGet(e) {
+  inisialisasiDatabase_(); // Auto-setup: pastikan semua sheet ada
   return HtmlService.createTemplateFromFile('Index')
     .evaluate()
     .setTitle('e-LTT Palawija')
@@ -18,20 +19,20 @@ function include(filename) {
 
 // =========================================================================
 // PEMICU WAKTU (TIME-DRIVEN TRIGGERS)
-// Jalankan fungsi ini SEKALI SAJA secara manual untuk memasang alarm otomatis
+// Jalankan fungsi ini SEKALI SAJA secara manual untuk memasang semua alarm otomatis
 // =========================================================================
 function setupTriggers() {
-  var triggers = ScriptApp.getProjectTriggers();
-  for (var i = 0; i < triggers.length; i++) {
-    ScriptApp.deleteTrigger(triggers[i]);
-  }
+  // Bersihkan semua trigger lama
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    ScriptApp.deleteTrigger(t);
+  });
 
-  ScriptApp.newTrigger('backupDatabaseHarian')
-           .timeBased()
-           .atHour(23)
-           .nearMinute(55)
-           .everyDays(1)
-           .create();
+  // Trigger 1: Arsip Bulanan (setiap tanggal 1 jam 01:00)
+  ScriptApp.newTrigger('arsipBulanan')
+    .timeBased()
+    .onMonthDay(1)
+    .atHour(1)
+    .create();
 }
 
 function doPost(e) {
