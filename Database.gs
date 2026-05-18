@@ -104,6 +104,86 @@ function submitLaporan(formData) {
 }
 
 // =========================================================================
+// FUNGSI ANTI-TYPO & DOUBLE CHECK (NAMA & DESA)
+// =========================================================================
+
+function bersihNama_(nama) {
+  if (!nama) return "";
+  // Normalisasi: huruf kecil, hapus gelar umum, hapus spasi/tanda baca/angka
+  return nama.toString().toLowerCase()
+    .replace(/(,\s*(s\.?p|s\.?st|s\.?t|m\.?si|h\.?|m\.?pd|se|sh|ak|pt|dr|drh|ir))|(\.(s\.?p|s\.?st|s\.?t|m\.?si|h\.?|m\.?pd|se|sh|ak|pt|dr|drh|ir))/gi, "") 
+    .replace(/[^a-z]/gi, "") // Ambil hanya huruf a-z
+    .trim();
+}
+
+/**
+ * Mengambil laporan PPL hari ini dengan pengecekan Nama (Anti-Typo) dan Desa (Binaan)
+ */
+function getLaporanPPLHariIni(namaUser, komoditas, daftarDesaUser) {
+  try {
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var sheet = ss.getSheetByName('Data_LTT');
+    var data = sheet.getDataRange().getValues();
+    
+    // Gunakan zona waktu Jakarta untuk membandingkan tanggal hari ini
+    var now = new Date();
+    var todayStr = Utilities.formatDate(now, 'Asia/Jakarta', 'yyyy-MM-dd');
+    
+    var namaTarget = bersihNama_(namaUser);
+    var komTarget  = komoditas.toString().toLowerCase().trim();
+    
+    // Pastikan daftarDesaUser adalah array yang sudah dibersihkan
+    var listDesa = [];
+    if (Array.isArray(daftarDesaUser)) {
+      listDesa = daftarDesaUser.map(function(d) { return d.toString().toLowerCase().trim(); });
+    } else {
+      listDesa = (daftarDesaUser || "").toString().split(',').map(function(d) { return d.toLowerCase().trim(); });
+    }
+
+    var hasil = [];
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      if (!row[1]) continue; // Lewati jika tidak ada timestamp (Kolom B)
+      
+      // Ambil tanggal dari kolom Timestamp
+      var tglObj = row[1] instanceof Date ? row[1] : new Date(row[1]);
+      var tglRowStr = Utilities.formatDate(tglObj, 'Asia/Jakarta', 'yyyy-MM-dd');
+      
+      var namaRow = bersihNama_(row[2]);
+      var desaRow = (row[4] || '').toString().toLowerCase().trim();
+      var komRow  = (row[5] || '').toString().toLowerCase().trim();
+
+      // Pengecekan ganda yang lebih toleran
+      if (tglRowStr === todayStr && 
+          namaRow === namaTarget && 
+          listDesa.indexOf(desaRow) !== -1 && 
+          komRow === komTarget) {
+        
+        var jam = Utilities.formatDate(tglObj, 'Asia/Jakarta', 'HH:mm');
+        hasil.push({
+          id:     row[0],
+          desa:   row[4],
+          tanam:  row[11] || 0,
+          panen:  row[12] || 0,
+          status: row[14] || 'Menunggu',
+          jam:    jam
+        });
+      }
+    }
+    
+    // Urutkan berdasarkan waktu terbaru (Jam)
+    hasil.sort(function(a, b) {
+      return b.jam.localeCompare(a.jam);
+    });
+    
+    return { status: 'success', data: hasil };
+  } catch(e) {
+    console.error("Error getLaporanPPLHariIni: " + e.toString());
+    return { status: 'error', message: e.toString() };
+  }
+}
+
+// =========================================================================
 // FUNGSI BACKUP
 // =========================================================================
 
@@ -270,20 +350,30 @@ function getLogsSinkron() {
   return logs;
 }
 
-function cekStatusPadiHarian(desaBinaan) {
+function cekStatusPadiHarian(daftarDesaUser) {
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   var sheet = ss.getSheetByName('Data_LTT_Padi');
-  if (!sheet) return { status: 'belum' };
+  if (!sheet) return { status: 'belum', rows: [] };
+  var listDesa = Array.isArray(daftarDesaUser)
+    ? daftarDesaUser.map(function(d) { return d.toString().toLowerCase().trim(); })
+    : (daftarDesaUser || '').toString().split(',').map(function(d) { return d.toLowerCase().trim(); });
   var data = sheet.getDataRange().getValues();
   var hariIni = Utilities.formatDate(new Date(), 'Asia/Jakarta', 'dd/MM/yyyy');
-  for (var i = data.length - 1; i >= 1; i--) {
+  var rows = [];
+  for (var i = 1; i < data.length; i++) {
     var dp = parseTanggalEPusluh_(data[i][1]);
     if (!dp) continue;
     var tgl = Utilities.formatDate(dp, 'Asia/Jakarta', 'dd/MM/yyyy');
-    if (tgl === hariIni && data[i][4] === desaBinaan)
-      return { status: 'sudah', data: data[i] };
+    if (tgl === hariIni && listDesa.indexOf(data[i][4].toString().toLowerCase().trim()) !== -1) {
+      rows.push({
+        desa: data[i][4],
+        jenis_ltt: data[i][6] || 'Padi',
+        tanam: parseFloat(data[i][11]) || 0,
+        panen: parseFloat(data[i][12]) || 0
+      });
+    }
   }
-  return { status: 'belum' };
+  return rows.length > 0 ? { status: 'sudah', rows: rows } : { status: 'belum', rows: [] };
 }
 
 // =========================================================================
@@ -1031,6 +1121,63 @@ function hapusDataUser(id, nip) {
     }
   }
   return { status: 'error', message: 'User tidak ditemukan' };
+}
+
+// =========================================================================
+// FUNGSI UPDATE PROFIL MANDIRI (PPL & BPP)
+// =========================================================================
+
+function updateProfilUser(id, namaBaru, pinLama, pinBaru) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Data_User');
+    var data  = sheet.getDataRange().getValues();
+
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][0].toString() !== id.toString()) continue;
+
+      var pinDiDB = data[i][3].toString();
+      var nip     = data[i][2].toString();
+
+      // Validasi PIN Lama
+      if (pinLama.toString() !== pinDiDB) {
+        return { status: 'error', message: 'PIN Aktif yang Anda masukkan salah.' };
+      }
+
+      // Tentukan PIN yang akan disimpan (PIN lama jika kolom PIN baru kosong)
+      var pinFinal = pinDiDB;
+      if (pinBaru && pinBaru.toString().trim() !== '') {
+        if (pinBaru.toString().trim().length < 4) {
+          return { status: 'error', message: 'PIN Baru minimal harus 4 karakter.' };
+        }
+        pinFinal = pinBaru.toString().trim();
+      }
+
+      // Tulis perubahan ke sheet
+      sheet.getRange(i + 1, 2).setValue(namaBaru.trim()); // Kolom B: Nama
+      sheet.getRange(i + 1, 4).setValue(pinFinal);         // Kolom D: PIN
+
+      // Hapus cache lama & tulis cache baru agar sesi langsung pakai data terbaru
+      var cache    = CacheService.getScriptCache();
+      var cacheKey = 'USER_' + nip;
+      cache.remove(cacheKey);
+      var updatedUserData = {
+        id: data[i][0], nama: namaBaru.trim(), nip: nip,
+        role: data[i][4], kecamatan: data[i][5], desa: data[i][6]
+      };
+      cache.put(cacheKey, JSON.stringify({ pin: pinFinal, userData: updatedUserData }), 21600);
+
+      return { status: 'success', message: 'Profil berhasil diperbarui!', data: updatedUserData };
+    }
+
+    return { status: 'error', message: 'Data akun tidak ditemukan.' };
+
+  } catch (e) {
+    return { status: 'error', message: 'Kesalahan sistem: ' + e.message };
+  } finally {
+    lock.releaseLock(); // Selalu buka lock, apapun hasilnya
+  }
 }
 
 // =========================================================================

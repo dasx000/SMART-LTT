@@ -2,100 +2,119 @@
 
     <div class="w-full max-w-md bg-white h-full relative overflow-y-auto pb-20 shadow-2xl">
 
-        <div class="bg-green-600 px-5 pt-8 pb-12 rounded-b-[2rem] shadow-md mb-[-2rem]">
+        <div id="headerPPL" class="bg-green-600 px-5 pt-8 pb-12 rounded-b-[2rem] shadow-md mb-[-2rem]">
             <div class="flex justify-between items-center mb-4">
                 <div>
                     <p class="text-green-100 text-xs font-semibold tracking-wider">PPL KEMENTAN RI</p>
                     <h1 id="namaPenyuluh" class="font-bold text-white text-xl uppercase mt-1">MEMUAT...</h1>
                     <p id="wilayahPenyuluh" class="text-green-200 text-xs mt-1">WKPP: Memuat...</p>
                 </div>
-                <div class="w-12 h-12 bg-white rounded-full flex justify-center items-center shadow-lg cursor-pointer"
-                    onclick="logout()">
-                    <i class="fa-solid fa-right-from-bracket text-red-500"></i>
+                <div class="flex gap-2">
+                    <div class="w-12 h-12 bg-white rounded-full flex justify-center items-center shadow-lg cursor-pointer transition active:scale-95"
+                        onclick="bukaProfil()" title="Edit Profil Saya">
+                        <i class="fa-solid fa-user-gear text-green-600"></i>
+                    </div>
+                    <div class="w-12 h-12 bg-white rounded-full flex justify-center items-center shadow-lg cursor-pointer transition active:scale-95"
+                        onclick="logout()">
+                        <i class="fa-solid fa-right-from-bracket text-red-500"></i>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="px-5 relative z-10">
-            <div id="statusWaktu"
-                class="bg-white p-4 rounded-xl shadow-lg border-l-4 border-green-500 flex items-center justify-between">
-                <div>
-                    <p class="text-xs text-gray-500 font-bold">STATUS PELAPORAN HARI INI</p>
-                    <p id="teksStatusWaktu" class="text-sm font-bold text-green-600">Terbuka s.d 14:00 WIB</p>
+        <div id="containerHomePPL">
+            <div class="px-5 relative z-10">
+                <div id="statusWaktu"
+                    class="bg-white p-4 rounded-xl shadow-lg border-l-4 border-green-500 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs text-gray-500 font-bold">STATUS PELAPORAN HARI INI</p>
+                        <p id="teksStatusWaktu" class="text-sm font-bold text-green-600">Terbuka s.d 14:00 WIB</p>
+                    </div>
+                    <i id="ikonStatusWaktu" class="fa-solid fa-lock-open text-green-500 text-2xl"></i>
                 </div>
-                <i id="ikonStatusWaktu" class="fa-solid fa-lock-open text-green-500 text-2xl"></i>
-            </div>
-        </div>
-
-        <div class="px-5 mt-8" id="menuArea">
-            <h2 class="text-sm font-bold text-gray-800 mb-4 border-b pb-2">Menu Laporan LTT</h2>
-
-            <div class="grid grid-cols-4 gap-3">
-
-                <button onclick="bukaForm('Padi')"
-                    class="flex flex-col items-center group transition hover:scale-105 active:scale-95">
-                    <div
-                        class="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-2 shadow text-blue-600 border border-blue-200">
-                        <i class="fa-solid fa-wheat-awn text-2xl"></i>
-                    </div>
-                    <span class="text-[11px] font-bold text-gray-700">Padi</span>
-                </button>
-
-                <button onclick="bukaForm('Jagung')"
-                    class="btn-komoditas flex flex-col items-center group transition hover:scale-105 active:scale-95">
-                    <div
-                        class="w-14 h-14 bg-yellow-50 rounded-2xl flex items-center justify-center mb-2 shadow text-yellow-600 border border-yellow-200">
-                        <i class="fa-solid fa-corn text-2xl"></i>
-                    </div>
-                    <span class="text-[11px] font-bold text-gray-700">Jagung</span>
-                </button>
-
-<button onclick="bukaForm('Ubi Kayu')"
-                    class="btn-komoditas flex flex-col items-center group transition hover:scale-105 active:scale-95">
-                    <div
-                        class="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center mb-2 shadow text-orange-600 border border-orange-200">
-                        <i class="fa-solid fa-carrot text-2xl"></i>
-                    </div>
-                    <span class="text-[11px] font-bold text-gray-700">Ubi Kayu</span>
-                </button>
             </div>
 
-            <h2 class="text-sm font-bold text-gray-800 mt-8 mb-4 border-b pb-2">Perencanaan & SKP</h2>
-            <div class="grid grid-cols-3 gap-4">
+            <div class="px-5 mt-8" id="menuArea">
+                <h2 class="text-sm font-bold text-gray-800 mb-4 border-b pb-2">Menu Laporan LTT</h2>
 
-                <button id="btnTarget" onclick="cekBukaTarget()"
-                    class="flex flex-col items-center group transition active:scale-95 relative">
-                    <div id="bgTarget"
-                        class="w-16 h-16 bg-cyan-100 rounded-2xl flex items-center justify-center mb-2 shadow text-cyan-600 border border-cyan-200 relative">
-                        <i class="fa-solid fa-bullseye text-3xl"></i>
-                        <div id="ikonGembokTarget"
-                            class="hidden absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-md border-2 border-white">
-                            <i class="fa-solid fa-lock"></i>
+                <div class="grid grid-cols-4 gap-3">
+                    <button onclick="bukaForm('Padi')"
+                        class="flex flex-col items-center group transition hover:scale-105 active:scale-95">
+                        <div
+                            class="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-2 shadow text-blue-600 border border-blue-200">
+                            <i class="fa-solid fa-wheat-awn text-2xl"></i>
                         </div>
-                    </div>
-                    <span class="text-[11px] font-bold text-gray-700 text-center leading-tight">Target<br>Bulanan</span>
-                </button>
+                        <span class="text-[11px] font-bold text-gray-700">Padi</span>
+                    </button>
 
-                <button onclick="alert('Fitur download Excel/PDF untuk SKP sedang disiapkan!')"
-                    class="flex flex-col items-center group transition hover:scale-105 active:scale-95">
-                    <div
-                        class="w-16 h-16 bg-purple-100 rounded-2xl flex items-center justify-center mb-2 shadow text-purple-600 border border-purple-200">
-                        <i class="fa-solid fa-file-pdf text-3xl"></i>
-                    </div>
-                    <span class="text-[11px] font-bold text-gray-700 text-center leading-tight">Cetak
-                        Bukti<br>Dukung</span>
-                </button>
+                    <button onclick="bukaForm('Jagung')"
+                        class="btn-komoditas flex flex-col items-center group transition hover:scale-105 active:scale-95">
+                        <div
+                            class="w-14 h-14 bg-yellow-50 rounded-2xl flex items-center justify-center mb-2 shadow text-yellow-600 border border-yellow-200">
+                            <i class="fa-solid fa-leaf text-2xl"></i>
+                        </div>
+                        <span class="text-[11px] font-bold text-gray-700">Jagung</span>
+                    </button>
+
+                    <button onclick="bukaForm('Ubi Kayu')"
+                        class="btn-komoditas flex flex-col items-center group transition hover:scale-105 active:scale-95">
+                        <div
+                            class="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center mb-2 shadow text-orange-600 border border-orange-200">
+                            <i class="fa-solid fa-carrot text-2xl"></i>
+                        </div>
+                        <span class="text-[11px] font-bold text-gray-700">Ubi Kayu</span>
+                    </button>
+                </div>
+
+                <h2 class="text-sm font-bold text-gray-800 mt-8 mb-4 border-b pb-2">Perencanaan & SKP</h2>
+                <div class="grid grid-cols-3 gap-4">
+                    <button id="btnTarget" onclick="cekBukaTarget()"
+                        class="flex flex-col items-center group transition active:scale-95 relative">
+                        <div id="bgTarget"
+                            class="w-16 h-16 bg-cyan-100 rounded-2xl flex items-center justify-center mb-2 shadow text-cyan-600 border border-cyan-200 relative">
+                            <i class="fa-solid fa-bullseye text-3xl"></i>
+                            <div id="ikonGembokTarget"
+                                class="hidden absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-md border-2 border-white">
+                                <i class="fa-solid fa-lock"></i>
+                            </div>
+                        </div>
+                        <span class="text-[11px] font-bold text-gray-700 text-center leading-tight">Target<br>Bulanan</span>
+                    </button>
+
+                    <button onclick="alert('Fitur download Excel/PDF untuk SKP sedang disiapkan!')"
+                        class="flex flex-col items-center group transition hover:scale-105 active:scale-95">
+                        <div
+                            class="w-16 h-16 bg-purple-100 rounded-2xl flex items-center justify-center mb-2 shadow text-purple-600 border border-purple-200">
+                            <i class="fa-solid fa-file-pdf text-3xl"></i>
+                        </div>
+                        <span class="text-[11px] font-bold text-gray-700 text-center leading-tight">Cetak
+                            Bukti<br>Dukung</span>
+                    </button>
+                </div>
             </div>
         </div>
 
-        <div id="formArea" class="hidden px-5 mt-6 absolute top-28 bg-white w-full h-full z-20">
+
+        <div id="formArea" class="hidden px-5 mt-6 absolute top-0 pt-6 bg-white w-full h-full z-20">
 
             <div class="flex items-center mb-6 border-b pb-3">
                 <button onclick="tutupForm()"
                     class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex justify-center items-center text-gray-600 mr-3 transition">
                     <i class="fa-solid fa-arrow-left"></i>
                 </button>
-                <h2 id="judulForm" class="text-lg font-bold text-green-700">Form LTT</h2>
+                <h2 id="judulForm" class="text-lg font-bold text-green-700 uppercase">Form LTT</h2>
+            </div>
+
+            <!-- Area Ringkasan Laporan PPL Hari Ini -->
+            <div id="areaRingkasanPPL" class="hidden mb-6">
+                <button id="btnTambahLaporan" onclick="tampilkanFormInput()" class="w-full mb-6 bg-green-50 text-green-600 border-2 border-dashed border-green-200 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-green-100 transition active:scale-95">
+                    <i class="fa-solid fa-plus-circle text-lg"></i> Input Laporan Baru
+                </button>
+                
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 px-1">Laporan Hari Ini <i id="stealthLoader" class="fa-solid fa-rotate fa-spin ml-1 text-green-400 hidden"></i></h3>
+                <div id="listLaporanHariIni" class="space-y-3">
+                    <!-- Card dinamis di sini -->
+                </div>
             </div>
 
             <div id="areaPadiReadOnly" class="hidden">
@@ -181,6 +200,86 @@
                 </button>
             </form>
         </div>
+
+        <!-- ===== PANEL PROFIL PPL ===== -->
+        <div id="profilArea" class="hidden px-5 pt-6 absolute top-0 bg-white w-full h-full z-30 overflow-y-auto pb-10">
+
+            <div class="flex items-center mb-6 border-b pb-3">
+                <button onclick="tutupProfil()"
+                    class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex justify-center items-center text-gray-600 mr-3 transition active:scale-95">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <h2 class="text-lg font-bold text-green-700 uppercase">Ubah Profil & PIN</h2>
+            </div>
+
+            <form id="formProfil" onsubmit="submitProfil(event)">
+                <input type="hidden" id="profilId">
+
+                <!-- Informasi Read-Only -->
+                <div class="bg-gray-50 rounded-2xl p-4 mb-5 border border-gray-200">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">
+                        Informasi Akun (Hanya Dapat Diubah oleh Admin Kabupaten)
+                    </p>
+                    <div class="mb-3">
+                        <label class="block text-xs font-bold text-gray-500 mb-1">NIP / Username</label>
+                        <input type="text" id="profilNIP" readonly
+                            class="w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-sm text-gray-500 cursor-not-allowed">
+                    </div>
+                    <div class="mb-3">
+                        <label class="block text-xs font-bold text-gray-500 mb-1">Kecamatan</label>
+                        <input type="text" id="profilKecamatan" readonly
+                            class="w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-sm text-gray-500 cursor-not-allowed">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1">Wilayah Binaan (WKPP)</label>
+                        <input type="text" id="profilDesa" readonly
+                            class="w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-sm text-gray-500 cursor-not-allowed">
+                    </div>
+                </div>
+
+                <!-- Nama Lengkap (Editable) -->
+                <div class="mb-5">
+                    <label class="block text-xs font-bold text-gray-600 mb-1">
+                        Nama Lengkap <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" id="profilNama" required placeholder="Masukkan nama lengkap Anda"
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 transition">
+                </div>
+
+                <!-- Section Ubah PIN -->
+                <div class="bg-yellow-50 rounded-2xl p-4 mb-5 border border-yellow-200">
+                    <p class="text-[10px] font-bold text-yellow-700 uppercase tracking-widest mb-3">
+                        <i class="fa-solid fa-shield-halved mr-1"></i> Keamanan Akun
+                    </p>
+                    <div class="mb-3">
+                        <label class="block text-xs font-bold text-gray-600 mb-1">
+                            PIN Aktif Saat Ini <span class="text-red-500">*</span>
+                        </label>
+                        <input type="password" id="profilPinLama" required placeholder="Wajib diisi untuk konfirmasi identitas"
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 transition">
+                    </div>
+                    <div class="mb-3">
+                        <label class="block text-xs font-bold text-gray-600 mb-1">
+                            PIN Baru <span class="text-gray-400 font-normal">(opsional — min. 4 karakter)</span>
+                        </label>
+                        <input type="password" id="profilPinBaru" placeholder="Kosongkan jika tidak ingin ganti PIN"
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 transition">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1">Konfirmasi PIN Baru</label>
+                        <input type="password" id="profilPinKonfirmasi" placeholder="Ulangi PIN baru di sini"
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 transition">
+                    </div>
+                </div>
+
+                <button type="submit" id="btnSimpanProfil"
+                    class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl flex justify-center items-center gap-2 shadow-lg shadow-green-200 transition active:scale-95">
+                    <i id="ikonSimpanProfil" class="fa-solid fa-floppy-disk"></i>
+                    <span id="teksSimpanProfil">Simpan Perubahan</span>
+                </button>
+            </form>
+        </div>
+        <!-- ===== AKHIR PANEL PROFIL PPL ===== -->
 
     </div>
 </div>
