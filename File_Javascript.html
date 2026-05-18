@@ -10,6 +10,9 @@
     let lastDashData = null;
     let lastRekapData = null;
     let allUserData = [];
+    let daftarPPLLokal = [];
+    let daftarDesaKecamatanLokal = [];
+    let modePelanAktif = 'ppl';
     let listKecamatan = [];
     let cacheRekap = {}; // Caching untuk tab rekap Padi, Jagung, Ubi Kayu
     let cacheLaporanPPL = { "Padi": null, "Jagung": null, "Ubi Kayu": null };
@@ -78,12 +81,10 @@
         userAktif = userData;
         localStorage.setItem('user_eLTT', JSON.stringify(userData));
 
-        if (userData.role === 'Penyuluh') {
+        if (userData.role === 'Penyuluh' || userData.role === 'Admin_BPP') {
+            modePelanAktif = 'ppl';
             tampilkanLayar('layar-ppl');
             inisialisasiPPL();
-        } else if (userData.role === 'Admin_BPP') {
-            tampilkanLayar('layar-bpp');
-            inisialisasiBPP();
         } else if (userData.role === 'Admin_Kab') {
             tampilkanLayar('layar-admin');
             inisialisasiAdmin();
@@ -103,7 +104,7 @@
             return;
         }
         const nip = document.getElementById('nip').value;
-        const pin = document.getElementById('pin').value;
+        const password = document.getElementById('password').value;
 
         setBtnState(true, 'Memverifikasi...');
         clearTimeout(timerLogin);
@@ -127,7 +128,7 @@
                 setBtnState(false, 'Masuk Sekarang');
                 Swal.fire('Server Error', error.message || error, 'error');
             })
-            .prosesLogin(nip, pin);
+            .prosesLogin(nip, password);
     }
 
     function setBtnState(loading, text) {
@@ -146,6 +147,16 @@
         document.getElementById('namaPenyuluh').innerText = userAktif.nama;
         document.getElementById('wilayahPenyuluh').innerText = "WKPP: " + userAktif.desa;
         jalankanLogikaWaktu();
+
+        // Cek visibilitas tombol jembatan BPP
+        const btnJembatan = document.getElementById('btnJembatanBPP');
+        if (btnJembatan) {
+            if (userAktif.role === 'Admin_BPP') {
+                btnJembatan.classList.remove('hidden');
+            } else {
+                btnJembatan.classList.add('hidden');
+            }
+        }
     }
 
     function jalankanLogikaWaktu() {
@@ -173,13 +184,32 @@
         }
     }
 
+    function setNavAktif(idNav) {
+        ['navHome', 'navPadi', 'navJagung', 'navUbiKayu', 'navAkun'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.classList.toggle('text-green-600', id === idNav);
+            el.classList.toggle('text-gray-400', id !== idNav);
+        });
+    }
+
+    function tampilkanHomePPL() {
+        document.getElementById('formArea').classList.add('hidden');
+        document.getElementById('headerPPL').classList.remove('hidden');
+        document.getElementById('containerHomePPL').classList.remove('hidden');
+        setNavAktif('navHome');
+    }
+
     function bukaForm(komoditas) {
+        window.history.pushState({ overlay: 'formArea' }, '');
         document.getElementById('headerPPL').classList.add('hidden');
         document.getElementById('containerHomePPL').classList.add('hidden');
         document.getElementById('formArea').classList.remove('hidden');
         document.getElementById('areaPadiReadOnly').classList.add('hidden');
         document.getElementById('judulForm').innerText = komoditas;
         muatRingkasanPPL(komoditas);
+        const navMap = { 'Padi': 'navPadi', 'Jagung': 'navJagung', 'Ubi Kayu': 'navUbiKayu' };
+        setNavAktif(navMap[komoditas] || 'navHome');
     }
 
     function renderListLaporan(komoditas, data) {
@@ -300,13 +330,19 @@
         });
     }
 
-    function tutupForm() {
+    function _tutupFormDOM() {
         document.getElementById('formArea').classList.add('hidden');
         document.getElementById('formInputan').reset();
-        
-        // Tampilkan kembali Header & Home Content sesuai instruksi
         document.getElementById('headerPPL').classList.remove('hidden');
         document.getElementById('containerHomePPL').classList.remove('hidden');
+        setNavAktif('navHome');
+    }
+
+    function tutupForm() {
+        _tutupFormDOM();
+        if (window.history.state && window.history.state.overlay === 'formArea') {
+            window.history.back();
+        }
     }
 
     function submitData(e) {
@@ -852,15 +888,23 @@
     // 5. UTILITY & LOGOUT
     // =========================================================================
     function inisialisasiBPP() {
+        if (!userAktif || userAktif.role !== 'Admin_BPP') {
+            Swal.fire('Akses Ditolak', 'Anda tidak memiliki hak akses sebagai Koordinator BPP.', 'error');
+            return;
+        }
         document.getElementById('namaAdminBPP').innerText = userAktif.nama;
         document.getElementById('judulBPP').innerText = 'BPP ' + userAktif.kecamatan.toUpperCase();
         generateOpsiFilterBPP();
         muatTargetBPP();
         muatDashboardBPP(userAktif.kecamatan);
+        muatDaftarPPL();
+        muatDaftarDesaBPP();
     }
 
     function muatUlangBPP() {
         muatDashboardBPP(userAktif.kecamatan);
+        muatDaftarPPL();
+        muatDaftarDesaBPP();
     }
 
     function muatDashboardBPP(kecamatan) {
@@ -1191,104 +1235,654 @@
     // FUNGSI UPDATE PROFIL MANDIRI (PPL & BPP)
     // =========================================================================
 
-    function bukaProfil() {
-        document.getElementById('profilId').value        = userAktif.id;
-        document.getElementById('profilNIP').value       = userAktif.nip;
-        document.getElementById('profilKecamatan').value = userAktif.kecamatan;
-        document.getElementById('profilNama').value      = userAktif.nama;
+    // Semua 4 HTML dimuat sekaligus di Index.html sehingga ID elemen bisa
+    // duplikat. Gunakan querySelector dengan scope container unik agar tidak
+    // salah ambil elemen.
+    function _profilQ(scope, id) {
+        return document.querySelector(scope + ' #' + id);
+    }
 
-        // Field desa hanya ada di halaman PPL, tidak ada di BPP
-        const elDesa = document.getElementById('profilDesa');
+    function bukaProfil() {
+        window.history.pushState({ overlay: 'profilArea' }, '');
+        const isPPL  = (modePelanAktif === 'ppl');
+        const scope  = isPPL ? '#profilArea' : '#modalProfilBPP';
+
+        _profilQ(scope, 'profilId').value        = userAktif.id;
+        _profilQ(scope, 'profilNIP').value        = userAktif.nip;
+        _profilQ(scope, 'profilKecamatan').value  = userAktif.kecamatan;
+        _profilQ(scope, 'profilNama').value       = userAktif.nama;
+
+        const elDesa = _profilQ(scope, 'profilDesa');
         if (elDesa) elDesa.value = userAktif.desa;
 
-        // Pastikan field PIN selalu kosong saat dibuka
-        document.getElementById('profilPinLama').value       = '';
-        document.getElementById('profilPinBaru').value       = '';
-        document.getElementById('profilPinKonfirmasi').value = '';
+        _profilQ(scope, 'profilPasswordLama').value       = '';
+        _profilQ(scope, 'profilPasswordBaru').value       = '';
+        _profilQ(scope, 'profilPasswordKonfirmasi').value = '';
 
-        if (userAktif.role === 'PPL') {
+        if (isPPL) {
             document.getElementById('profilArea').classList.remove('hidden');
         } else {
-            // BPP: gunakan flex agar konten modal ter-center
             const modal = document.getElementById('modalProfilBPP');
             modal.classList.remove('hidden');
             modal.classList.add('flex');
         }
     }
 
-    function tutupProfil() {
-        document.getElementById('formProfil').reset();
-        if (userAktif && userAktif.role === 'PPL') {
-            document.getElementById('profilArea').classList.add('hidden');
+    function _tutupProfilDOM() {
+        const isPPL = (modePelanAktif === 'ppl');
+        if (isPPL) {
+            const pArea = document.getElementById('profilArea');
+            if (pArea) {
+                document.querySelector('#profilArea form').reset();
+                pArea.classList.add('hidden');
+                setNavAktif('navHome');
+            }
         } else {
             const modal = document.getElementById('modalProfilBPP');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
+            if (modal) {
+                document.querySelector('#modalProfilBPP form').reset();
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+    }
+
+    function tutupProfil() {
+        _tutupProfilDOM();
+        if (window.history.state && window.history.state.overlay === 'profilArea') {
+            window.history.back();
         }
     }
 
     function submitProfil(e) {
         e.preventDefault();
 
-        const id         = document.getElementById('profilId').value;
-        const nama       = document.getElementById('profilNama').value.trim();
-        const pinLama    = document.getElementById('profilPinLama').value;
-        const pinBaru    = document.getElementById('profilPinBaru').value;
-        const pinKonfirm = document.getElementById('profilPinKonfirmasi').value;
+        // Deteksi container aktif dari form yang di-submit
+        const isPPL = e.target.closest('#profilArea') !== null;
+        const scope  = isPPL ? '#profilArea' : '#modalProfilBPP';
+        const q      = (id) => _profilQ(scope, id);
 
-        // --- Validasi sisi klien (sebelum hit server) ---
+        const id         = q('profilId').value;
+        const nama       = q('profilNama').value.trim();
+        const passwordLama    = q('profilPasswordLama').value;
+        const passwordBaru    = q('profilPasswordBaru').value;
+        const passwordKonfirm = q('profilPasswordKonfirmasi').value;
+
         if (!nama) {
             Swal.fire('Peringatan', 'Nama Lengkap tidak boleh kosong.', 'warning'); return;
         }
-        if (!pinLama) {
-            Swal.fire('Peringatan', 'PIN Aktif Saat Ini wajib diisi untuk konfirmasi.', 'warning'); return;
+        if (!passwordLama) {
+            Swal.fire('Peringatan', 'Password Aktif Saat Ini wajib diisi untuk konfirmasi.', 'warning'); return;
         }
-        if (pinBaru && pinBaru.length < 4) {
-            Swal.fire('Peringatan', 'PIN Baru minimal harus 4 karakter.', 'warning'); return;
+        if (passwordBaru && passwordBaru.length < 4) {
+            Swal.fire('Peringatan', 'Password Baru minimal harus 4 karakter.', 'warning'); return;
         }
-        if (pinBaru && pinBaru !== pinKonfirm) {
-            Swal.fire('Peringatan', 'PIN Baru dan Konfirmasi PIN tidak cocok. Periksa kembali.', 'warning'); return;
+        if (passwordBaru && passwordBaru !== passwordKonfirm) {
+            Swal.fire('Peringatan', 'Password Baru dan Konfirmasi Password tidak cocok.', 'warning'); return;
         }
 
-        // --- Aktifkan state Loading pada tombol ---
-        const btnSimpan = document.getElementById('btnSimpanProfil');
+        const btnSimpan = q('btnSimpanProfil');
         btnSimpan.disabled = true;
-        document.getElementById('ikonSimpanProfil').className  = 'fa-solid fa-circle-notch fa-spin';
-        document.getElementById('teksSimpanProfil').textContent = 'Menyimpan...';
+        q('ikonSimpanProfil').className  = 'fa-solid fa-circle-notch fa-spin';
+        q('teksSimpanProfil').textContent = 'Menyimpan...';
 
-        // --- Kirim ke backend Apps Script ---
         google.script.run
             .withSuccessHandler(function(res) {
-                // Reset tombol ke normal
                 btnSimpan.disabled = false;
-                document.getElementById('ikonSimpanProfil').className  = 'fa-solid fa-floppy-disk';
-                document.getElementById('teksSimpanProfil').textContent = 'Simpan Perubahan';
+                q('ikonSimpanProfil').className  = 'fa-solid fa-floppy-disk';
+                q('teksSimpanProfil').textContent = isPPL ? 'Simpan Perubahan' : 'Simpan';
 
                 if (res.status === 'success') {
-                    // Sinkronkan data terbaru ke memori browser & localStorage
                     userAktif = res.data;
                     localStorage.setItem('user_eLTT', JSON.stringify(res.data));
-
-                    // Perbarui tampilan nama di dashboard secara instan (tanpa reload)
-                    if (userAktif.role === 'PPL') {
+                    if (modePelanAktif === 'ppl') {
                         inisialisasiPPL();
                     } else {
                         inisialisasiBPP();
                     }
-
                     Swal.fire('Berhasil!', res.message, 'success').then(() => tutupProfil());
                 } else {
                     Swal.fire('Gagal Menyimpan', res.message, 'error');
                 }
             })
             .withFailureHandler(function(err) {
-                // Reset tombol ke normal
                 btnSimpan.disabled = false;
-                document.getElementById('ikonSimpanProfil').className  = 'fa-solid fa-floppy-disk';
-                document.getElementById('teksSimpanProfil').textContent = 'Simpan Perubahan';
+                q('ikonSimpanProfil').className  = 'fa-solid fa-floppy-disk';
+                q('teksSimpanProfil').textContent = isPPL ? 'Simpan Perubahan' : 'Simpan';
                 Swal.fire('Error Koneksi', 'Gagal menghubungi server: ' + err.message, 'error');
             })
-            .updateProfilUser(id, nama, pinLama, pinBaru);
+            .updateProfilUser(id, nama, passwordLama, passwordBaru);
+    }
+
+    // =========================================================================
+    // FUNGSI MANAJEMEN AKUN PENYULUH OLEH ADMIN BPP
+    // =========================================================================
+
+    function toggleTargetBulanan() {
+        const targetDiv = document.getElementById('kontenTargetBulanan');
+        const icon = document.getElementById('iconToggleTarget');
+        const text = document.getElementById('textToggleTarget');
+        if (!targetDiv || !icon || !text) return;
+        
+        const isHidden = targetDiv.classList.contains('hidden');
+        if (isHidden) {
+            targetDiv.classList.remove('hidden');
+            icon.className = 'fa-solid fa-chevron-up';
+            text.innerText = 'Sembunyikan';
+            muatTargetBPP();
+        } else {
+            targetDiv.classList.add('hidden');
+            icon.className = 'fa-solid fa-chevron-down';
+            text.innerText = 'Tampilkan';
+        }
+    }
+
+    function toggleManajemenPPL() {
+        const pplDiv = document.getElementById('kontenManajemenPPL');
+        const icon = document.getElementById('iconTogglePPL');
+        const text = document.getElementById('textTogglePPL');
+        const btnTambah = document.getElementById('btnTambahPPL');
+        if (!pplDiv || !icon || !text || !btnTambah) return;
+        
+        const isHidden = pplDiv.classList.contains('hidden');
+        if (isHidden) {
+            pplDiv.classList.remove('hidden');
+            icon.className = 'fa-solid fa-chevron-up';
+            text.innerText = 'Sembunyikan';
+            btnTambah.classList.remove('hidden');
+            if (daftarPPLLokal.length === 0) {
+                muatDaftarPPL();
+            }
+        } else {
+            pplDiv.classList.add('hidden');
+            icon.className = 'fa-solid fa-chevron-down';
+            text.innerText = 'Tampilkan';
+            btnTambah.classList.add('hidden');
+        }
+    }
+
+    function muatDaftarDesaBPP() {
+        if (!userAktif || !userAktif.kecamatan) return;
+        
+        google.script.run
+            .withSuccessHandler(function (desaList) {
+                daftarDesaKecamatanLokal = desaList || [];
+                renderChecklistDesa([]);
+            })
+            .withFailureHandler(function (err) {
+                console.error("Gagal mengambil daftar desa:", err);
+                const container = document.getElementById('formPPLDesaContainer');
+                if (container) {
+                    container.innerHTML = `<span class="text-xs text-red-500 font-medium">Gagal memuat desa binaan: ${err.message || 'Koneksi gagal'}</span>`;
+                }
+            })
+            .getDaftarDesabyKecamatan(userAktif.kecamatan);
+    }
+
+    function renderChecklistDesa(checkedDesaList) {
+        const container = document.getElementById('formPPLDesaContainer');
+        if (!container) return;
+        
+        if (daftarDesaKecamatanLokal.length === 0) {
+            container.innerHTML = '<span class="text-xs text-gray-400 italic">Belum ada data desa terdaftar untuk kecamatan ini. Silakan hubungi Admin Kabupaten.</span>';
+            return;
+        }
+        
+        const checkedSet = new Set(
+            (checkedDesaList || []).map(d => d.toString().toLowerCase().trim())
+        );
+        
+        container.innerHTML = daftarDesaKecamatanLokal.map((desa, idx) => {
+            const isChecked = checkedSet.has(desa.toLowerCase().trim()) ? 'checked' : '';
+            return `
+                <label class="flex items-center gap-2.5 px-3 py-2 hover:bg-green-50 rounded-xl cursor-pointer transition select-none text-xs text-gray-700 font-semibold border border-transparent hover:border-green-100 bg-white shadow-sm">
+                    <input type="checkbox" name="pplDesaBinaan" value="${desa}" ${isChecked}
+                        class="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500 cursor-pointer transition">
+                    <span>Desa ${desa}</span>
+                </label>
+            `;
+        }).join('');
+    }
+
+    function _mppQ(id) {
+        return document.querySelector('#modalFormPPL #' + id);
+    }
+    
+    function _mrpQ(id) {
+        return document.querySelector('#modalResetPasswordPPL #' + id);
+    }
+
+    function muatDaftarPPL() {
+        const tbody = document.getElementById('tabelPPL');
+        if (!tbody) return;
+        tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center"><i class="fa-solid fa-circle-notch fa-spin text-2xl text-green-500 mb-2 block"></i> Memuat data Penyuluh...</td></tr>';
+        
+        google.script.run
+            .withSuccessHandler(function(res) {
+                daftarPPLLokal = res || [];
+                renderTabelPPL();
+            })
+            .withFailureHandler(function(err) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-red-500 font-medium">Gagal memuat data: ${err.message || 'Koneksi gagal'}</td></tr>`;
+            })
+            .getDaftarPPLbyKecamatan(userAktif.kecamatan, userAktif.nip);
+    }
+
+    function renderTabelPPL() {
+        const tbody = document.getElementById('tabelPPL');
+        if (!tbody) return;
+        
+        if (daftarPPLLokal.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-gray-400 italic">Belum ada akun Penyuluh terdaftar di kecamatan ini.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = daftarPPLLokal.map((u, i) => {
+            const opacityClass = u.status === 'Nonaktif' ? 'opacity-50' : '';
+            const statusBadge = u.status === 'Aktif' 
+                ? '<span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-[10px] font-bold">Aktif</span>' 
+                : '<span class="bg-red-100 text-red-700 px-2 py-1 rounded-full text-[10px] font-bold">Nonaktif</span>';
+            
+            const toggleIcon = u.status === 'Aktif' ? 'fa-toggle-on text-green-600' : 'fa-toggle-off text-gray-400';
+            const toggleTitle = u.status === 'Aktif' ? 'Nonaktifkan Akun' : 'Aktifkan Akun';
+            
+            const btnHapus = u.status === 'Nonaktif'
+                ? `<button onclick="hapusPPL(${i})" title="Hapus Permanen" class="w-8 h-8 bg-red-50 text-red-600 rounded-lg hover:bg-red-600 hover:text-white transition shadow-sm flex items-center justify-center"><i class="fa-solid fa-trash-can"></i></button>`
+                : '';
+
+            return `
+            <tr class="border-b border-gray-50 hover:bg-gray-50/80 transition ${opacityClass}">
+                <td class="p-4 text-center text-xs text-gray-500">${i + 1}</td>
+                <td class="p-4 font-bold text-gray-800">${u.nama}</td>
+                <td class="p-4 text-xs font-mono text-gray-600">${u.nip}</td>
+                <td class="p-4 text-xs text-gray-600">${u.desa || '-'}</td>
+                <td class="p-4 text-center">${statusBadge}</td>
+                <td class="p-4 text-center">
+                    <div class="flex justify-center gap-2">
+                        <button onclick="bukaEditPPL(${i})" title="Edit Data" class="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition shadow-sm flex items-center justify-center"><i class="fa-solid fa-pen-to-square"></i></button>
+                        <button onclick="bukaResetPasswordPPL(${i})" title="Reset Password" class="w-8 h-8 bg-yellow-50 text-yellow-600 rounded-lg hover:bg-yellow-600 hover:text-white transition shadow-sm flex items-center justify-center"><i class="fa-solid fa-key"></i></button>
+                        <button onclick="toggleStatusPPL(${i})" title="${toggleTitle}" class="w-8 h-8 bg-gray-50 rounded-lg hover:bg-gray-200 transition shadow-sm flex items-center justify-center"><i class="fa-solid ${toggleIcon} text-lg"></i></button>
+                        ${btnHapus}
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    function bukaTambahPPL() {
+        window.history.pushState({ overlay: 'modalFormPPL' }, '');
+        document.getElementById('formPPL').reset();
+        _mppQ('formPPLId').value = '';
+        _mppQ('formPPLNip').readOnly = false;
+        _mppQ('formPPLNip').classList.remove('bg-gray-100', 'cursor-not-allowed', 'text-gray-500');
+        document.getElementById('divFormPPLPassword').classList.remove('hidden');
+        _mppQ('formPPLPassword').required = true;
+        document.getElementById('judulModalFormPPL').innerText = 'Tambah Penyuluh Baru';
+        
+        // Render semua desa dalam keadaan unchecked
+        renderChecklistDesa([]);
+        
+        const modal = document.getElementById('modalFormPPL');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function _tutupModalPPLDOM() {
+        document.getElementById('formPPL').reset();
+        const modal = document.getElementById('modalFormPPL');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+    }
+
+    function tutupModalPPL() {
+        _tutupModalPPLDOM();
+        if (window.history.state && window.history.state.overlay === 'modalFormPPL') {
+            window.history.back();
+        }
+    }
+
+    function bukaEditPPL(idx) {
+        window.history.pushState({ overlay: 'modalFormPPL' }, '');
+        const u = daftarPPLLokal[idx];
+        if (!u) return;
+
+        _mppQ('formPPLId').value = u.id;
+        _mppQ('formPPLNama').value = u.nama;
+        _mppQ('formPPLNip').value = u.nip;
+        _mppQ('formPPLNip').readOnly = true;
+        _mppQ('formPPLNip').classList.add('bg-gray-100', 'cursor-not-allowed', 'text-gray-500');
+        
+        document.getElementById('divFormPPLPassword').classList.add('hidden');
+        _mppQ('formPPLPassword').required = false;
+        _mppQ('formPPLPassword').value = '';
+        
+        // Render checklist desa dan berikan centang untuk desa binaan yang sudah dimiliki
+        const listDesaPenyuluh = u.desa ? u.desa.split(',').map(d => d.trim()) : [];
+        renderChecklistDesa(listDesaPenyuluh);
+        
+        _mppQ('formPPLStatus').value = u.status || 'Aktif';
+        
+        document.getElementById('judulModalFormPPL').innerText = 'Edit Data Penyuluh';
+        
+        const modal = document.getElementById('modalFormPPL');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function submitFormPPL(event) {
+        event.preventDefault();
+        
+        const id = _mppQ('formPPLId').value;
+        const nama = _mppQ('formPPLNama').value.trim();
+        const nip = _mppQ('formPPLNip').value.trim();
+        const password = _mppQ('formPPLPassword').value;
+        const status = _mppQ('formPPLStatus').value;
+        
+        // Ambil semua desa yang dicentang
+        const checkedDesas = document.querySelectorAll('#formPPLDesaContainer input[name="pplDesaBinaan"]:checked');
+        const desaArr = Array.from(checkedDesas).map(cb => cb.value.trim());
+        const desa = desaArr.join(', ');
+        
+        if (!nama) {
+            Swal.fire('Peringatan', 'Nama Lengkap wajib diisi.', 'warning');
+            return;
+        }
+        if (!nip) {
+            Swal.fire('Peringatan', 'NIP / Username wajib diisi.', 'warning');
+            return;
+        }
+        if (desaArr.length === 0) {
+            Swal.fire('Peringatan', 'Silakan pilih minimal satu desa binaan.', 'warning');
+            return;
+        }
+        
+        const isEdit = id !== '';
+        
+        if (!isEdit) {
+            if (!password || password.length < 4) {
+                Swal.fire('Peringatan', 'Password wajib diisi dan minimal 4 karakter.', 'warning');
+                return;
+            }
+        }
+        
+        const btn = document.getElementById('btnSimpanPPL');
+        const oldHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-1"></i> Menyimpan...';
+        
+        if (isEdit) {
+            const u = { id: id, nama: nama, nip: nip, desa: desa, status: status };
+            google.script.run
+                .withSuccessHandler(function(res) {
+                    btn.disabled = false;
+                    btn.innerHTML = oldHtml;
+                    if (res.status === 'success') {
+                        Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message, timer: 1800, showConfirmButton: false });
+                        tutupModalPPL();
+                        muatDaftarPPL();
+                    } else {
+                        Swal.fire('Gagal', res.message, 'error');
+                    }
+                })
+                .withFailureHandler(function(err) {
+                    btn.disabled = false;
+                    btn.innerHTML = oldHtml;
+                    Swal.fire('Error', 'Gagal menghubungi server: ' + err.message, 'error');
+                })
+                .updateDataPPL(u);
+        } else {
+            const u = {
+                id: '',
+                nama: nama,
+                nip: nip,
+                password: password,
+                role: 'Penyuluh',
+                kecamatan: userAktif.kecamatan,
+                desa: desa,
+                status: status
+            };
+            google.script.run
+                .withSuccessHandler(function(res) {
+                    btn.disabled = false;
+                    btn.innerHTML = oldHtml;
+                    if (res.status === 'success') {
+                        Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message, timer: 1800, showConfirmButton: false });
+                        tutupModalPPL();
+                        muatDaftarPPL();
+                    } else {
+                        Swal.fire('Gagal', res.message, 'error');
+                    }
+                })
+                .withFailureHandler(function(err) {
+                    btn.disabled = false;
+                    btn.innerHTML = oldHtml;
+                    Swal.fire('Error', 'Gagal menghubungi server: ' + err.message, 'error');
+                })
+                .simpanDataUser(u);
+        }
+    }
+
+    function bukaResetPasswordPPL(idx) {
+        window.history.pushState({ overlay: 'modalResetPasswordPPL' }, '');
+        const u = daftarPPLLokal[idx];
+        if (!u) return;
+
+        _mrpQ('resetPPLId').value = u.id;
+        _mrpQ('resetPPLNip').value = u.nip;
+        document.getElementById('resetPPLNamaDisplay').innerText = u.nama;
+        _mrpQ('resetPPLPasswordBaru').value = '';
+        _mrpQ('resetPPLPasswordKonfirmasi').value = '';
+        
+        const modal = document.getElementById('modalResetPasswordPPL');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function _tutupModalResetPasswordDOM() {
+        document.getElementById('formResetPasswordPPL').reset();
+        const modal = document.getElementById('modalResetPasswordPPL');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+    }
+
+    function tutupModalResetPassword() {
+        _tutupModalResetPasswordDOM();
+        if (window.history.state && window.history.state.overlay === 'modalResetPasswordPPL') {
+            window.history.back();
+        }
+    }
+
+    function submitResetPasswordPPL(event) {
+        event.preventDefault();
+        
+        const id = _mrpQ('resetPPLId').value;
+        const nip = _mrpQ('resetPPLNip').value;
+        const passwordBaru = _mrpQ('resetPPLPasswordBaru').value;
+        const passwordKonfirm = _mrpQ('resetPPLPasswordKonfirmasi').value;
+        
+        if (!passwordBaru || passwordBaru.length < 4) {
+            Swal.fire('Peringatan', 'Password Baru minimal 4 karakter.', 'warning');
+            return;
+        }
+        if (passwordBaru !== passwordKonfirm) {
+            Swal.fire('Peringatan', 'Password Baru dan Konfirmasi Password tidak cocok.', 'warning');
+            return;
+        }
+        
+        const btn = document.getElementById('btnResetPasswordPPL');
+        const oldHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-1"></i> Memproses...';
+        
+        google.script.run
+            .withSuccessHandler(function(res) {
+                btn.disabled = false;
+                btn.innerHTML = oldHtml;
+                if (res.status === 'success') {
+                    Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message, timer: 1800, showConfirmButton: false });
+                    tutupModalResetPassword();
+                    muatDaftarPPL();
+                } else {
+                    Swal.fire('Gagal', res.message, 'error');
+                }
+            })
+            .withFailureHandler(function(err) {
+                btn.disabled = false;
+                btn.innerHTML = oldHtml;
+                Swal.fire('Error', 'Gagal menghubungi server: ' + err.message, 'error');
+            })
+            .resetPasswordPPL(id, passwordBaru, userAktif.id);
+    }
+
+    function toggleStatusPPL(idx) {
+        const u = daftarPPLLokal[idx];
+        if (!u) return;
+        
+        const statusBaru = u.status === 'Aktif' ? 'Nonaktif' : 'Aktif';
+        const kataTindakan = statusBaru === 'Aktif' ? 'mengaktifkan' : 'menonaktifkan';
+        
+        Swal.fire({
+            title: `Apakah Anda yakin?`,
+            text: `Anda akan ${kataTindakan} akun Penyuluh: ${u.nama}`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, Lakukan',
+            cancelButtonText: 'Batal',
+            confirmButtonColor: statusBaru === 'Aktif' ? '#16a34a' : '#d33'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Memproses...',
+                    allowOutsideClick: false,
+                    didOpen: () => { Swal.showLoading(); }
+                });
+                
+                const dataUpdate = {
+                    id: u.id,
+                    nama: u.nama,
+                    nip: u.nip,
+                    desa: u.desa,
+                    status: statusBaru
+                };
+                
+                google.script.run
+                    .withSuccessHandler(function(res) {
+                        Swal.close();
+                        if (res.status === 'success') {
+                            Swal.fire({ icon: 'success', title: 'Berhasil', text: `Akun berhasil di${statusBaru === 'Aktif' ? 'aktifkan' : 'nonaktifkan'}.`, timer: 1500, showConfirmButton: false });
+                            muatDaftarPPL();
+                        } else {
+                            Swal.fire('Gagal', res.message, 'error');
+                        }
+                    })
+                    .withFailureHandler(function(err) {
+                        Swal.close();
+                        Swal.fire('Error', 'Gagal menghubungi server: ' + err.message, 'error');
+                    })
+                    .updateDataPPL(dataUpdate);
+            }
+        });
+    }
+
+    function hapusPPL(idx) {
+        const u = daftarPPLLokal[idx];
+        if (!u) return;
+
+        Swal.fire({
+            title: 'Hapus Akun Permanen?',
+            text: `Akun Penyuluh ${u.nama} (NIP: ${u.nip}) akan dihapus permanen dari sistem. Tindakan ini tidak bisa dibatalkan!`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'Ya, Hapus Permanen',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Menghapus...',
+                    allowOutsideClick: false,
+                    didOpen: () => { Swal.showLoading(); }
+                });
+                
+                google.script.run
+                    .withSuccessHandler(function(res) {
+                        Swal.close();
+                        if (res.status === 'success') {
+                            Swal.fire('Dihapus!', res.message, 'success');
+                            muatDaftarPPL();
+                        } else {
+                            Swal.fire('Gagal', res.message, 'error');
+                        }
+                    })
+                    .withFailureHandler(function(err) {
+                        Swal.close();
+                        Swal.fire('Error', 'Gagal menghubungi server: ' + err.message, 'error');
+                    })
+                    .hapusDataUser(u.id, u.nip);
+            }
+        });
+    }
+
+    function togglePasswordVisibility(inputId, btn) {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+        const icon = btn.querySelector('i');
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            input.type = 'password';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    }
+
+    function switchKeBPP() {
+        if (!userAktif || userAktif.role !== 'Admin_BPP') {
+            Swal.fire('Akses Ditolak', 'Anda tidak memiliki hak akses sebagai Koordinator BPP.', 'error');
+            return;
+        }
+
+        Swal.fire({
+            title: 'Mengalihkan Layar',
+            html: 'Beralih ke Panel Koordinator BPP...',
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        setTimeout(function() {
+            modePelanAktif = 'bpp';
+            inisialisasiBPP();
+            tampilkanLayar('layar-bpp');
+            Swal.close();
+        }, 500);
+    }
+
+    function switchKePPL() {
+        Swal.fire({
+            title: 'Mengalihkan Layar',
+            html: 'Kembali ke Panel Penyuluh...',
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        setTimeout(function() {
+            modePelanAktif = 'ppl';
+            inisialisasiPPL();
+            tampilkanLayar('layar-ppl');
+            Swal.close();
+        }, 500);
     }
 
     function logout() {
@@ -1306,7 +1900,7 @@
         document.getElementById('viewLoading').classList.add('hidden');
         document.getElementById('viewLogin').classList.remove('hidden');
         document.getElementById('nip').value = '';
-        document.getElementById('pin').value = '';
+        document.getElementById('password').value = '';
     }
 
     function logoutAdmin() {
@@ -1565,6 +2159,7 @@
     }
 
     function bukaModalUser() {
+        window.history.pushState({ overlay: 'modalUser' }, '');
         document.getElementById('formUser').reset();
         document.getElementById('userId').value = '';
         document.getElementById('modalUserTitle').innerText = 'Tambah User Baru';
@@ -1578,11 +2173,22 @@
         }, 10);
     }
 
-    function tutupModalUser() {
+    function _tutupModalUserDOM() {
         const modal = document.getElementById('modalUser');
-        modal.classList.add('opacity-0');
-        modal.children[0].classList.add('scale-95');
-        setTimeout(() => modal.classList.add('hidden'), 300);
+        if (modal) {
+            modal.classList.add('opacity-0');
+            if (modal.children && modal.children[0]) {
+                modal.children[0].classList.add('scale-95');
+            }
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+    }
+
+    function tutupModalUser() {
+        _tutupModalUserDOM();
+        if (window.history.state && window.history.state.overlay === 'modalUser') {
+            window.history.back();
+        }
     }
 
     function handleRoleChange() {
@@ -1603,13 +2209,14 @@
     }
 
     function editUser(id) {
+        window.history.pushState({ overlay: 'modalUser' }, '');
         const u = allUserData.find(x => x.id === id);
         if (!u) return;
 
         document.getElementById('userId').value = u.id;
         document.getElementById('userNama').value = u.nama;
         document.getElementById('userNIP').value = u.nip;
-        document.getElementById('userPIN').value = u.pin;
+        document.getElementById('userPassword').value = u.password;
         document.getElementById('userRole').value = u.role;
         document.getElementById('userKec').value = u.kecamatan;
         document.getElementById('userDesa').value = u.desa;
@@ -1637,7 +2244,7 @@
             id: document.getElementById('userId').value,
             nama: document.getElementById('userNama').value,
             nip: document.getElementById('userNIP').value,
-            pin: document.getElementById('userPIN').value,
+            password: document.getElementById('userPassword').value,
             role: document.getElementById('userRole').value,
             kecamatan: document.getElementById('userKec').value,
             desa: document.getElementById('userDesa').value,
@@ -1777,4 +2384,43 @@
             </tr>`;
         }).join('');
     }
+
+    // SPA Mobile Back Button Handler using History API
+    window.addEventListener('popstate', function(event) {
+        // 1. Profil Area (PPL/BPP)
+        const profilArea = document.getElementById('profilArea');
+        const modalProfilBPP = document.getElementById('modalProfilBPP');
+        if ((profilArea && !profilArea.classList.contains('hidden')) || (modalProfilBPP && !modalProfilBPP.classList.contains('hidden'))) {
+            _tutupProfilDOM();
+            return;
+        }
+
+        // 2. PPL Form Input LTT Area
+        const formArea = document.getElementById('formArea');
+        if (formArea && !formArea.classList.contains('hidden')) {
+            _tutupFormDOM();
+            return;
+        }
+
+        // 3. BPP PPL Form Modal
+        const modalFormPPL = document.getElementById('modalFormPPL');
+        if (modalFormPPL && !modalFormPPL.classList.contains('hidden')) {
+            _tutupModalPPLDOM();
+            return;
+        }
+
+        // 4. BPP PPL Reset Password Modal
+        const modalReset = document.getElementById('modalResetPasswordPPL');
+        if (modalReset && !modalReset.classList.contains('hidden')) {
+            _tutupModalResetPasswordDOM();
+            return;
+        }
+
+        // 5. Admin User Modal
+        const modalUser = document.getElementById('modalUser');
+        if (modalUser && !modalUser.classList.contains('hidden')) {
+            _tutupModalUserDOM();
+            return;
+        }
+    });
 </script>

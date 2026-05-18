@@ -11,6 +11,10 @@
                 </div>
             </div>
             <div class="flex items-center gap-4">
+                <button id="btnKembaliKePPL" onclick="switchKePPL()"
+                    class="flex items-center gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-xs font-extrabold px-3.5 py-2 rounded-lg transition shadow-md active:scale-95">
+                    <i class="fa-solid fa-arrow-left"></i> Kembali ke PPL
+                </button>
                 <button onclick="muatUlangBPP()"
                     class="hidden sm:flex items-center gap-1 bg-green-600 hover:bg-green-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition">
                     <i class="fa-solid fa-rotate-right"></i> Refresh
@@ -89,6 +93,42 @@
         </div>
     </div>
 
+    <!-- Tabel Verifikasi -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8 animate__animated animate__fadeIn">
+        <div class="p-5 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-50 gap-4">
+            <div>
+                <h3 class="text-lg font-bold text-gray-800">Verifikasi Laporan Palawija</h3>
+                <p class="text-xs text-gray-500">Periksa laporan harian sebelum ditarik oleh Admin Kabupaten.</p>
+            </div>
+            <button onclick="verifikasiBPP()"
+                class="bg-green-600 text-white px-5 py-2 rounded-lg text-sm font-bold hover:bg-green-700 transition shadow flex items-center gap-2 w-full sm:w-auto justify-center">
+                <i class="fa-solid fa-check-double"></i> Verifikasi Data Terpilih
+            </button>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-gray-100 text-gray-600 text-xs uppercase tracking-wider border-b border-gray-200">
+                        <th class="p-4 w-10 text-center">
+                            <input type="checkbox" id="cekSemuaBPP" onchange="toggleCekSemuaBPP(this)"
+                                class="w-4 h-4 text-green-600 rounded cursor-pointer">
+                        </th>
+                        <th class="p-4">Tgl Lapor</th>
+                        <th class="p-4">Pelapor & Desa</th>
+                        <th class="p-4">Komoditas</th>
+                        <th class="p-4 text-right">Tanam</th>
+                        <th class="p-4 text-right">Panen</th>
+                        <th class="p-4">Keterangan</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelVerifikasiBPP" class="text-sm">
+                    <tr><td colspan="7" class="p-10 text-center text-gray-400">Memuat data...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     <!-- Form Input Target -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
         <div class="p-5 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-50 gap-3">
@@ -96,14 +136,20 @@
                 <h3 class="text-lg font-bold text-gray-800">Input Target Bulanan</h3>
                 <p class="text-xs text-gray-500">Isi target luas tanam & panen kecamatan Anda per komoditi.</p>
             </div>
-            <div class="flex items-center gap-2">
-                <i class="fa-solid fa-calendar-days text-green-600 text-sm"></i>
-                <select id="filterBulanTarget"
-                    class="text-xs font-bold text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-1.5 outline-none focus:border-green-500 cursor-pointer shadow-sm">
-                </select>
+            <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-calendar-days text-green-600 text-sm"></i>
+                    <select id="filterBulanTarget"
+                        class="text-xs font-bold text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-1.5 outline-none focus:border-green-500 cursor-pointer shadow-sm">
+                    </select>
+                </div>
+                <button onclick="toggleTargetBulanan()" id="btnToggleTarget"
+                    class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 border border-gray-200 shadow-sm">
+                    <i class="fa-solid fa-chevron-down" id="iconToggleTarget"></i> <span id="textToggleTarget">Tampilkan</span>
+                </button>
             </div>
         </div>
-        <div class="p-5">
+        <div id="kontenTargetBulanan" class="p-5 hidden animate__animated animate__fadeIn">
             <div class="overflow-x-auto">
                 <table class="w-full text-sm border-collapse">
                     <thead>
@@ -150,39 +196,43 @@
         </div>
     </div>
 
-    <!-- Tabel Verifikasi -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <!-- Manajemen Akun Penyuluh Section -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mt-8">
         <div class="p-5 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-50 gap-4">
             <div>
-                <h3 class="text-lg font-bold text-gray-800">Verifikasi Laporan Palawija</h3>
-                <p class="text-xs text-gray-500">Periksa laporan harian sebelum ditarik oleh Admin Kabupaten.</p>
+                <h3 class="text-lg font-bold text-gray-800">Manajemen Akun Penyuluh</h3>
+                <p class="text-xs text-gray-500">Kelola akun Penyuluh (PPL) di kecamatan Anda.</p>
             </div>
-            <button onclick="verifikasiBPP()"
-                class="bg-green-600 text-white px-5 py-2 rounded-lg text-sm font-bold hover:bg-green-700 transition shadow flex items-center gap-2 w-full sm:w-auto justify-center">
-                <i class="fa-solid fa-check-double"></i> Verifikasi Data Terpilih
-            </button>
+            <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <button onclick="toggleManajemenPPL()" id="btnTogglePPL"
+                    class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 border border-gray-200 w-full sm:w-auto justify-center shadow-sm">
+                    <i class="fa-solid fa-chevron-down" id="iconTogglePPL"></i> <span id="textTogglePPL">Tampilkan</span>
+                </button>
+                <button onclick="bukaTambahPPL()" id="btnTambahPPL"
+                    class="bg-green-600 text-white px-4 py-1.5 rounded-lg text-xs font-bold hover:bg-green-700 transition shadow flex items-center gap-1.5 w-full sm:w-auto justify-center hidden animate__animated animate__fadeIn">
+                    <i class="fa-solid fa-user-plus"></i> Tambah Penyuluh
+                </button>
+            </div>
         </div>
 
-        <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="bg-gray-100 text-gray-600 text-xs uppercase tracking-wider border-b border-gray-200">
-                        <th class="p-4 w-10 text-center">
-                            <input type="checkbox" id="cekSemuaBPP" onchange="toggleCekSemuaBPP(this)"
-                                class="w-4 h-4 text-green-600 rounded cursor-pointer">
-                        </th>
-                        <th class="p-4">Tgl Lapor</th>
-                        <th class="p-4">Pelapor & Desa</th>
-                        <th class="p-4">Komoditas</th>
-                        <th class="p-4 text-right">Tanam</th>
-                        <th class="p-4 text-right">Panen</th>
-                        <th class="p-4">Keterangan</th>
-                    </tr>
-                </thead>
-                <tbody id="tabelVerifikasiBPP" class="text-sm">
-                    <tr><td colspan="7" class="p-10 text-center text-gray-400">Memuat data...</td></tr>
-                </tbody>
-            </table>
+        <div id="kontenManajemenPPL" class="hidden animate__animated animate__fadeIn">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-100 text-gray-600 text-xs uppercase tracking-wider border-b border-gray-200">
+                            <th class="p-4 w-12 text-center">No</th>
+                            <th class="p-4">Nama Lengkap</th>
+                            <th class="p-4">NIP / Username</th>
+                            <th class="p-4">Desa Binaan</th>
+                            <th class="p-4 text-center">Status</th>
+                            <th class="p-4 text-center w-40">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelPPL" class="text-sm">
+                        <tr><td colspan="6" class="p-10 text-center text-gray-400">Memuat data Penyuluh...</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </main>
@@ -194,7 +244,7 @@
         <div class="bg-green-700 px-6 py-4 flex justify-between items-center">
             <div class="flex items-center gap-3">
                 <i class="fa-solid fa-user-gear text-white text-xl"></i>
-                <h3 class="text-white font-bold text-lg">Ubah Profil & PIN</h3>
+                <h3 class="text-white font-bold text-lg">Ubah Profil & Password</h3>
             </div>
             <button onclick="tutupProfil()"
                 class="w-8 h-8 bg-green-600 hover:bg-green-500 rounded-full flex justify-center items-center text-white transition">
@@ -206,7 +256,6 @@
             <form id="formProfil" onsubmit="submitProfil(event)">
                 <input type="hidden" id="profilId">
 
-                <!-- Informasi Read-Only -->
                 <div class="bg-gray-50 rounded-2xl p-4 mb-4 border border-gray-100">
                     <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">
                         Informasi Akun (Read-Only)
@@ -225,7 +274,6 @@
                     </div>
                 </div>
 
-                <!-- Nama Lengkap (Editable) -->
                 <div class="mb-4">
                     <label class="block text-xs font-bold text-gray-600 mb-1">
                         Nama Lengkap <span class="text-red-500">*</span>
@@ -234,29 +282,46 @@
                         class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 transition">
                 </div>
 
-                <!-- Section Ubah PIN -->
                 <div class="bg-yellow-50 rounded-2xl p-4 mb-5 border border-yellow-200">
                     <p class="text-[10px] font-bold text-yellow-700 uppercase tracking-widest mb-3">
                         <i class="fa-solid fa-shield-halved mr-1"></i> Keamanan Akun
                     </p>
                     <div class="mb-3">
                         <label class="block text-xs font-bold text-gray-600 mb-1">
-                            PIN Aktif Saat Ini <span class="text-red-500">*</span>
+                            Password Aktif Saat Ini <span class="text-red-500">*</span>
                         </label>
-                        <input type="password" id="profilPinLama" required placeholder="Wajib diisi"
-                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 transition">
+                        <div class="relative">
+                            <input type="password" id="profilPasswordLama" required placeholder="Wajib diisi"
+                                class="w-full pl-4 pr-10 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 transition">
+                            <button type="button" onclick="togglePasswordVisibility('profilPasswordLama', this)"
+                                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-yellow-600 focus:outline-none transition active:scale-95">
+                                <i class="fa-solid fa-eye text-sm"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label class="block text-xs font-bold text-gray-600 mb-1">
-                            PIN Baru <span class="text-gray-400 font-normal">(opsional, min. 4 karakter)</span>
+                            Password Baru <span class="text-gray-400 font-normal">(opsional, min. 4 karakter)</span>
                         </label>
-                        <input type="password" id="profilPinBaru" placeholder="Kosongkan jika tidak diganti"
-                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 transition">
+                        <div class="relative">
+                            <input type="password" id="profilPasswordBaru" placeholder="Kosongkan jika tidak diganti"
+                                class="w-full pl-4 pr-10 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 transition">
+                            <button type="button" onclick="togglePasswordVisibility('profilPasswordBaru', this)"
+                                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-yellow-600 focus:outline-none transition active:scale-95">
+                                <i class="fa-solid fa-eye text-sm"></i>
+                            </button>
+                        </div>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-gray-600 mb-1">Konfirmasi PIN Baru</label>
-                        <input type="password" id="profilPinKonfirmasi" placeholder="Ulangi PIN baru"
-                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 transition">
+                        <label class="block text-xs font-bold text-gray-600 mb-1">Konfirmasi Password Baru</label>
+                        <div class="relative">
+                            <input type="password" id="profilPasswordKonfirmasi" placeholder="Ulangi Password baru"
+                                class="w-full pl-4 pr-10 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 transition">
+                            <button type="button" onclick="togglePasswordVisibility('profilPasswordKonfirmasi', this)"
+                                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-yellow-600 focus:outline-none transition active:scale-95">
+                                <i class="fa-solid fa-eye text-sm"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -276,3 +341,161 @@
     </div>
 </div>
 <!-- ===== AKHIR MODAL PROFIL BPP ===== -->
+
+<!-- ===== MODAL TAMBAH / EDIT PPL ===== -->
+<div id="modalFormPPL" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] hidden items-center justify-center animate__animated animate__fadeIn">
+    <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden mx-4">
+        <div class="bg-green-700 px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <i class="fa-solid fa-user-gear text-white text-xl"></i>
+                <h3 class="text-white font-bold text-lg" id="judulModalFormPPL">Tambah Penyuluh Baru</h3>
+            </div>
+            <button onclick="tutupModalPPL()"
+                class="w-8 h-8 bg-green-600 hover:bg-green-500 rounded-full flex justify-center items-center text-white transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="p-6 overflow-y-auto max-h-[80vh]">
+            <form id="formPPL" onsubmit="submitFormPPL(event)">
+                <input type="hidden" id="formPPLId">
+
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-gray-600 mb-1">
+                        Nama Lengkap <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" id="formPPLNama" required placeholder="Masukkan Nama Lengkap"
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 transition">
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-gray-600 mb-1">
+                        NIP / Username <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" id="formPPLNip" required placeholder="Masukkan NIP"
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 transition">
+                </div>
+
+                <div class="mb-4" id="divFormPPLPassword">
+                    <label class="block text-xs font-bold text-gray-600 mb-1">
+                        Password <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <input type="password" id="formPPLPassword" placeholder="Min. 4 karakter"
+                            class="w-full pl-4 pr-10 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 transition">
+                        <button type="button" onclick="togglePasswordVisibility('formPPLPassword', this)"
+                            class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-green-600 focus:outline-none transition active:scale-95">
+                            <i class="fa-solid fa-eye text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-gray-600 mb-1">
+                        Desa Binaan <span class="text-red-500">*</span> <span class="text-gray-400 font-normal">(Pilih satu atau lebih desa binaan)</span>
+                    </label>
+                    <div id="formPPLDesaContainer" class="border border-gray-300 rounded-xl p-3 max-h-40 overflow-y-auto bg-gray-50 flex flex-col gap-2.5 shadow-inner">
+                        <span class="text-xs text-gray-400 italic">Memuat daftar desa...</span>
+                    </div>
+                </div>
+
+                <div class="mb-5">
+                    <label class="block text-xs font-bold text-gray-600 mb-1">
+                        Status Aktif <span class="text-red-500">*</span>
+                    </label>
+                    <select id="formPPLStatus" required
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 transition cursor-pointer">
+                        <option value="Aktif">Aktif</option>
+                        <option value="Nonaktif">Nonaktif</option>
+                    </select>
+                </div>
+
+                <div class="flex gap-3">
+                    <button type="button" onclick="tutupModalPPL()"
+                        class="flex-1 border border-gray-300 text-gray-600 font-bold py-2.5 rounded-xl hover:bg-gray-50 transition">
+                        Batal
+                    </button>
+                    <button type="submit" id="btnSimpanPPL"
+                        class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded-xl flex justify-center items-center gap-2 transition">
+                        <i id="ikonSimpanPPL" class="fa-solid fa-floppy-disk"></i>
+                        <span id="teksSimpanPPL">Simpan</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- ===== AKHIR MODAL TAMBAH / EDIT PPL ===== -->
+
+<!-- ===== MODAL RESET PASSWORD PPL ===== -->
+<div id="modalResetPasswordPPL" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] hidden items-center justify-center animate__animated animate__fadeIn">
+    <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden mx-4">
+        <div class="bg-green-700 px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <i class="fa-solid fa-key text-white text-xl"></i>
+                <h3 class="text-white font-bold text-lg">Reset Password Penyuluh</h3>
+            </div>
+            <button onclick="tutupModalResetPassword()"
+                class="w-8 h-8 bg-green-600 hover:bg-green-500 rounded-full flex justify-center items-center text-white transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="p-6">
+            <form id="formResetPasswordPPL" onsubmit="submitResetPasswordPPL(event)">
+                <input type="hidden" id="resetPPLId">
+                <input type="hidden" id="resetPPLNip">
+
+                <div class="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 mb-4">
+                    <p class="text-xs text-yellow-800">
+                        Anda akan mereset password untuk akun:
+                    </p>
+                    <p class="font-bold text-gray-800 text-sm mt-1" id="resetPPLNamaDisplay">
+                        Nama Penyuluh
+                    </p>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-gray-600 mb-1">
+                        Password Baru <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <input type="password" id="resetPPLPasswordBaru" required placeholder="Minimal 4 karakter"
+                            class="w-full pl-4 pr-10 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 transition">
+                        <button type="button" onclick="togglePasswordVisibility('resetPPLPasswordBaru', this)"
+                            class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-green-600 focus:outline-none transition active:scale-95">
+                            <i class="fa-solid fa-eye text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mb-5">
+                    <label class="block text-xs font-bold text-gray-600 mb-1">
+                        Konfirmasi Password Baru <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <input type="password" id="resetPPLPasswordKonfirmasi" required placeholder="Ulangi password baru"
+                            class="w-full pl-4 pr-10 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 transition">
+                        <button type="button" onclick="togglePasswordVisibility('resetPPLPasswordKonfirmasi', this)"
+                            class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-green-600 focus:outline-none transition active:scale-95">
+                            <i class="fa-solid fa-eye text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex gap-3">
+                    <button type="button" onclick="tutupModalResetPassword()"
+                        class="flex-1 border border-gray-300 text-gray-600 font-bold py-2.5 rounded-xl hover:bg-gray-50 transition">
+                        Batal
+                    </button>
+                    <button type="submit" id="btnResetPasswordPPL"
+                        class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded-xl flex justify-center items-center gap-2 transition">
+                        <i id="ikonResetPasswordPPL" class="fa-solid fa-floppy-disk"></i>
+                        <span id="teksResetPasswordPPL">Simpan</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- ===== AKHIR MODAL RESET PASSWORD PPL ===== -->

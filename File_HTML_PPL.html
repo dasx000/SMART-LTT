@@ -1,6 +1,8 @@
 <div class="bg-gray-50 flex justify-center font-sans text-gray-800 h-screen">
 
-    <div class="w-full max-w-md bg-white h-full relative overflow-y-auto pb-20 shadow-2xl">
+    <div class="w-full max-w-md bg-white h-full relative flex flex-col shadow-2xl">
+
+        <div class="flex-1 overflow-y-auto">
 
         <div id="headerPPL" class="bg-green-600 px-5 pt-8 pb-12 rounded-b-[2rem] shadow-md mb-[-2rem]">
             <div class="flex justify-between items-center mb-4">
@@ -10,11 +12,15 @@
                     <p id="wilayahPenyuluh" class="text-green-200 text-xs mt-1">WKPP: Memuat...</p>
                 </div>
                 <div class="flex gap-2">
-                    <div class="w-12 h-12 bg-white rounded-full flex justify-center items-center shadow-lg cursor-pointer transition active:scale-95"
+                    <div id="btnJembatanBPP" class="hidden w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex justify-center items-center shadow-lg cursor-pointer transition active:scale-95 hover:scale-105"
+                        onclick="switchKeBPP()" title="Masuk Mode Koordinator BPP">
+                        <i class="fa-solid fa-shuffle text-white text-base"></i>
+                    </div>
+                    <div class="w-12 h-12 bg-white rounded-full flex justify-center items-center shadow-lg cursor-pointer transition active:scale-95 hover:scale-105"
                         onclick="bukaProfil()" title="Edit Profil Saya">
                         <i class="fa-solid fa-user-gear text-green-600"></i>
                     </div>
-                    <div class="w-12 h-12 bg-white rounded-full flex justify-center items-center shadow-lg cursor-pointer transition active:scale-95"
+                    <div class="w-12 h-12 bg-white rounded-full flex justify-center items-center shadow-lg cursor-pointer transition active:scale-95 hover:scale-105"
                         onclick="logout()">
                         <i class="fa-solid fa-right-from-bracket text-red-500"></i>
                     </div>
@@ -94,8 +100,9 @@
             </div>
         </div>
 
+        </div><!-- end scrollable area -->
 
-        <div id="formArea" class="hidden px-5 mt-6 absolute top-0 pt-6 bg-white w-full h-full z-20">
+        <div id="formArea" class="hidden px-5 mt-6 absolute top-0 pt-6 bg-white w-full h-full z-20 overflow-y-auto pb-20">
 
             <div class="flex items-center mb-6 border-b pb-3">
                 <button onclick="tutupForm()"
@@ -202,20 +209,19 @@
         </div>
 
         <!-- ===== PANEL PROFIL PPL ===== -->
-        <div id="profilArea" class="hidden px-5 pt-6 absolute top-0 bg-white w-full h-full z-30 overflow-y-auto pb-10">
+        <div id="profilArea" class="hidden px-5 pt-6 absolute top-0 bg-white w-full h-full z-30 overflow-y-auto pb-20">
 
             <div class="flex items-center mb-6 border-b pb-3">
                 <button onclick="tutupProfil()"
                     class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex justify-center items-center text-gray-600 mr-3 transition active:scale-95">
                     <i class="fa-solid fa-arrow-left"></i>
                 </button>
-                <h2 class="text-lg font-bold text-green-700 uppercase">Ubah Profil & PIN</h2>
+                <h2 class="text-lg font-bold text-green-700 uppercase">Ubah Profil & Password</h2>
             </div>
 
             <form id="formProfil" onsubmit="submitProfil(event)">
                 <input type="hidden" id="profilId">
 
-                <!-- Informasi Read-Only -->
                 <div class="bg-gray-50 rounded-2xl p-4 mb-5 border border-gray-200">
                     <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">
                         Informasi Akun (Hanya Dapat Diubah oleh Admin Kabupaten)
@@ -237,7 +243,6 @@
                     </div>
                 </div>
 
-                <!-- Nama Lengkap (Editable) -->
                 <div class="mb-5">
                     <label class="block text-xs font-bold text-gray-600 mb-1">
                         Nama Lengkap <span class="text-red-500">*</span>
@@ -246,29 +251,46 @@
                         class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 transition">
                 </div>
 
-                <!-- Section Ubah PIN -->
                 <div class="bg-yellow-50 rounded-2xl p-4 mb-5 border border-yellow-200">
                     <p class="text-[10px] font-bold text-yellow-700 uppercase tracking-widest mb-3">
                         <i class="fa-solid fa-shield-halved mr-1"></i> Keamanan Akun
                     </p>
                     <div class="mb-3">
                         <label class="block text-xs font-bold text-gray-600 mb-1">
-                            PIN Aktif Saat Ini <span class="text-red-500">*</span>
+                            Password Aktif Saat Ini <span class="text-red-500">*</span>
                         </label>
-                        <input type="password" id="profilPinLama" required placeholder="Wajib diisi untuk konfirmasi identitas"
-                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 transition">
+                        <div class="relative">
+                            <input type="password" id="profilPasswordLama" required placeholder="Wajib diisi untuk konfirmasi identitas"
+                                class="w-full pl-4 pr-10 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 transition">
+                            <button type="button" onclick="togglePasswordVisibility('profilPasswordLama', this)"
+                                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-yellow-600 focus:outline-none transition active:scale-95">
+                                <i class="fa-solid fa-eye text-sm"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label class="block text-xs font-bold text-gray-600 mb-1">
-                            PIN Baru <span class="text-gray-400 font-normal">(opsional — min. 4 karakter)</span>
+                            Password Baru <span class="text-gray-400 font-normal">(opsional — min. 4 karakter)</span>
                         </label>
-                        <input type="password" id="profilPinBaru" placeholder="Kosongkan jika tidak ingin ganti PIN"
-                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 transition">
+                        <div class="relative">
+                            <input type="password" id="profilPasswordBaru" placeholder="Kosongkan jika tidak ingin ganti Password"
+                                class="w-full pl-4 pr-10 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 transition">
+                            <button type="button" onclick="togglePasswordVisibility('profilPasswordBaru', this)"
+                                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-yellow-600 focus:outline-none transition active:scale-95">
+                                <i class="fa-solid fa-eye text-sm"></i>
+                            </button>
+                        </div>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-gray-600 mb-1">Konfirmasi PIN Baru</label>
-                        <input type="password" id="profilPinKonfirmasi" placeholder="Ulangi PIN baru di sini"
-                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 transition">
+                        <label class="block text-xs font-bold text-gray-600 mb-1">Konfirmasi Password Baru</label>
+                        <div class="relative">
+                            <input type="password" id="profilPasswordKonfirmasi" placeholder="Ulangi Password baru di sini"
+                                class="w-full pl-4 pr-10 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 transition">
+                            <button type="button" onclick="togglePasswordVisibility('profilPasswordKonfirmasi', this)"
+                                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-yellow-600 focus:outline-none transition active:scale-95">
+                                <i class="fa-solid fa-eye text-sm"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -280,6 +302,38 @@
             </form>
         </div>
         <!-- ===== AKHIR PANEL PROFIL PPL ===== -->
+
+        <!-- ===== BOTTOM NAVIGATION PPL ===== -->
+        <nav id="bottomNavPPL" class="flex-shrink-0 bg-white border-t border-gray-100 shadow-[0_-4px_10px_rgba(0,0,0,0.06)] z-40">
+            <div class="grid grid-cols-5 h-16">
+                <button id="navHome" onclick="tampilkanHomePPL()"
+                    class="flex flex-col items-center justify-center gap-1 text-green-600 transition active:scale-95">
+                    <i class="fa-solid fa-house text-lg"></i>
+                    <span class="text-[10px] font-bold">Home</span>
+                </button>
+                <button id="navPadi" onclick="bukaForm('Padi')"
+                    class="flex flex-col items-center justify-center gap-1 text-gray-400 transition active:scale-95">
+                    <i class="fa-solid fa-wheat-awn text-lg"></i>
+                    <span class="text-[10px] font-bold">Padi</span>
+                </button>
+                <button id="navJagung" onclick="bukaForm('Jagung')"
+                    class="flex flex-col items-center justify-center gap-1 text-gray-400 transition active:scale-95">
+                    <i class="fa-solid fa-leaf text-lg"></i>
+                    <span class="text-[10px] font-bold">Jagung</span>
+                </button>
+                <button id="navUbiKayu" onclick="bukaForm('Ubi Kayu')"
+                    class="flex flex-col items-center justify-center gap-1 text-gray-400 transition active:scale-95">
+                    <i class="fa-solid fa-carrot text-lg"></i>
+                    <span class="text-[10px] font-bold">Ubi</span>
+                </button>
+                <button id="navAkun" onclick="bukaProfil()"
+                    class="flex flex-col items-center justify-center gap-1 text-gray-400 transition active:scale-95">
+                    <i class="fa-solid fa-circle-user text-lg"></i>
+                    <span class="text-[10px] font-bold">Akun</span>
+                </button>
+            </div>
+        </nav>
+        <!-- ===== AKHIR BOTTOM NAVIGATION PPL ===== -->
 
     </div>
 </div>

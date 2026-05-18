@@ -4,14 +4,15 @@ const SPREADSHEET_ID = '1woRRTrpDvxeZfIvNCpQL77ZaIGeabTiKm8IVhYxaDDk';
 // FUNGSI AUTHENTICATION
 // =========================================================================
 
-function prosesLogin(nip, pin) {
+function prosesLogin(nip, password) {
   var cache = CacheService.getScriptCache();
   var cacheKey = 'USER_' + nip;
   var cachedData = cache.get(cacheKey);
 
   if (cachedData) {
     var cached = JSON.parse(cachedData);
-    if (cached.pin.toString() === pin.toString()) {
+    var cachedPassword = (cached.password !== undefined ? cached.password : (cached.pin !== undefined ? cached.pin : "")).toString();
+    if (cachedPassword === password.toString()) {
       return {
         status: 'success',
         data: cached.userData,
@@ -21,7 +22,7 @@ function prosesLogin(nip, pin) {
     cache.remove(cacheKey);
     return {
       status: 'error',
-      message: 'PIN Salah (Sistem telah menyegarkan data, silakan coba lagi)',
+      message: 'Password Salah (Sistem telah menyegarkan data, silakan coba lagi)',
     };
   }
 
@@ -31,7 +32,7 @@ function prosesLogin(nip, pin) {
 
   for (var i = 1; i < data.length; i++) {
     if (data[i][2].toString() === nip.toString()) {
-      if (data[i][3].toString() === pin.toString() && data[i][7] === 'Aktif') {
+      if (data[i][3].toString() === password.toString() && data[i][7] === 'Aktif') {
         var userData = {
           id: data[i][0],
           nama: data[i][1],
@@ -40,7 +41,7 @@ function prosesLogin(nip, pin) {
           kecamatan: data[i][5],
           desa: data[i][6],
         };
-        var cacheEntry = { pin: data[i][3].toString(), userData: userData };
+        var cacheEntry = { password: data[i][3].toString(), userData: userData };
         cache.put(cacheKey, JSON.stringify(cacheEntry), 21600);
         return {
           status: 'success',
@@ -968,7 +969,7 @@ function inisialisasiDatabase_() {
   // Sheet: Data_User
   if (!ss.getSheetByName('Data_User')) {
     var su = ss.insertSheet('Data_User');
-    su.appendRow(['ID_User', 'Nama_Penyuluh', 'NIP', 'PIN', 'Role', 'Kecamatan', 'Desa_Binaan', 'Status_Aktif']);
+    su.appendRow(['ID_User', 'Nama_Penyuluh', 'NIP', 'Password', 'Role', 'Kecamatan', 'Desa_Binaan', 'Status_Aktif']);
     su.getRange('A1:H1').setFontWeight('bold').setBackground('#d9ead3');
     su.setFrozenRows(1);
   }
@@ -1053,7 +1054,7 @@ function getDaftarUser() {
       id: data[i][0],
       nama: data[i][1],
       nip: data[i][2].toString(),
-      pin: data[i][3].toString(),
+      password: data[i][3].toString(),
       role: data[i][4],
       kecamatan: data[i][5],
       desa: data[i][6],
@@ -1084,7 +1085,7 @@ function simpanDataUser(u) {
         sheet
           .getRange(i + 1, 1, 1, 8)
           .setValues([
-            [u.id, u.nama, u.nip, u.pin, u.role, u.kecamatan, u.desa, u.status],
+            [u.id, u.nama, u.nip, u.password, u.role, u.kecamatan, u.desa, u.status],
           ]);
         // Clear cache
         CacheService.getScriptCache().remove('USER_' + u.nip);
@@ -1098,7 +1099,7 @@ function simpanDataUser(u) {
       newId,
       u.nama,
       u.nip,
-      u.pin,
+      u.password,
       u.role,
       u.kecamatan,
       u.desa,
@@ -1127,7 +1128,7 @@ function hapusDataUser(id, nip) {
 // FUNGSI UPDATE PROFIL MANDIRI (PPL & BPP)
 // =========================================================================
 
-function updateProfilUser(id, namaBaru, pinLama, pinBaru) {
+function updateProfilUser(id, namaBaru, passwordLama, passwordBaru) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
@@ -1137,28 +1138,24 @@ function updateProfilUser(id, namaBaru, pinLama, pinBaru) {
     for (var i = 1; i < data.length; i++) {
       if (data[i][0].toString() !== id.toString()) continue;
 
-      var pinDiDB = data[i][3].toString();
+      var passwordDiDB = data[i][3].toString();
       var nip     = data[i][2].toString();
 
-      // Validasi PIN Lama
-      if (pinLama.toString() !== pinDiDB) {
-        return { status: 'error', message: 'PIN Aktif yang Anda masukkan salah.' };
+      if (passwordLama.toString() !== passwordDiDB) {
+        return { status: 'error', message: 'Password Aktif yang Anda masukkan salah.' };
       }
 
-      // Tentukan PIN yang akan disimpan (PIN lama jika kolom PIN baru kosong)
-      var pinFinal = pinDiDB;
-      if (pinBaru && pinBaru.toString().trim() !== '') {
-        if (pinBaru.toString().trim().length < 4) {
-          return { status: 'error', message: 'PIN Baru minimal harus 4 karakter.' };
+      var passwordFinal = passwordDiDB;
+      if (passwordBaru && passwordBaru.toString().trim() !== '') {
+        if (passwordBaru.toString().trim().length < 4) {
+          return { status: 'error', message: 'Password Baru minimal harus 4 karakter.' };
         }
-        pinFinal = pinBaru.toString().trim();
+        passwordFinal = passwordBaru.toString().trim();
       }
 
-      // Tulis perubahan ke sheet
-      sheet.getRange(i + 1, 2).setValue(namaBaru.trim()); // Kolom B: Nama
-      sheet.getRange(i + 1, 4).setValue(pinFinal);         // Kolom D: PIN
+      sheet.getRange(i + 1, 2).setValue(namaBaru.trim());
+      sheet.getRange(i + 1, 4).setValue(passwordFinal);
 
-      // Hapus cache lama & tulis cache baru agar sesi langsung pakai data terbaru
       var cache    = CacheService.getScriptCache();
       var cacheKey = 'USER_' + nip;
       cache.remove(cacheKey);
@@ -1166,7 +1163,7 @@ function updateProfilUser(id, namaBaru, pinLama, pinBaru) {
         id: data[i][0], nama: namaBaru.trim(), nip: nip,
         role: data[i][4], kecamatan: data[i][5], desa: data[i][6]
       };
-      cache.put(cacheKey, JSON.stringify({ pin: pinFinal, userData: updatedUserData }), 21600);
+      cache.put(cacheKey, JSON.stringify({ password: passwordFinal, userData: updatedUserData }), 21600);
 
       return { status: 'success', message: 'Profil berhasil diperbarui!', data: updatedUserData };
     }
@@ -1176,7 +1173,7 @@ function updateProfilUser(id, namaBaru, pinLama, pinBaru) {
   } catch (e) {
     return { status: 'error', message: 'Kesalahan sistem: ' + e.message };
   } finally {
-    lock.releaseLock(); // Selalu buka lock, apapun hasilnya
+    lock.releaseLock();
   }
 }
 
@@ -1710,4 +1707,136 @@ function getRekapPalawijaLengkap(tglMulai, tglAkhir, komoditas) {
     }
   };
 }
+
+// =========================================================================
+// FUNGSI MANAJEMEN AKUN PENYULUH OLEH ADMIN BPP (BACKEND BARU)
+// =========================================================================
+
+function getDaftarPPLbyKecamatan(kecamatan, nipPemanggil) {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = ss.getSheetByName('Data_User');
+  if (!sheet) return [];
+  var data = sheet.getDataRange().getValues();
+  var pplList = [];
+  var nipCall = (nipPemanggil || "").toString().trim();
+  for (var i = 1; i < data.length; i++) {
+    var role = data[i][4];
+    var kec = data[i][5];
+    var nipRow = data[i][2].toString().trim();
+    if ((role === 'Penyuluh' || role === 'Admin_BPP') && kec === kecamatan) {
+      if (nipRow === nipCall) continue; // Jangan masukkan diri sendiri
+      pplList.push({
+        id: data[i][0],
+        nama: data[i][1],
+        nip: data[i][2].toString(),
+        role: data[i][4],
+        kecamatan: data[i][5],
+        desa: data[i][6],
+        status: data[i][7]
+      });
+    }
+  }
+  return pplList;
+}
+
+function resetPasswordPPL(idTarget, passwordBaru, idAdmin) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var sheet = ss.getSheetByName('Data_User');
+    var data = sheet.getDataRange().getValues();
+    
+    if (!passwordBaru || passwordBaru.toString().trim().length < 4) {
+      return { status: 'error', message: 'Password Baru minimal 4 karakter.' };
+    }
+    
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][0] == idTarget) {
+        var role = data[i][4];
+        var nip = data[i][2].toString();
+        if (role !== 'Penyuluh' && role !== 'Admin_BPP') {
+          return { status: 'error', message: 'Hanya password Penyuluh yang bisa direset.' };
+        }
+        
+        sheet.getRange(i + 1, 4).setValue(passwordBaru);
+        
+        // Hapus cache
+        CacheService.getScriptCache().remove('USER_' + nip);
+        return { status: 'success', message: 'Password Penyuluh berhasil direset.' };
+      }
+    }
+    return { status: 'error', message: 'User tidak ditemukan.' };
+  } catch (e) {
+    return { status: 'error', message: e.toString() };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function updateDataPPL(u) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var sheet = ss.getSheetByName('Data_User');
+    var data = sheet.getDataRange().getValues();
+    
+    if (!u.id) {
+      return { status: 'error', message: 'ID User tidak valid' };
+    }
+    
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][0] == u.id) {
+        var role = data[i][4];
+        var nip = data[i][2].toString();
+        
+        if (role !== 'Penyuluh' && role !== 'Admin_BPP') {
+          return { status: 'error', message: 'Hanya data Penyuluh yang dapat diubah.' };
+        }
+        
+        // Update Nama_Penyuluh (kolom 2), Desa_Binaan (kolom 7), Status_Aktif (kolom 8)
+        sheet.getRange(i + 1, 2).setValue(u.nama);
+        sheet.getRange(i + 1, 7).setValue(u.desa);
+        sheet.getRange(i + 1, 8).setValue(u.status);
+        
+        // Clear cache
+        CacheService.getScriptCache().remove('USER_' + nip);
+        return { status: 'success', message: 'Data Penyuluh berhasil diperbarui.' };
+      }
+    }
+    return { status: 'error', message: 'Penyuluh tidak ditemukan.' };
+  } catch (e) {
+    return { status: 'error', message: e.toString() };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Mengambil daftar desa berdasarkan kecamatan dari sheet Data_Geografi
+ */
+function getDaftarDesabyKecamatan(kecamatan) {
+  try {
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var sheet = ss.getSheetByName('Data_Geografi');
+    if (!sheet) return [];
+    var data = sheet.getDataRange().getValues();
+    var desaList = [];
+    var targetKec = (kecamatan || "").toString().toLowerCase().trim();
+    
+    for (var i = 1; i < data.length; i++) {
+      var kecName = (data[i][1] || "").toString().toLowerCase().trim();
+      if (kecName === targetKec && data[i][3]) {
+        desaList.push(data[i][3].toString().trim());
+      }
+    }
+    // Hapus duplikat & urutkan alfabetis
+    return Array.from(new Set(desaList)).sort();
+  } catch (e) {
+    console.error("Error getDaftarDesabyKecamatan: " + e.toString());
+    return [];
+  }
+}
+
 
