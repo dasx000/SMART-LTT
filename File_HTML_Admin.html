@@ -202,17 +202,20 @@
                                 <h3 class="text-sm font-bold text-gray-800">Rekapitulasi Luas Tambah Tanam (LTT)</h3>
                                 <p class="text-xs text-gray-400 mt-0.5" id="labelBulanRekapLTT">Periode: -</p>
                             </div>
-                            <div class="flex items-center bg-gray-50 border border-gray-200 rounded-lg p-1 shadow-sm">
+                            <div class="flex items-center gap-2 bg-gray-50 p-1.5 rounded-lg border border-gray-200 shadow-sm">
+                                <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wide hidden sm:block ml-1">Tampilkan Data:</span>
                                 <select id="modeFilterTabelLTT" onchange="toggleModeTabelLTT()" 
-                                    class="text-xs font-bold text-green-700 bg-white rounded px-2 py-1 outline-none cursor-pointer border border-gray-100 shadow-sm">
-                                    <option value="bulanan">Bulanan (Dari Dashboard)</option>
+                                    class="text-xs font-bold text-white bg-green-600 hover:bg-green-700 rounded-md px-3 py-1.5 outline-none cursor-pointer shadow focus:ring-2 focus:ring-green-300 transition-colors">
+                                    <option value="bulanan">Bulan Ini (Rekap Total)</option>
                                     <option value="harian">Harian (Pilih Tanggal)</option>
                                 </select>
-                                <div class="w-[1px] h-4 bg-gray-300 mx-2"></div>
-                                <i class="fa-solid fa-calendar-days text-gray-400 text-xs"></i>
-                                <input type="date" id="filterTanggalTabelLTT" onchange="muatTabelLTTSaja()"
-                                    class="hidden text-xs font-bold text-gray-700 bg-transparent px-2 py-1 outline-none cursor-pointer border-0">
-                                <div id="labelBulanTabelLTT" class="text-xs font-bold text-gray-600 px-2 py-1">Mengikuti Filter Dashboard Atas</div>
+                                <div class="w-[1px] h-5 bg-gray-300 mx-1"></div>
+                                <div class="flex items-center gap-2 pr-1">
+                                    <i class="fa-solid fa-calendar-days text-gray-400 text-sm"></i>
+                                    <input type="date" id="filterTanggalTabelLTT" onchange="muatTabelLTTSaja()"
+                                        class="hidden text-sm font-bold text-gray-700 bg-white border border-gray-300 rounded-md px-2 py-1 outline-none focus:border-green-500 cursor-pointer shadow-sm hover:bg-gray-50">
+                                    <span id="labelBulanTabelLTT" class="text-xs font-bold text-gray-500 italic">Mengikuti Dashboard Atas</span>
+                                </div>
                             </div>
                         </div>
                         <div class="w-full overflow-x-auto border border-gray-200 rounded-lg">
