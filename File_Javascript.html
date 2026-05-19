@@ -1293,16 +1293,16 @@
             <tr class="hover:bg-blue-50/30 transition duration-150 border-b border-gray-100 text-xs">
                 <td class="p-3 border-r border-gray-200 text-center text-gray-500 font-medium">${idx + 1}</td>
                 <td class="p-3 border-r border-gray-200 font-semibold text-gray-800">${kec}</td>
-                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums bg-green-50/10">${psTanam.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums bg-green-50/10">${psPanen.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums">${pgTanam.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums">${pgPanen.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums bg-yellow-50/10">${jgTanam.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums bg-yellow-50/10">${jgPanen.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums">${kdTanam.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums">${kdPanen.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums bg-orange-50/10">${ukTanam.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                <td class="p-2 text-right font-semibold text-gray-700 tabular-nums bg-orange-50/10">${ukPanen.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums bg-green-50/10">${psTanam.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums bg-green-50/10">${psPanen.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums">${pgTanam.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums">${pgPanen.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums bg-yellow-50/10">${jgTanam.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums bg-yellow-50/10">${jgPanen.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums">${kdTanam.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums">${kdPanen.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums bg-orange-50/10">${ukTanam.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                <td class="p-2 text-right font-semibold text-gray-700 tabular-nums bg-orange-50/10">${ukPanen.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
             </tr>`;
         });
 
@@ -1312,16 +1312,16 @@
             tfoot.innerHTML = `
             <tr class="bg-yellow-50 text-yellow-900 font-bold border-t border-gray-300">
                 <td colspan="2" class="p-3 border-r border-gray-200 text-center uppercase tracking-wider">Jumlah</td>
-                <td class="p-2 border-r border-gray-200 text-right tabular-nums">${total.padiReguler.tanam.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                <td class="p-2 border-r border-gray-200 text-right tabular-nums">${total.padiReguler.panen.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                <td class="p-2 border-r border-gray-200 text-right tabular-nums">${total.padiGogo.tanam.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                <td class="p-2 border-r border-gray-200 text-right tabular-nums">${total.padiGogo.panen.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                <td class="p-2 border-r border-gray-200 text-right tabular-nums">${total.jagung.tanam.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                <td class="p-2 border-r border-gray-200 text-right tabular-nums">${total.jagung.panen.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                <td class="p-2 border-r border-gray-200 text-right tabular-nums">${total.kedelai.tanam.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                <td class="p-2 border-r border-gray-200 text-right tabular-nums">${total.kedelai.panen.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                <td class="p-2 border-r border-gray-200 text-right tabular-nums">${total.ubiKayu.tanam.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                <td class="p-2 text-right tabular-nums">${total.ubiKayu.panen.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right tabular-nums">${total.padiReguler.tanam.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right tabular-nums">${total.padiReguler.panen.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right tabular-nums">${total.padiGogo.tanam.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right tabular-nums">${total.padiGogo.panen.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right tabular-nums">${total.jagung.tanam.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right tabular-nums">${total.jagung.panen.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right tabular-nums">${total.kedelai.tanam.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right tabular-nums">${total.kedelai.panen.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right tabular-nums">${total.ubiKayu.tanam.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                <td class="p-2 text-right tabular-nums">${total.ubiKayu.panen.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
             </tr>`;
         }
     }
