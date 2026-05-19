@@ -1253,6 +1253,12 @@
         };
 
         let rowsHtml = '';
+        const getCellClass = (val, bgClass = '', isLast = false) => {
+            const weightClass = val > 0 ? 'font-bold text-gray-900' : 'font-normal text-gray-400';
+            const borderClass = isLast ? '' : 'border-r border-gray-200';
+            return `p-2 ${borderClass} text-right tabular-nums ${weightClass} ${bgClass}`;
+        };
+
         semuaKec.forEach((kec, idx) => {
             const r = dataTarget.realisasi[kec] || {
                 LTTReguler: { tanam: 0, panen: 0 },
@@ -1289,20 +1295,22 @@
             total.ubiKayu.tanam   += ukTanam;
             total.ubiKayu.panen   += ukPanen;
 
+            const rowBg = idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50';
+
             rowsHtml += `
-            <tr class="hover:bg-blue-50/30 transition duration-150 border-b border-gray-100 text-xs">
+            <tr class="${rowBg} hover:bg-blue-50/30 transition duration-150 border-b border-gray-100 text-xs">
                 <td class="p-3 border-r border-gray-200 text-center text-gray-500 font-medium">${idx + 1}</td>
                 <td class="p-3 border-r border-gray-200 font-semibold text-gray-800">${kec}</td>
-                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums bg-green-50/10">${psTanam.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
-                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums bg-green-50/10">${psPanen.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
-                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums">${pgTanam.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
-                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums">${pgPanen.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
-                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums bg-yellow-50/10">${jgTanam.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
-                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums bg-yellow-50/10">${jgPanen.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
-                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums">${kdTanam.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
-                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums">${kdPanen.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
-                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums bg-orange-50/10">${ukTanam.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
-                <td class="p-2 text-right font-semibold text-gray-700 tabular-nums bg-orange-50/10">${ukPanen.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                <td class="${getCellClass(psTanam, 'bg-green-50/10')}">${psTanam.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                <td class="${getCellClass(psPanen, 'bg-green-50/10')}">${psPanen.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                <td class="${getCellClass(pgTanam, '')}">${pgTanam.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                <td class="${getCellClass(pgPanen, '')}">${pgPanen.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                <td class="${getCellClass(jgTanam, 'bg-yellow-50/10')}">${jgTanam.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                <td class="${getCellClass(jgPanen, 'bg-yellow-50/10')}">${jgPanen.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                <td class="${getCellClass(kdTanam, '')}">${kdTanam.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                <td class="${getCellClass(kdPanen, '')}">${kdPanen.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                <td class="${getCellClass(ukTanam, 'bg-orange-50/10')}">${ukTanam.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                <td class="${getCellClass(ukPanen, 'bg-orange-50/10', true)}">${ukPanen.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
             </tr>`;
         });
 
