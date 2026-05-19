@@ -99,19 +99,11 @@
                             REKAP DATA -
                         </span>
                     </div>
-                    <div id="wrapperFilterBulan" class="flex items-center bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
-                        <select id="modeFilterDashboard" onchange="toggleModeDashboard()" 
-                            class="text-xs font-bold text-green-700 bg-green-50 rounded px-2 py-1 outline-none cursor-pointer border-0">
-                            <option value="bulanan">Bulanan</option>
-                            <option value="harian">Harian</option>
-                        </select>
-                        <div class="w-[1px] h-4 bg-gray-200 mx-2"></div>
-                        <i class="fa-solid fa-calendar-days text-gray-400 text-xs"></i>
+                    <div id="wrapperFilterBulan" class="flex items-center gap-2">
+                        <i class="fa-solid fa-calendar-days text-green-600 text-sm"></i>
                         <select id="filterBulanDashboard" onchange="muatDashboard()"
-                            class="text-xs font-bold text-gray-700 bg-transparent px-2 py-1 outline-none cursor-pointer border-0">
+                            class="text-xs font-bold text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-1.5 outline-none focus:border-green-500 cursor-pointer shadow-sm">
                         </select>
-                        <input type="date" id="filterTanggalDashboard" onchange="muatDashboard()"
-                            class="hidden text-xs font-bold text-gray-700 bg-transparent px-2 py-1 outline-none cursor-pointer border-0">
                     </div>
                 </div>
 
@@ -207,8 +199,20 @@
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
                         <div class="flex flex-wrap items-center justify-between gap-4 mb-5">
                             <div>
-                                <h3 class="text-sm font-bold text-gray-800">Rekapitulasi Luas Tambah Tanam (LTT) Bulanan</h3>
+                                <h3 class="text-sm font-bold text-gray-800">Rekapitulasi Luas Tambah Tanam (LTT)</h3>
                                 <p class="text-xs text-gray-400 mt-0.5" id="labelBulanRekapLTT">Periode: -</p>
+                            </div>
+                            <div class="flex items-center bg-gray-50 border border-gray-200 rounded-lg p-1 shadow-sm">
+                                <select id="modeFilterTabelLTT" onchange="toggleModeTabelLTT()" 
+                                    class="text-xs font-bold text-green-700 bg-white rounded px-2 py-1 outline-none cursor-pointer border border-gray-100 shadow-sm">
+                                    <option value="bulanan">Bulanan (Dari Dashboard)</option>
+                                    <option value="harian">Harian (Pilih Tanggal)</option>
+                                </select>
+                                <div class="w-[1px] h-4 bg-gray-300 mx-2"></div>
+                                <i class="fa-solid fa-calendar-days text-gray-400 text-xs"></i>
+                                <input type="date" id="filterTanggalTabelLTT" onchange="muatTabelLTTSaja()"
+                                    class="hidden text-xs font-bold text-gray-700 bg-transparent px-2 py-1 outline-none cursor-pointer border-0">
+                                <div id="labelBulanTabelLTT" class="text-xs font-bold text-gray-600 px-2 py-1">Mengikuti Filter Dashboard Atas</div>
                             </div>
                         </div>
                         <div class="w-full overflow-x-auto border border-gray-200 rounded-lg">
