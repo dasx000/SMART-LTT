@@ -99,11 +99,19 @@
                             REKAP DATA -
                         </span>
                     </div>
-                    <div id="wrapperFilterBulan" class="flex items-center gap-2">
-                        <i class="fa-solid fa-calendar-days text-green-600 text-sm"></i>
-                        <select id="filterBulanDashboard" onchange="muatDashboard()"
-                            class="text-xs font-bold text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-1.5 outline-none focus:border-green-500 cursor-pointer shadow-sm">
+                    <div id="wrapperFilterBulan" class="flex items-center bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
+                        <select id="modeFilterDashboard" onchange="toggleModeDashboard()" 
+                            class="text-xs font-bold text-green-700 bg-green-50 rounded px-2 py-1 outline-none cursor-pointer border-0">
+                            <option value="bulanan">Bulanan</option>
+                            <option value="harian">Harian</option>
                         </select>
+                        <div class="w-[1px] h-4 bg-gray-200 mx-2"></div>
+                        <i class="fa-solid fa-calendar-days text-gray-400 text-xs"></i>
+                        <select id="filterBulanDashboard" onchange="muatDashboard()"
+                            class="text-xs font-bold text-gray-700 bg-transparent px-2 py-1 outline-none cursor-pointer border-0">
+                        </select>
+                        <input type="date" id="filterTanggalDashboard" onchange="muatDashboard()"
+                            class="hidden text-xs font-bold text-gray-700 bg-transparent px-2 py-1 outline-none cursor-pointer border-0">
                     </div>
                 </div>
 

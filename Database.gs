@@ -457,11 +457,12 @@ function getAllLTTRows_(bulan0, tahun) {
 
 function getDashboardKab(params) {
   var now = new Date();
+  var filterTanggal = params && params.tanggal ? params.tanggal : null;
   var bulanFilter = params && params.bulan ? params.bulan - 1 : now.getMonth();
   var tahunFilter = params && params.tahun ? params.tahun : now.getFullYear();
 
   var cache = CacheService.getScriptCache();
-  var cacheKey = 'DASH_KAB_' + tahunFilter + '_' + bulanFilter;
+  var cacheKey = 'DASH_KAB_' + (filterTanggal ? filterTanggal : tahunFilter + '_' + bulanFilter);
   var cached = cache.get(cacheKey);
   if (cached && !params.forceRefresh) return JSON.parse(cached);
 
@@ -504,9 +505,14 @@ function getDashboardKab(params) {
     for (var i = 1; i < rkData.length; i++) {
       var tglStr = (rkData[i][0] || '').toString();
       if (!tglStr || tglStr.indexOf('-') < 0) continue;
-      var p = tglStr.split('-');
-      if (parseInt(p[1]) - 1 !== bulanFilter || parseInt(p[0]) !== tahunFilter)
-        continue;
+      
+      if (filterTanggal) {
+        if (tglStr !== filterTanggal) continue;
+      } else {
+        var p = tglStr.split('-');
+        if (parseInt(p[1]) - 1 !== bulanFilter || parseInt(p[0]) !== tahunFilter)
+          continue;
+      }
       rkAda = true;
       var kom = (rkData[i][1] || '').toString();
       var jen = (rkData[i][2] || '').toString();
@@ -1519,6 +1525,7 @@ function getTargetKecamatan(params) {
 function getDashboardTarget(params) {
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   var now = new Date();
+  var filterTanggal = params && params.tanggal ? params.tanggal : null;
   var bulan =
     params && params.bulan !== undefined
       ? parseInt(params.bulan)
@@ -1562,7 +1569,12 @@ function getDashboardTarget(params) {
     var rows = shLTT.getDataRange().getValues();
     for (var i = 1; i < rows.length; i++) {
       var tgl = new Date(rows[i][1]);
-      if (tgl.getMonth() !== bulan0 || tgl.getFullYear() !== tahun) continue;
+      if (filterTanggal) {
+        var isoStr = Utilities.formatDate(tgl, 'Asia/Jakarta', 'yyyy-MM-dd');
+        if (isoStr !== filterTanggal) continue;
+      } else {
+        if (tgl.getMonth() !== bulan0 || tgl.getFullYear() !== tahun) continue;
+      }
       var kec = rows[i][3];
       var kom = (rows[i][5] || '').toString();
       var tam = parseFloat(rows[i][11]) || 0;
@@ -1588,8 +1600,13 @@ function getDashboardTarget(params) {
     var prows = shPadi.getDataRange().getValues();
     for (var i = 1; i < prows.length; i++) {
       var tgl = parseTanggalEPusluh_(prows[i][1]);
-      if (!tgl || tgl.getMonth() !== bulan0 || tgl.getFullYear() !== tahun)
-        continue;
+      if (!tgl) continue;
+      if (filterTanggal) {
+        var isoStr = Utilities.formatDate(tgl, 'Asia/Jakarta', 'yyyy-MM-dd');
+        if (isoStr !== filterTanggal) continue;
+      } else {
+        if (tgl.getMonth() !== bulan0 || tgl.getFullYear() !== tahun) continue;
+      }
       var kec = prows[i][3];
       var jen = (prows[i][6] || '').toString();
       var tam = parseFloat(prows[i][11]) || 0;

@@ -460,25 +460,54 @@
         }
     }
 
+    function toggleModeDashboard() {
+        const mode = document.getElementById('modeFilterDashboard').value;
+        const selBulan = document.getElementById('filterBulanDashboard');
+        const selTanggal = document.getElementById('filterTanggalDashboard');
+        
+        if (mode === 'harian') {
+            selBulan.classList.add('hidden');
+            selTanggal.classList.remove('hidden');
+            if (!selTanggal.value) {
+                const today = new Date();
+                const yyyy = today.getFullYear();
+                const mm = String(today.getMonth() + 1).padStart(2, '0');
+                const dd = String(today.getDate()).padStart(2, '0');
+                selTanggal.value = `${yyyy}-${mm}-${dd}`;
+            }
+        } else {
+            selBulan.classList.remove('hidden');
+            selTanggal.classList.add('hidden');
+        }
+        muatDashboard();
+    }
+
     function muatDashboard(forceRefresh = false) {
-        const sel = document.getElementById('filterBulanDashboard');
+        const mode = document.getElementById('modeFilterDashboard') ? document.getElementById('modeFilterDashboard').value : 'bulanan';
+        const selBulan = document.getElementById('filterBulanDashboard');
+        const selTanggal = document.getElementById('filterTanggalDashboard');
         const labelPeriode = document.getElementById('labelPeriodeDashboard');
         const btnIcon = document.getElementById('iconRefreshDash');
         
         const params = {};
         if (forceRefresh) params.forceRefresh = true;
-        if (sel && sel.value) {
-            const parts = sel.value.split('-');
+
+        if (mode === 'harian' && selTanggal && selTanggal.value) {
+            params.tanggal = selTanggal.value;
+            const parts = params.tanggal.split('-');
             params.tahun = parseInt(parts[0]);
             params.bulan = parseInt(parts[1]);
-            
-            // Update Teks Label
-            const text = sel.options[sel.selectedIndex].text;
+            if (labelPeriode) labelPeriode.innerText = `REKAP DATA ${parts[2]}/${parts[1]}/${parts[0]}`;
+        } else if (selBulan && selBulan.value) {
+            const parts = selBulan.value.split('-');
+            params.tahun = parseInt(parts[0]);
+            params.bulan = parseInt(parts[1]);
+            const text = selBulan.options[selBulan.selectedIndex].text;
             if (labelPeriode) labelPeriode.innerText = `REKAP DATA ${text.toUpperCase()}`;
         }
         
         if (btnIcon) btnIcon.classList.add('fa-spin');
-        muatChartTarget();
+        muatChartTarget(params);
         
         google.script.run
             .withSuccessHandler(function (dash) {
@@ -1062,13 +1091,23 @@
         UbiKayu:    'Ubi Kayu',
     };
 
-    function muatChartTarget() {
-        const sel = document.getElementById('filterBulanDashboard');
-        const params = {};
-        if (sel && sel.value) {
-            const parts = sel.value.split('-');
-            params.tahun = parseInt(parts[0]);
-            params.bulan = parseInt(parts[1]);
+    function muatChartTarget(passedParams) {
+        let params = passedParams;
+        if (!params) {
+            const mode = document.getElementById('modeFilterDashboard') ? document.getElementById('modeFilterDashboard').value : 'bulanan';
+            const selBulan = document.getElementById('filterBulanDashboard');
+            const selTanggal = document.getElementById('filterTanggalDashboard');
+            params = {};
+            if (mode === 'harian' && selTanggal && selTanggal.value) {
+                params.tanggal = selTanggal.value;
+                const parts = params.tanggal.split('-');
+                params.tahun = parseInt(parts[0]);
+                params.bulan = parseInt(parts[1]);
+            } else if (selBulan && selBulan.value) {
+                const parts = selBulan.value.split('-');
+                params.tahun = parseInt(parts[0]);
+                params.bulan = parseInt(parts[1]);
+            }
         }
         document.getElementById('loadingTarget').classList.remove('hidden');
         document.getElementById('chartTargetVsRealisasi').classList.add('hidden');
