@@ -195,6 +195,50 @@
                         </div>
                     </div>
 
+                    <!-- Tabel Rekapitulasi Luas Tambah Tanam (LTT) Bulanan -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
+                        <div class="flex flex-wrap items-center justify-between gap-4 mb-5">
+                            <div>
+                                <h3 class="text-sm font-bold text-gray-800">Rekapitulasi Luas Tambah Tanam (LTT) Bulanan</h3>
+                                <p class="text-xs text-gray-400 mt-0.5" id="labelBulanRekapLTT">Periode: -</p>
+                            </div>
+                        </div>
+                        <div class="w-full overflow-x-auto border border-gray-200 rounded-lg">
+                            <table class="w-full text-left border-collapse text-xs whitespace-nowrap">
+                                <thead>
+                                    <tr class="bg-gray-50 text-gray-700 uppercase tracking-wider text-center border-b border-gray-200">
+                                        <th rowspan="2" class="p-3 border-r border-gray-200 font-bold align-middle">No</th>
+                                        <th rowspan="2" class="p-3 border-r border-gray-200 font-bold align-middle text-left">Kecamatan</th>
+                                        <th colspan="2" class="p-2 border-r border-gray-200 font-bold bg-green-50/50">Padi Reguler</th>
+                                        <th colspan="2" class="p-2 border-r border-gray-200 font-bold">Padi Gogo</th>
+                                        <th colspan="2" class="p-2 border-r border-gray-200 font-bold bg-yellow-50/30">Jagung</th>
+                                        <th colspan="2" class="p-2 border-r border-gray-200 font-bold">Kedelai</th>
+                                        <th colspan="2" class="p-2 font-bold bg-orange-50/30">Ubi Kayu</th>
+                                    </tr>
+                                    <tr class="bg-gray-50 text-gray-600 uppercase tracking-wider text-center border-b border-gray-200 text-[10px]">
+                                        <th class="p-2 border-r border-gray-200 font-bold bg-green-50/20">Tanam (Ha)</th>
+                                        <th class="p-2 border-r border-gray-200 font-bold bg-green-50/20">Panen (Ha)</th>
+                                        <th class="p-2 border-r border-gray-200 font-bold">Tanam (Ha)</th>
+                                        <th class="p-2 border-r border-gray-200 font-bold">Panen (Ha)</th>
+                                        <th class="p-2 border-r border-gray-200 font-bold bg-yellow-50/10">Tanam (Ha)</th>
+                                        <th class="p-2 border-r border-gray-200 font-bold bg-yellow-50/10">Panen (Ha)</th>
+                                        <th class="p-2 border-r border-gray-200 font-bold">Tanam (Ha)</th>
+                                        <th class="p-2 border-r border-gray-200 font-bold">Panen (Ha)</th>
+                                        <th class="p-2 border-r border-gray-200 font-bold bg-orange-50/10">Tanam (Ha)</th>
+                                        <th class="p-2 font-bold bg-orange-50/10">Panen (Ha)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyRekapLTT" class="divide-y divide-gray-100">
+                                    <tr>
+                                        <td colspan="12" class="p-8 text-center text-gray-400 italic">Memuat data rekapitulasi...</td>
+                                    </tr>
+                                </tbody>
+                                <tfoot id="tfootRekapLTT">
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+
                     <!-- Target vs Realisasi -->
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
                         <div class="flex flex-wrap items-center justify-between gap-4 mb-5">

@@ -193,14 +193,21 @@
         });
     }
 
-    function tampilkanHomePPL() {
+    function _tutupSemuaOverlayPPL() {
+        const profilArea = document.getElementById('profilArea');
+        if (profilArea) profilArea.classList.add('hidden');
         document.getElementById('formArea').classList.add('hidden');
+    }
+
+    function tampilkanHomePPL() {
+        _tutupSemuaOverlayPPL();
         document.getElementById('headerPPL').classList.remove('hidden');
         document.getElementById('containerHomePPL').classList.remove('hidden');
         setNavAktif('navHome');
     }
 
     function bukaForm(komoditas) {
+        _tutupSemuaOverlayPPL();
         window.history.pushState({ overlay: 'formArea' }, '');
         document.getElementById('headerPPL').classList.add('hidden');
         document.getElementById('containerHomePPL').classList.add('hidden');
@@ -1066,10 +1073,18 @@
         document.getElementById('loadingTarget').classList.remove('hidden');
         document.getElementById('chartTargetVsRealisasi').classList.add('hidden');
         document.getElementById('emptyTarget').classList.add('hidden');
+
+        // Tampilkan loading di tabel rekapitulasi LTT
+        const tbody = document.getElementById('tbodyRekapLTT');
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="12" class="p-8 text-center text-gray-400 italic"><i class="fa-solid fa-circle-notch fa-spin mr-1"></i> Memuat data rekapitulasi...</td></tr>`;
+        }
+
         google.script.run
             .withSuccessHandler(function(data) {
                 dataTarget = data;
                 renderChartTarget();
+                renderTabelRekapLTT();
             })
             .getDashboardTarget(params);
     }
@@ -1202,6 +1217,113 @@
         });
         document.getElementById('tabelTargetVsRealisasi').innerHTML = tableHTML;
         document.getElementById('tableTargetVsRealisasiContainer').classList.remove('hidden');
+    }
+
+    function renderTabelRekapLTT() {
+        const tbody = document.getElementById('tbodyRekapLTT');
+        const tfoot = document.getElementById('tfootRekapLTT');
+        const label = document.getElementById('labelBulanRekapLTT');
+        if (!tbody || !dataTarget) return;
+
+        // Tampilkan periode bulan terpilih
+        const sel = document.getElementById('filterBulanDashboard');
+        if (sel && sel.options[sel.selectedIndex]) {
+            label.innerText = 'Periode: ' + sel.options[sel.selectedIndex].text;
+        }
+
+        // Dapatkan semua daftar kecamatan yang memiliki data target / realisasi
+        const semuaKec = [...new Set([
+            ...Object.keys(dataTarget.target),
+            ...Object.keys(dataTarget.realisasi)
+        ])].sort();
+
+        if (semuaKec.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="12" class="p-8 text-center text-gray-400 italic">Tidak ada data rekap LTT untuk periode ini.</td></tr>`;
+            if (tfoot) tfoot.innerHTML = '';
+            return;
+        }
+
+        // Variabel untuk menampung total per kolom
+        const total = {
+            padiReguler: { tanam: 0, panen: 0 },
+            padiGogo:  { tanam: 0, panen: 0 },
+            jagung:    { tanam: 0, panen: 0 },
+            kedelai:   { tanam: 0, panen: 0 },
+            ubiKayu:   { tanam: 0, panen: 0 }
+        };
+
+        let rowsHtml = '';
+        semuaKec.forEach((kec, idx) => {
+            const r = dataTarget.realisasi[kec] || {
+                LTTReguler: { tanam: 0, panen: 0 },
+                PadiGogo:   { tanam: 0, panen: 0 },
+                Oplah2025:  { tanam: 0, panen: 0 },
+                Jagung:     { tanam: 0, panen: 0 },
+                UbiKayu:    { tanam: 0, panen: 0 }
+            };
+
+            // Padi Reguler = LTTReguler (karena Oplah & Rehab Bencana diabaikan sesuai permintaan user)
+            const psTanam = r.LTTReguler?.tanam || 0;
+            const psPanen = r.LTTReguler?.panen || 0;
+
+            const pgTanam = r.PadiGogo?.tanam || 0;
+            const pgPanen = r.PadiGogo?.panen || 0;
+
+            const jgTanam = r.Jagung?.tanam || 0;
+            const jgPanen = r.Jagung?.panen || 0;
+
+            const kdTanam = 0; // Kedelai saat ini masih 0
+            const kdPanen = 0;
+
+            const ukTanam = r.UbiKayu?.tanam || 0;
+            const ukPanen = r.UbiKayu?.panen || 0;
+
+            total.padiReguler.tanam += psTanam;
+            total.padiReguler.panen += psPanen;
+            total.padiGogo.tanam  += pgTanam;
+            total.padiGogo.panen  += pgPanen;
+            total.jagung.tanam    += jgTanam;
+            total.jagung.panen    += jgPanen;
+            total.kedelai.tanam   += kdTanam;
+            total.kedelai.panen   += kdPanen;
+            total.ubiKayu.tanam   += ukTanam;
+            total.ubiKayu.panen   += ukPanen;
+
+            rowsHtml += `
+            <tr class="hover:bg-blue-50/30 transition duration-150 border-b border-gray-100 text-xs">
+                <td class="p-3 border-r border-gray-200 text-center text-gray-500 font-medium">${idx + 1}</td>
+                <td class="p-3 border-r border-gray-200 font-semibold text-gray-800">${kec}</td>
+                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums bg-green-50/10">${psTanam.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums bg-green-50/10">${psPanen.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums">${pgTanam.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums">${pgPanen.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums bg-yellow-50/10">${jgTanam.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums bg-yellow-50/10">${jgPanen.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums">${kdTanam.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums">${kdPanen.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right font-semibold text-gray-700 tabular-nums bg-orange-50/10">${ukTanam.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td class="p-2 text-right font-semibold text-gray-700 tabular-nums bg-orange-50/10">${ukPanen.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            </tr>`;
+        });
+
+        tbody.innerHTML = rowsHtml;
+
+        if (tfoot) {
+            tfoot.innerHTML = `
+            <tr class="bg-yellow-50 text-yellow-900 font-bold border-t border-gray-300">
+                <td colspan="2" class="p-3 border-r border-gray-200 text-center uppercase tracking-wider">Jumlah</td>
+                <td class="p-2 border-r border-gray-200 text-right tabular-nums">${total.padiReguler.tanam.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right tabular-nums">${total.padiReguler.panen.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right tabular-nums">${total.padiGogo.tanam.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right tabular-nums">${total.padiGogo.panen.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right tabular-nums">${total.jagung.tanam.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right tabular-nums">${total.jagung.panen.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right tabular-nums">${total.kedelai.tanam.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right tabular-nums">${total.kedelai.panen.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td class="p-2 border-r border-gray-200 text-right tabular-nums">${total.ubiKayu.tanam.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td class="p-2 text-right tabular-nums">${total.ubiKayu.panen.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            </tr>`;
+        }
     }
 
     function filterTarget(side) {
