@@ -1,10 +1,12 @@
 <div class="flex h-screen w-full overflow-hidden bg-gray-100 relative">
 
     <!-- Mobile Overlay -->
-    <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden transition-opacity"></div>
+    <div id="sidebarOverlay" onclick="toggleSidebar()"
+        class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden transition-opacity"></div>
 
     <!-- Sidebar -->
-    <aside id="sidebarAdmin" class="w-64 bg-green-800 text-white flex flex-col shadow-2xl flex-shrink-0 fixed inset-y-0 left-0 z-50 transform -translate-x-full md:relative md:translate-x-0 transition-all duration-300 ease-in-out">
+    <aside id="sidebarAdmin"
+        class="w-64 bg-green-800 text-white flex flex-col shadow-2xl flex-shrink-0 fixed inset-y-0 left-0 z-50 transform -translate-x-full md:relative md:translate-x-0 transition-all duration-300 ease-in-out">
         <div class="h-20 flex items-center justify-between px-4 border-b border-green-700">
             <div class="flex items-center">
                 <i class="fa-solid fa-seedling text-3xl text-green-300 mr-3"></i>
@@ -48,29 +50,30 @@
     <div class="flex-1 flex flex-col h-screen overflow-y-auto">
 
         <!-- Responsive Header -->
-        <header class="bg-white shadow-sm flex flex-col sm:flex-row sm:h-20 items-start sm:items-center justify-between px-4 sm:px-8 py-3 sm:py-0 z-10 sticky top-0">
+        <header
+            class="bg-white shadow-sm flex flex-col sm:flex-row sm:h-20 items-start sm:items-center justify-between px-4 sm:px-8 py-3 sm:py-0 z-10 sticky top-0">
             <div class="flex items-center justify-between w-full sm:w-auto mb-3 sm:mb-0">
                 <div class="flex items-center gap-3">
-                    <button onclick="toggleSidebar()" class="text-green-700 p-2 -ml-2 rounded-lg hover:bg-green-50 transition">
+                    <button onclick="toggleSidebar()"
+                        class="text-green-700 p-2 -ml-2 rounded-lg hover:bg-green-50 transition">
                         <i class="fa-solid fa-bars text-xl"></i>
                     </button>
                     <div>
-                        <h2 class="text-lg sm:text-2xl font-bold text-gray-800" id="headerTitle">Ringkasan Eksekutif</h2>
-                        <p class="text-[10px] sm:text-xs text-gray-500 hidden sm:block">Pemantauan Realisasi LTT & Sinkronisasi e-Pusluh</p>
+                        <h2 class="text-lg sm:text-2xl font-bold text-gray-800" id="headerTitle">Ringkasan Eksekutif
+                        </h2>
+                        <p class="text-[10px] sm:text-xs text-gray-500 hidden sm:block">Pemantauan Realisasi LTT &
+                            Sinkronisasi e-Pusluh</p>
                     </div>
                 </div>
             </div>
-            <div class="flex items-center justify-end w-full sm:w-auto gap-2 sm:gap-4">
-                <button onclick="muatUlangDashboard()"
-                    class="bg-blue-50 text-blue-600 border border-blue-200 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-bold hover:bg-blue-600 hover:text-white transition shadow-sm">
-                    <i id="iconRefreshDash" class="fa-solid fa-rotate-right sm:mr-1"></i> <span class="hidden sm:inline">Refresh Data</span>
-                </button>
-                <div class="flex items-center gap-2 sm:gap-3 border-l pl-2 sm:pl-4">
-                    <div class="text-right hidden sm:block">
-                        <p class="text-sm font-bold text-gray-800" id="namaAdmin">Memuat...</p>
-                        <p class="text-[10px] text-gray-500 uppercase">Admin Kabupaten</p>
+            <div class="flex items-center justify-end w-full sm:w-auto gap-2">
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <div class="text-right">
+                        <p class="text-xs sm:text-sm font-bold text-gray-800" id="namaAdmin">Memuat...</p>
+                        <p class="text-[9px] sm:text-[10px] text-gray-500 uppercase">Admin Kabupaten</p>
                     </div>
-                    <div class="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center font-bold text-sm sm:text-lg">
+                    <div
+                        class="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center font-bold text-sm sm:text-lg">
                         <i class="fa-solid fa-user-shield"></i>
                     </div>
                 </div>
@@ -91,11 +94,13 @@
                         <button onclick="setTab(this, 'jagung')"
                             class="tab-btn px-5 py-2 text-sm font-bold text-gray-500 hover:text-green-600 transition-all">Jagung</button>
                         <button onclick="setTab(this, 'ubi-kayu')"
-                            class="tab-btn px-5 py-2 text-sm font-bold text-gray-500 hover:text-green-600 transition-all">Ubi Kayu</button>
+                            class="tab-btn px-5 py-2 text-sm font-bold text-gray-500 hover:text-green-600 transition-all">Ubi
+                            Kayu</button>
                     </div>
                     <div id="wrapperLabelPeriode" class="flex items-center gap-2 mx-auto md:mx-0">
                         <div class="hidden md:block h-8 w-[2px] bg-gray-200 mr-2"></div>
-                        <span id="labelPeriodeDashboard" class="text-[13px] md:text-[15px] font-black text-green-700 bg-green-50 px-5 py-2 rounded-full border-2 border-green-200 uppercase tracking-widest whitespace-nowrap shadow-sm">
+                        <span id="labelPeriodeDashboard"
+                            class="text-[13px] md:text-[15px] font-black text-green-700 bg-green-50 px-5 py-2 rounded-full border-2 border-green-200 uppercase tracking-widest whitespace-nowrap shadow-sm">
                             REKAP DATA -
                         </span>
                     </div>
@@ -104,6 +109,10 @@
                         <select id="filterBulanDashboard" onchange="muatDashboard()"
                             class="text-xs font-bold text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-1.5 outline-none focus:border-green-500 cursor-pointer shadow-sm">
                         </select>
+                        <button onclick="muatUlangDashboard()" title="Refresh Dashboard"
+                            class="bg-blue-50 text-blue-600 border border-blue-200 p-2 rounded-lg text-xs font-bold hover:bg-blue-600 hover:text-white transition shadow-sm flex items-center justify-center">
+                            <i id="iconRefreshDash" class="fa-solid fa-rotate-right"></i>
+                        </button>
                     </div>
                 </div>
 
@@ -113,9 +122,11 @@
                     <!-- KPI Cards (6 Cards Breakdown) -->
                     <div class="grid grid-cols-2 md:grid-cols-3 gap-6 mb-8">
                         <!-- TANAM SECTION -->
-                        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
-                            <div class="absolute top-0 right-0 p-2 opacity-10"><i class="fa-solid fa-wheat-awn text-4xl text-blue-600"></i></div>
-                            <div onclick="tampilkanDetailPadi('tanam')" 
+                        <div
+                            class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
+                            <div class="absolute top-0 right-0 p-2 opacity-10"><i
+                                    class="fa-solid fa-wheat-awn text-4xl text-blue-600"></i></div>
+                            <div onclick="tampilkanDetailPadi('tanam')"
                                 class="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-lg mr-3 flex-shrink-0 cursor-pointer hover:scale-110 transition-transform shadow-sm"
                                 title="Klik untuk rincian">
                                 <i class="fa-solid fa-seedling"></i>
@@ -125,9 +136,12 @@
                                 <h3 class="text-xl font-bold text-gray-800" id="tanamPadi">-</h3>
                             </div>
                         </div>
-                        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
-                            <div class="absolute top-0 right-0 p-2 opacity-10"><i class="fa-solid fa-leaf text-4xl text-blue-600"></i></div>
-                            <div class="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-lg mr-3 flex-shrink-0">
+                        <div
+                            class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
+                            <div class="absolute top-0 right-0 p-2 opacity-10"><i
+                                    class="fa-solid fa-leaf text-4xl text-blue-600"></i></div>
+                            <div
+                                class="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-lg mr-3 flex-shrink-0">
                                 <i class="fa-solid fa-seedling"></i>
                             </div>
                             <div>
@@ -135,9 +149,12 @@
                                 <h3 class="text-xl font-bold text-gray-800" id="tanamJagung">-</h3>
                             </div>
                         </div>
-                        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
-                            <div class="absolute top-0 right-0 p-2 opacity-10"><i class="fa-solid fa-root-bellow text-4xl text-blue-600"></i></div>
-                            <div class="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-lg mr-3 flex-shrink-0">
+                        <div
+                            class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
+                            <div class="absolute top-0 right-0 p-2 opacity-10"><i
+                                    class="fa-solid fa-carrot text-4xl text-blue-600"></i></div>
+                            <div
+                                class="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-lg mr-3 flex-shrink-0">
                                 <i class="fa-solid fa-seedling"></i>
                             </div>
                             <div>
@@ -147,9 +164,11 @@
                         </div>
 
                         <!-- PANEN SECTION -->
-                        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
-                            <div class="absolute top-0 right-0 p-2 opacity-10"><i class="fa-solid fa-wheat-awn-circle-exclamation text-4xl text-yellow-600"></i></div>
-                            <div onclick="tampilkanDetailPadi('panen')" 
+                        <div
+                            class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
+                            <div class="absolute top-0 right-0 p-2 opacity-10"><i
+                                    class="fa-solid fa-wheat-awn-circle-exclamation text-4xl text-yellow-600"></i></div>
+                            <div onclick="tampilkanDetailPadi('panen')"
                                 class="w-10 h-10 bg-yellow-50 text-yellow-600 rounded-lg flex items-center justify-center text-lg mr-3 flex-shrink-0 cursor-pointer hover:scale-110 transition-transform shadow-sm"
                                 title="Klik untuk rincian">
                                 <i class="fa-solid fa-wheat-awn"></i>
@@ -159,9 +178,12 @@
                                 <h3 class="text-xl font-bold text-gray-800" id="panenPadi">-</h3>
                             </div>
                         </div>
-                        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
-                            <div class="absolute top-0 right-0 p-2 opacity-10"><i class="fa-solid fa-leaf text-4xl text-yellow-600"></i></div>
-                            <div class="w-10 h-10 bg-yellow-50 text-yellow-600 rounded-lg flex items-center justify-center text-lg mr-3 flex-shrink-0">
+                        <div
+                            class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
+                            <div class="absolute top-0 right-0 p-2 opacity-10"><i
+                                    class="fa-solid fa-leaf text-4xl text-yellow-600"></i></div>
+                            <div
+                                class="w-10 h-10 bg-yellow-50 text-yellow-600 rounded-lg flex items-center justify-center text-lg mr-3 flex-shrink-0">
                                 <i class="fa-solid fa-wheat-awn"></i>
                             </div>
                             <div>
@@ -169,9 +191,12 @@
                                 <h3 class="text-xl font-bold text-gray-800" id="panenJagung">-</h3>
                             </div>
                         </div>
-                        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
-                            <div class="absolute top-0 right-0 p-2 opacity-10"><i class="fa-solid fa-root-bellow text-4xl text-yellow-600"></i></div>
-                            <div class="w-10 h-10 bg-yellow-50 text-yellow-600 rounded-lg flex items-center justify-center text-lg mr-3 flex-shrink-0">
+                        <div
+                            class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
+                            <div class="absolute top-0 right-0 p-2 opacity-10"><i
+                                    class="fa-solid fa-carrot text-4xl text-yellow-600"></i></div>
+                            <div
+                                class="w-10 h-10 bg-yellow-50 text-yellow-600 rounded-lg flex items-center justify-center text-lg mr-3 flex-shrink-0">
                                 <i class="fa-solid fa-wheat-awn"></i>
                             </div>
                             <div>
@@ -202,9 +227,12 @@
                                 <h3 class="text-sm font-bold text-gray-800">Rekapitulasi Luas Tambah Tanam (LTT)</h3>
                                 <p class="text-xs text-gray-400 mt-0.5" id="labelBulanRekapLTT">Periode: -</p>
                             </div>
-                            <div class="flex items-center gap-2 bg-gray-50 p-1.5 rounded-lg border border-gray-200 shadow-sm">
-                                <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wide hidden sm:block ml-1">Tampilkan Data:</span>
-                                <select id="modeFilterTabelLTT" onchange="toggleModeTabelLTT()" 
+                            <div
+                                class="flex items-center gap-2 bg-gray-50 p-1.5 rounded-lg border border-gray-200 shadow-sm">
+                                <span
+                                    class="text-[11px] font-bold text-gray-400 uppercase tracking-wide hidden sm:block ml-1">Tampilkan
+                                    Data:</span>
+                                <select id="modeFilterTabelLTT" onchange="toggleModeTabelLTT()"
                                     class="text-xs font-bold text-white bg-green-600 hover:bg-green-700 rounded-md px-3 py-1.5 outline-none cursor-pointer shadow focus:ring-2 focus:ring-green-300 transition-colors">
                                     <option value="bulanan">Bulan Ini (Rekap Total)</option>
                                     <option value="harian">Harian (Pilih Tanggal)</option>
@@ -214,38 +242,52 @@
                                     <i class="fa-solid fa-calendar-days text-gray-400 text-sm"></i>
                                     <input type="date" id="filterTanggalTabelLTT" onchange="muatTabelLTTSaja()"
                                         class="hidden text-sm font-bold text-gray-700 bg-white border border-gray-300 rounded-md px-2 py-1 outline-none focus:border-green-500 cursor-pointer shadow-sm hover:bg-gray-50">
-                                    <span id="labelBulanTabelLTT" class="text-xs font-bold text-gray-500 italic">Mengikuti Dashboard Atas</span>
+                                    <span id="labelBulanTabelLTT"
+                                        class="text-xs font-bold text-gray-500 italic">Mengikuti Dashboard Atas</span>
                                 </div>
                             </div>
                         </div>
                         <div class="w-full overflow-x-auto border border-gray-200 rounded-lg">
                             <table class="w-full text-left border-collapse text-xs whitespace-nowrap">
                                 <thead>
-                                    <tr class="bg-gray-50 text-gray-700 uppercase tracking-wider text-center border-b border-gray-200">
-                                        <th rowspan="2" class="p-3 border-r border-gray-200 font-bold align-middle">No</th>
-                                        <th rowspan="2" class="p-3 border-r border-gray-200 font-bold align-middle text-left">Kecamatan</th>
-                                        <th colspan="2" class="p-2 border-r border-gray-200 font-bold bg-green-50/50">Padi Reguler</th>
+                                    <tr
+                                        class="bg-gray-50 text-gray-700 uppercase tracking-wider text-center border-b border-gray-200">
+                                        <th rowspan="2" class="p-3 border-r border-gray-200 font-bold align-middle">No
+                                        </th>
+                                        <th rowspan="2"
+                                            class="p-3 border-r border-gray-200 font-bold align-middle text-left">
+                                            Kecamatan</th>
+                                        <th colspan="2" class="p-2 border-r border-gray-200 font-bold bg-green-50/50">
+                                            Padi Reguler</th>
                                         <th colspan="2" class="p-2 border-r border-gray-200 font-bold">Padi Gogo</th>
-                                        <th colspan="2" class="p-2 border-r border-gray-200 font-bold bg-yellow-50/30">Jagung</th>
+                                        <th colspan="2" class="p-2 border-r border-gray-200 font-bold bg-yellow-50/30">
+                                            Jagung</th>
                                         <th colspan="2" class="p-2 border-r border-gray-200 font-bold">Kedelai</th>
                                         <th colspan="2" class="p-2 font-bold bg-orange-50/30">Ubi Kayu</th>
                                     </tr>
-                                    <tr class="bg-gray-50 text-gray-600 uppercase tracking-wider text-center border-b border-gray-200 text-[10px]">
-                                        <th class="p-2 border-r border-gray-200 font-bold bg-green-50/20">Tanam (Ha)</th>
-                                        <th class="p-2 border-r border-gray-200 font-bold bg-green-50/20">Panen (Ha)</th>
+                                    <tr
+                                        class="bg-gray-50 text-gray-600 uppercase tracking-wider text-center border-b border-gray-200 text-[10px]">
+                                        <th class="p-2 border-r border-gray-200 font-bold bg-green-50/20">Tanam (Ha)
+                                        </th>
+                                        <th class="p-2 border-r border-gray-200 font-bold bg-green-50/20">Panen (Ha)
+                                        </th>
                                         <th class="p-2 border-r border-gray-200 font-bold">Tanam (Ha)</th>
                                         <th class="p-2 border-r border-gray-200 font-bold">Panen (Ha)</th>
-                                        <th class="p-2 border-r border-gray-200 font-bold bg-yellow-50/10">Tanam (Ha)</th>
-                                        <th class="p-2 border-r border-gray-200 font-bold bg-yellow-50/10">Panen (Ha)</th>
+                                        <th class="p-2 border-r border-gray-200 font-bold bg-yellow-50/10">Tanam (Ha)
+                                        </th>
+                                        <th class="p-2 border-r border-gray-200 font-bold bg-yellow-50/10">Panen (Ha)
+                                        </th>
                                         <th class="p-2 border-r border-gray-200 font-bold">Tanam (Ha)</th>
                                         <th class="p-2 border-r border-gray-200 font-bold">Panen (Ha)</th>
-                                        <th class="p-2 border-r border-gray-200 font-bold bg-orange-50/10">Tanam (Ha)</th>
+                                        <th class="p-2 border-r border-gray-200 font-bold bg-orange-50/10">Tanam (Ha)
+                                        </th>
                                         <th class="p-2 font-bold bg-orange-50/10">Panen (Ha)</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tbodyRekapLTT" class="divide-y divide-gray-100">
                                     <tr>
-                                        <td colspan="12" class="p-8 text-center text-gray-400 italic">Memuat data rekapitulasi...</td>
+                                        <td colspan="12" class="p-8 text-center text-gray-400 italic">Memuat data
+                                            rekapitulasi...</td>
                                     </tr>
                                 </tbody>
                                 <tfoot id="tfootRekapLTT">
@@ -259,7 +301,8 @@
                         <div class="flex flex-wrap items-center justify-between gap-4 mb-5">
                             <div>
                                 <h3 class="text-sm font-bold text-gray-800">Target vs Realisasi per Kecamatan</h3>
-                                <p class="text-xs text-gray-400 mt-0.5">Sumber: Data_Target & realisasi bulan terpilih</p>
+                                <p class="text-xs text-gray-400 mt-0.5">Sumber: Data_Target & realisasi bulan terpilih
+                                </p>
                             </div>
                             <div class="flex flex-wrap gap-2 items-center">
                                 <!-- Toggle Tanam / Panen -->
@@ -272,19 +315,24 @@
                                 <!-- Tab Komoditi -->
                                 <div class="flex flex-wrap gap-1">
                                     <button id="btnKom-LTTReguler" onclick="filterKomTarget('LTTReguler')"
-                                        class="text-[11px] font-bold px-3 py-1 rounded-full bg-green-600 text-white border border-green-600 transition">LTT Reguler</button>
+                                        class="text-[11px] font-bold px-3 py-1 rounded-full bg-green-600 text-white border border-green-600 transition">LTT
+                                        Reguler</button>
                                     <button id="btnKom-PadiGogo" onclick="filterKomTarget('PadiGogo')"
-                                        class="text-[11px] font-bold px-3 py-1 rounded-full bg-white text-gray-500 border border-gray-200 hover:border-green-400 transition">LTT Padi Gogo</button>
+                                        class="text-[11px] font-bold px-3 py-1 rounded-full bg-white text-gray-500 border border-gray-200 hover:border-green-400 transition">LTT
+                                        Padi Gogo</button>
                                     <button id="btnKom-Oplah2025" onclick="filterKomTarget('Oplah2025')"
-                                        class="text-[11px] font-bold px-3 py-1 rounded-full bg-white text-gray-500 border border-gray-200 hover:border-green-400 transition">LTT Oplah 2025</button>
+                                        class="text-[11px] font-bold px-3 py-1 rounded-full bg-white text-gray-500 border border-gray-200 hover:border-green-400 transition">LTT
+                                        Oplah 2025</button>
                                     <button id="btnKom-Jagung" onclick="filterKomTarget('Jagung')"
                                         class="text-[11px] font-bold px-3 py-1 rounded-full bg-white text-gray-500 border border-gray-200 hover:border-green-400 transition">Jagung</button>
                                     <button id="btnKom-UbiKayu" onclick="filterKomTarget('UbiKayu')"
-                                        class="text-[11px] font-bold px-3 py-1 rounded-full bg-white text-gray-500 border border-gray-200 hover:border-green-400 transition">Ubi Kayu</button>
+                                        class="text-[11px] font-bold px-3 py-1 rounded-full bg-white text-gray-500 border border-gray-200 hover:border-green-400 transition">Ubi
+                                        Kayu</button>
                                 </div>
                             </div>
                         </div>
-                        <div id="loadingTarget" class="flex items-center justify-center h-40 text-gray-400 text-sm gap-2">
+                        <div id="loadingTarget"
+                            class="flex items-center justify-center h-40 text-gray-400 text-sm gap-2">
                             <i class="fa-solid fa-circle-notch fa-spin"></i> Memuat data target...
                         </div>
                         <div id="emptyTarget" class="hidden flex-col items-center justify-center h-40 text-center">
@@ -293,12 +341,14 @@
                             <p class="text-xs text-gray-300">Admin BPP belum mengisi target bulan ini</p>
                         </div>
                         <div id="chartTargetVsRealisasi" class="hidden w-full" style="min-height:320px"></div>
-                        
+
                         <!-- Tabel Detail Target vs Realisasi -->
-                        <div id="tableTargetVsRealisasiContainer" class="hidden w-full mt-6 overflow-x-auto border-t border-gray-100 pt-6">
+                        <div id="tableTargetVsRealisasiContainer"
+                            class="hidden w-full mt-6 overflow-x-auto border-t border-gray-100 pt-6">
                             <table class="w-full text-left border-collapse text-sm">
                                 <thead>
-                                    <tr class="bg-gray-50 text-gray-600 uppercase tracking-wider border-b border-gray-200 text-xs">
+                                    <tr
+                                        class="bg-gray-50 text-gray-600 uppercase tracking-wider border-b border-gray-200 text-xs">
                                         <th class="p-3 font-bold w-1/4">Kecamatan</th>
                                         <th class="p-3 text-right font-bold w-1/6">Target (Ha)</th>
                                         <th class="p-3 text-right font-bold w-1/6">Realisasi (Ha)</th>
@@ -319,7 +369,8 @@
                     <!-- Header + Filter -->
                     <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
                         <div>
-                            <h3 class="text-xl font-bold text-gray-800" id="judulPanelRekap">Rekap Padi Harian (e-Pusluh)</h3>
+                            <h3 class="text-xl font-bold text-gray-800" id="judulPanelRekap">Rekap Padi Harian
+                                (e-Pusluh)</h3>
                             <p class="text-xs text-gray-500">Data harian laporan petugas lapangan.</p>
                         </div>
                         <div class="flex items-center gap-3 flex-wrap">
@@ -347,28 +398,36 @@
 
                     <!-- KPI Cards Rekap Padi -->
                     <div class="grid grid-cols-2 gap-6 mb-8">
-                        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
-                            <div class="absolute top-0 right-0 p-2 opacity-10"><i class="fa-solid fa-wheat-awn text-4xl text-blue-600"></i></div>
-                            <div onclick="tampilkanDetailRekapPadi('tanam')" 
+                        <div
+                            class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
+                            <div class="absolute top-0 right-0 p-2 opacity-10"><i
+                                    class="fa-solid fa-wheat-awn text-4xl text-blue-600"></i></div>
+                            <div onclick="tampilkanDetailRekapPadi('tanam')"
                                 class="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center text-xl mr-4 cursor-pointer hover:scale-110 transition-transform shadow-sm"
                                 title="Klik rincian">
                                 <i class="fa-solid fa-seedling"></i>
                             </div>
                             <div>
-                                <p class="text-[13px] text-gray-400 font-bold uppercase">LUAS TANAM <span id="labelTanamType"></span></p>
-                                <h3 class="text-2xl font-bold text-gray-800"><span id="rTanam">-</span> <span class="text-sm font-normal text-gray-500">Ha</span></h3>
+                                <p class="text-[13px] text-gray-400 font-bold uppercase">LUAS TANAM <span
+                                        id="labelTanamType"></span></p>
+                                <h3 class="text-2xl font-bold text-gray-800"><span id="rTanam">-</span> <span
+                                        class="text-sm font-normal text-gray-500">Ha</span></h3>
                             </div>
                         </div>
-                        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
-                            <div class="absolute top-0 right-0 p-2 opacity-10"><i class="fa-solid fa-wheat-awn-circle-exclamation text-4xl text-yellow-600"></i></div>
-                            <div onclick="tampilkanDetailRekapPadi('panen')" 
+                        <div
+                            class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
+                            <div class="absolute top-0 right-0 p-2 opacity-10"><i
+                                    class="fa-solid fa-wheat-awn-circle-exclamation text-4xl text-yellow-600"></i></div>
+                            <div onclick="tampilkanDetailRekapPadi('panen')"
                                 class="w-12 h-12 bg-yellow-50 text-yellow-600 rounded-xl flex items-center justify-center text-xl mr-4 cursor-pointer hover:scale-110 transition-transform shadow-sm"
                                 title="Klik rincian">
                                 <i class="fa-solid fa-wheat-awn"></i>
                             </div>
                             <div>
-                                <p class="text-[13px] text-gray-400 font-bold uppercase">LUAS PANEN <span id="labelPanenType"></span></p>
-                                <h3 class="text-2xl font-bold text-gray-800"><span id="rPanen">-</span> <span class="text-sm font-normal text-gray-500">Ha</span></h3>
+                                <p class="text-[13px] text-gray-400 font-bold uppercase">LUAS PANEN <span
+                                        id="labelPanenType"></span></p>
+                                <h3 class="text-2xl font-bold text-gray-800"><span id="rPanen">-</span> <span
+                                        class="text-sm font-normal text-gray-500">Ha</span></h3>
                             </div>
                         </div>
                     </div>
@@ -416,7 +475,8 @@
                 <div class="flex items-center justify-between mb-6">
                     <div>
                         <h2 class="text-xl font-bold text-gray-800">Verifikasi Laporan LTT Wilayah Binaan Kecamatan</h2>
-                        <p class="text-xs text-gray-500">Klik tombol untuk memverifikasi laporan yang sudah disetujui BPP</p>
+                        <p class="text-xs text-gray-500">Klik tombol untuk memverifikasi laporan yang sudah disetujui
+                            BPP</p>
                     </div>
                     <div class="flex items-center gap-3">
                         <span id="verifikasiLoading" class="hidden text-sm text-green-600">
@@ -432,25 +492,29 @@
                 <!-- KPI Cards -->
                 <div class="grid grid-cols-2 gap-6 mb-6">
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center">
-                        <div class="w-14 h-14 bg-green-100 text-green-600 rounded-lg flex items-center justify-center text-2xl mr-4">
+                        <div
+                            class="w-14 h-14 bg-green-100 text-green-600 rounded-lg flex items-center justify-center text-2xl mr-4">
                             <i class="fa-solid fa-check-double"></i>
                         </div>
                         <div>
                             <p class="text-xs text-gray-400 font-bold uppercase">Terverifikasi Kabupaten</p>
                             <h3 class="text-2xl font-bold text-gray-800">
-                                <span id="angkaPctVerified"><i class="fa-solid fa-circle-notch fa-spin text-base text-gray-300"></i></span>
+                                <span id="angkaPctVerified"><i
+                                        class="fa-solid fa-circle-notch fa-spin text-base text-gray-300"></i></span>
                                 <span class="text-sm font-normal text-gray-500"> %</span>
                             </h3>
                         </div>
                     </div>
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center">
-                        <div class="w-14 h-14 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center text-2xl mr-4">
+                        <div
+                            class="w-14 h-14 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center text-2xl mr-4">
                             <i class="fa-solid fa-hourglass-half"></i>
                         </div>
                         <div>
                             <p class="text-xs text-gray-400 font-bold uppercase">Siap Diverifikasi Kab</p>
                             <h3 class="text-2xl font-bold text-orange-600">
-                                <span id="angkaMenunggu"><i class="fa-solid fa-circle-notch fa-spin text-base text-gray-300"></i></span>
+                                <span id="angkaMenunggu"><i
+                                        class="fa-solid fa-circle-notch fa-spin text-base text-gray-300"></i></span>
                                 <span class="text-sm font-normal text-gray-500"> Laporan</span>
                             </h3>
                         </div>
@@ -459,11 +523,17 @@
 
                 <!-- Info Banner -->
                 <div class="bg-green-50 border border-green-200 rounded-xl p-4 mb-5">
-                    <p class="text-xs font-bold text-green-800 mb-2"><i class="fa-solid fa-circle-info mr-1"></i> Informasi Verifikasi</p>
-                    <p class="text-xs text-green-700 mb-2">Verifikasi Kabupaten hanya dapat dilakukan jika seluruh laporan di kecamatan sudah diverifikasi oleh Admin BPP terlebih dahulu.</p>
+                    <p class="text-xs font-bold text-green-800 mb-2"><i class="fa-solid fa-circle-info mr-1"></i>
+                        Informasi Verifikasi</p>
+                    <p class="text-xs text-green-700 mb-2">Verifikasi Kabupaten hanya dapat dilakukan jika seluruh
+                        laporan di kecamatan sudah diverifikasi oleh Admin BPP terlebih dahulu.</p>
                     <div class="flex flex-wrap gap-4 text-xs text-gray-600">
-                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-red-500 inline-block flex-shrink-0"></span> Ada laporan belum diverifikasi BPP</span>
-                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-green-500 inline-block flex-shrink-0"></span> Siap diverifikasi Kabupaten</span>
+                        <span class="flex items-center gap-1.5"><span
+                                class="w-3 h-3 rounded-full bg-red-500 inline-block flex-shrink-0"></span> Ada laporan
+                            belum diverifikasi BPP</span>
+                        <span class="flex items-center gap-1.5"><span
+                                class="w-3 h-3 rounded-full bg-green-500 inline-block flex-shrink-0"></span> Siap
+                            diverifikasi Kabupaten</span>
                     </div>
                 </div>
 
@@ -476,7 +546,8 @@
                         <option value="belum">Belum Siap</option>
                     </select>
                     <div class="relative flex-1 min-w-[200px] max-w-xs">
-                        <input type="text" id="cariKecVerif" oninput="filterTabelVerifikasi()" placeholder="Cari kecamatan..."
+                        <input type="text" id="cariKecVerif" oninput="filterTabelVerifikasi()"
+                            placeholder="Cari kecamatan..."
                             class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-300">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-400 text-xs"></i>
                     </div>
@@ -486,7 +557,8 @@
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                     <table class="w-full text-left border-collapse">
                         <thead>
-                            <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider border-b border-gray-200">
+                            <tr
+                                class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider border-b border-gray-200">
                                 <th class="p-4">Aksi</th>
                                 <th class="p-4 text-center w-12">Status</th>
                                 <th class="p-4">Kecamatan</th>
@@ -496,7 +568,9 @@
                             </tr>
                         </thead>
                         <tbody id="tabelVerifikasiKec" class="text-sm">
-                            <tr><td colspan="6" class="p-10 text-center text-gray-400">Memuat data...</td></tr>
+                            <tr>
+                                <td colspan="6" class="p-10 text-center text-gray-400">Memuat data...</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -525,27 +599,31 @@
                 </div>
 
                 <!-- Filter Card -->
-                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 flex flex-wrap gap-4 items-center">
+                <div
+                    class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 flex flex-wrap gap-4 items-center">
                     <div class="flex-1 min-w-[200px]">
                         <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Cari Nama / NIP</label>
                         <div class="relative">
-                            <input type="text" id="cariUser" oninput="filterTabelUser()" placeholder="Ketik nama atau NIP..."
+                            <input type="text" id="cariUser" oninput="filterTabelUser()"
+                                placeholder="Ketik nama atau NIP..."
                                 class="w-full pl-9 pr-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none">
                             <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-400"></i>
                         </div>
                     </div>
                     <div>
                         <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Role</label>
-                        <select id="filterRole" onchange="filterTabelUser()" class="border rounded-lg text-sm px-3 py-2 focus:ring-2 focus:ring-green-500 outline-none bg-white">
+                        <select id="filterRole" onchange="filterTabelUser()"
+                            class="border rounded-lg text-sm px-3 py-2 focus:ring-2 focus:ring-green-500 outline-none bg-white">
                             <option value="">Semua Role</option>
                             <option value="Admin_Kab">Admin Kabupaten</option>
-                            <option value="BPP">BPP (Kecamatan)</option>
-                            <option value="PPL">PPL (Penyuluh)</option>
+                            <option value="Admin_BPP">BPP (Kecamatan)</option>
+                            <option value="Penyuluh">PPL (Penyuluh)</option>
                         </select>
                     </div>
                     <div>
                         <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Kecamatan</label>
-                        <select id="filterKecUser" onchange="filterTabelUser()" class="border rounded-lg text-sm px-3 py-2 focus:ring-2 focus:ring-green-500 outline-none bg-white">
+                        <select id="filterKecUser" onchange="filterTabelUser()"
+                            class="border rounded-lg text-sm px-3 py-2 focus:ring-2 focus:ring-green-500 outline-none bg-white">
                             <option value="">Semua Kecamatan</option>
                         </select>
                     </div>
@@ -557,18 +635,22 @@
                         <table class="w-full text-left border-collapse">
                             <thead>
                                 <tr class="bg-gray-50/50 border-b border-gray-100">
-                                    <th class="p-4 text-[10px] font-bold text-gray-400 uppercase text-center w-12">No</th>
+                                    <th class="p-4 text-[10px] font-bold text-gray-400 uppercase text-center w-12">No
+                                    </th>
                                     <th class="p-4 text-[10px] font-bold text-gray-400 uppercase">Nama & NIP</th>
                                     <th class="p-4 text-[10px] font-bold text-gray-400 uppercase">Role</th>
-                                    <th class="p-4 text-[10px] font-bold text-gray-400 uppercase text-center">Wilayah Kerja</th>
-                                    <th class="p-4 text-[10px] font-bold text-gray-400 uppercase text-center">Status</th>
+                                    <th class="p-4 text-[10px] font-bold text-gray-400 uppercase text-center">Wilayah
+                                        Kerja</th>
+                                    <th class="p-4 text-[10px] font-bold text-gray-400 uppercase text-center">Status
+                                    </th>
                                     <th class="p-4 text-[10px] font-bold text-gray-400 uppercase text-center">Aksi</th>
                                 </tr>
                             </thead>
-                    <tbody id="tabelUser">
+                            <tbody id="tabelUser">
                                 <tr>
                                     <td colspan="6" class="p-12 text-center text-gray-400 italic">
-                                        <i class="fa-solid fa-circle-notch fa-spin text-2xl text-green-500 mb-2 block"></i>
+                                        <i
+                                            class="fa-solid fa-circle-notch fa-spin text-2xl text-green-500 mb-2 block"></i>
                                         Memuat daftar user...
                                     </td>
                                 </tr>
@@ -576,10 +658,12 @@
                         </table>
                     </div>
                     <!-- Pagination User -->
-                    <div class="px-6 py-4 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4 bg-gray-50/30">
+                    <div
+                        class="px-6 py-4 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4 bg-gray-50/30">
                         <div class="flex items-center gap-2">
                             <span class="text-[10px] font-bold text-gray-400 uppercase">Baris:</span>
-                            <select id="itemsPerPageUser" onchange="resetPageUser()" class="text-xs border rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-green-500 bg-white cursor-pointer">
+                            <select id="itemsPerPageUser" onchange="resetPageUser()"
+                                class="text-xs border rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-green-500 bg-white cursor-pointer">
                                 <option value="10">10</option>
                                 <option value="25">25</option>
                                 <option value="50">50</option>
@@ -587,13 +671,17 @@
                             </select>
                         </div>
                         <div class="text-xs text-gray-500">
-                            Menampilkan <span class="font-bold text-gray-700" id="infoStartUser">0</span> - <span class="font-bold text-gray-700" id="infoEndUser">0</span> dari <span class="font-bold text-gray-700" id="infoTotalUser">0</span> user
+                            Menampilkan <span class="font-bold text-gray-700" id="infoStartUser">0</span> - <span
+                                class="font-bold text-gray-700" id="infoEndUser">0</span> dari <span
+                                class="font-bold text-gray-700" id="infoTotalUser">0</span> user
                         </div>
                         <div class="flex items-center gap-2">
-                            <button id="btnPrevUser" onclick="changePageUser(-1)" class="px-3 py-1.5 border rounded-lg text-xs font-bold hover:bg-white hover:text-green-600 transition disabled:opacity-30 disabled:cursor-not-allowed">
+                            <button id="btnPrevUser" onclick="changePageUser(-1)"
+                                class="px-3 py-1.5 border rounded-lg text-xs font-bold hover:bg-white hover:text-green-600 transition disabled:opacity-30 disabled:cursor-not-allowed">
                                 <i class="fa-solid fa-chevron-left"></i>
                             </button>
-                            <button id="btnNextUser" onclick="changePageUser(1)" class="px-3 py-1.5 border rounded-lg text-xs font-bold hover:bg-white hover:text-green-600 transition disabled:opacity-30 disabled:cursor-not-allowed">
+                            <button id="btnNextUser" onclick="changePageUser(1)"
+                                class="px-3 py-1.5 border rounded-lg text-xs font-bold hover:bg-white hover:text-green-600 transition disabled:opacity-30 disabled:cursor-not-allowed">
                                 <i class="fa-solid fa-chevron-right"></i>
                             </button>
                         </div>
@@ -602,89 +690,104 @@
             </div>
         </div>
 
-<!-- ===== SECTION: LOGS SINKRONISASI ===== -->
-<div id="sectionLogs" class="hidden">
-    <div class="p-8">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-            <div>
-                <h2 class="text-2xl font-bold text-gray-800">Log Sinkronisasi e-Pusluh</h2>
-                <p class="text-sm text-gray-500">Pantau aktivitas penarikan data padi otomatis</p>
-            </div>
-            <div class="flex gap-2">
-                <button onclick="muatLogsSinkron(true)"
-                    class="bg-blue-50 text-blue-600 border border-blue-200 px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-2 hover:bg-blue-600 hover:text-white">
-                    <i class="fa-solid fa-rotate-right" id="iconRefreshLogs"></i> Refresh
-                </button>
-            </div>
-        </div>
+        <!-- ===== SECTION: LOGS SINKRONISASI ===== -->
+        <div id="sectionLogs" class="hidden">
+            <div class="p-8">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">Log Sinkronisasi e-Pusluh</h2>
+                        <p class="text-sm text-gray-500">Pantau aktivitas penarikan data padi otomatis</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="muatLogsSinkron(true)"
+                            class="bg-blue-50 text-blue-600 border border-blue-200 px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-2 hover:bg-blue-600 hover:text-white">
+                            <i class="fa-solid fa-rotate-right" id="iconRefreshLogs"></i> Refresh
+                        </button>
+                    </div>
+                </div>
 
-        <!-- Logs Table -->
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-gray-50/50 border-b border-gray-100">
-                            <th class="p-4 text-[10px] font-bold text-gray-400 uppercase">Waktu Sinkronisasi</th>
-                            <th class="p-4 text-[10px] font-bold text-gray-400 uppercase">ID Sync</th>
-                            <th class="p-4 text-[10px] font-bold text-gray-400 uppercase">Tanggal Laporan</th>
-                            <th class="p-4 text-[10px] font-bold text-gray-400 uppercase text-right">Total Tarik</th>
-                            <th class="p-4 text-[10px] font-bold text-gray-400 uppercase text-right">Data Berisi</th>
-                            <th class="p-4 text-[10px] font-bold text-gray-400 uppercase text-right">Data Nihil</th>
-                            <th class="p-4 text-[10px] font-bold text-gray-400 uppercase text-center">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabelLogs">
-                        <tr>
-                            <td colspan="6" class="p-12 text-center text-gray-400 italic">
-                                <i class="fa-solid fa-circle-notch fa-spin text-2xl text-green-500 mb-2 block"></i>
-                                Memuat logs...
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            <!-- Pagination Logs -->
-            <div class="px-6 py-4 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4 bg-gray-50/30">
-                <div class="flex items-center gap-2">
-                    <span class="text-[10px] font-bold text-gray-400 uppercase">Baris:</span>
-                    <select id="itemsPerPageLogs" onchange="resetPageLogs()" class="text-xs border rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-green-500 bg-white cursor-pointer">
-                        <option value="10">10</option>
-                        <option value="25">25</option>
-                        <option value="50">50</option>
-                        <option value="100">100</option>
-                    </select>
-                </div>
-                <div class="text-xs text-gray-500">
-                    Menampilkan <span class="font-bold text-gray-700" id="infoStartLogs">0</span> - <span class="font-bold text-gray-700" id="infoEndLogs">0</span> dari <span class="font-bold text-gray-700" id="infoTotalLogs">0</span> log
-                </div>
-                <div class="flex items-center gap-2">
-                    <button id="btnPrevLogs" onclick="changePageLogs(-1)" class="px-3 py-1.5 border rounded-lg text-xs font-bold hover:bg-white hover:text-green-600 transition disabled:opacity-30 disabled:cursor-not-allowed">
-                        <i class="fa-solid fa-chevron-left"></i>
-                    </button>
-                    <button id="btnNextLogs" onclick="changePageLogs(1)" class="px-3 py-1.5 border rounded-lg text-xs font-bold hover:bg-white hover:text-green-600 transition disabled:opacity-30 disabled:cursor-not-allowed">
-                        <i class="fa-solid fa-chevron-right"></i>
-                    </button>
+                <!-- Logs Table -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50/50 border-b border-gray-100">
+                                    <th class="p-4 text-[10px] font-bold text-gray-400 uppercase">Waktu Sinkronisasi
+                                    </th>
+                                    <th class="p-4 text-[10px] font-bold text-gray-400 uppercase">ID Sync</th>
+                                    <th class="p-4 text-[10px] font-bold text-gray-400 uppercase">Tanggal Laporan</th>
+                                    <th class="p-4 text-[10px] font-bold text-gray-400 uppercase text-right">Total Tarik
+                                    </th>
+                                    <th class="p-4 text-[10px] font-bold text-gray-400 uppercase text-right">Data Berisi
+                                    </th>
+                                    <th class="p-4 text-[10px] font-bold text-gray-400 uppercase text-right">Data Nihil
+                                    </th>
+                                    <th class="p-4 text-[10px] font-bold text-gray-400 uppercase text-center">Status
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelLogs">
+                                <tr>
+                                    <td colspan="6" class="p-12 text-center text-gray-400 italic">
+                                        <i
+                                            class="fa-solid fa-circle-notch fa-spin text-2xl text-green-500 mb-2 block"></i>
+                                        Memuat logs...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Pagination Logs -->
+                    <div
+                        class="px-6 py-4 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4 bg-gray-50/30">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-bold text-gray-400 uppercase">Baris:</span>
+                            <select id="itemsPerPageLogs" onchange="resetPageLogs()"
+                                class="text-xs border rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-green-500 bg-white cursor-pointer">
+                                <option value="10">10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </div>
+                        <div class="text-xs text-gray-500">
+                            Menampilkan <span class="font-bold text-gray-700" id="infoStartLogs">0</span> - <span
+                                class="font-bold text-gray-700" id="infoEndLogs">0</span> dari <span
+                                class="font-bold text-gray-700" id="infoTotalLogs">0</span> log
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button id="btnPrevLogs" onclick="changePageLogs(-1)"
+                                class="px-3 py-1.5 border rounded-lg text-xs font-bold hover:bg-white hover:text-green-600 transition disabled:opacity-30 disabled:cursor-not-allowed">
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </button>
+                            <button id="btnNextLogs" onclick="changePageLogs(1)"
+                                class="px-3 py-1.5 border rounded-lg text-xs font-bold hover:bg-white hover:text-green-600 transition disabled:opacity-30 disabled:cursor-not-allowed">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-</div>
 
     </div> <!-- end main content div -->
 </div> <!-- end flex container div -->
 
 <!-- Modal: Form User -->
-<div id="modalUser" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
-    <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden transform scale-95 transition-transform duration-300">
-        <div class="bg-green-600 p-6 text-white flex justify-between items-center">
+<div id="modalUser"
+    class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+    <div
+        class="bg-white w-full max-w-md max-h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden transform scale-95 transition-transform duration-300">
+        <div class="bg-green-600 p-6 text-white flex justify-between items-center flex-shrink-0">
             <h3 class="font-bold text-lg" id="modalUserTitle">Tambah User Baru</h3>
-            <button onclick="tutupModalUser()" class="hover:bg-white/20 w-8 h-8 rounded-full flex items-center justify-center transition">
+            <button onclick="tutupModalUser()"
+                class="hover:bg-white/20 w-8 h-8 rounded-full flex items-center justify-center transition">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
-        <form id="formUser" onsubmit="simpanUser(event)" class="p-6 space-y-4">
+        <form id="formUser" onsubmit="simpanUser(event)" class="p-6 space-y-4 overflow-y-auto flex-1">
             <input type="hidden" id="userId">
-            
+
             <div>
                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Nama Lengkap</label>
                 <input type="text" id="userNama" required placeholder="Nama Lengkap & Gelar"
@@ -714,23 +817,25 @@
                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Role Akun</label>
                 <select id="userRole" required onchange="handleRoleChange()"
                     class="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition bg-white">
-                    <option value="PPL">PPL (Penyuluh Lapangan)</option>
-                    <option value="BPP">BPP (Admin Kecamatan)</option>
+                    <option value="Penyuluh">PPL (Penyuluh Lapangan)</option>
+                    <option value="Admin_BPP">BPP (Admin Kecamatan)</option>
                     <option value="Admin_Kab">Admin Kabupaten</option>
                 </select>
             </div>
 
-            <div id="divWilayah" class="grid grid-cols-2 gap-4">
+            <div id="divWilayah" class="flex flex-col gap-4">
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Kecamatan</label>
-                    <select id="userKec" class="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition bg-white">
+                    <select id="userKec" onchange="handleKecamatanChange()"
+                        class="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition bg-white">
                         <!-- Diisi dinamis -->
                     </select>
                 </div>
                 <div id="divDesa">
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Desa (Optional)</label>
-                    <input type="text" id="userDesa" placeholder="Wilayah Kerja"
-                        class="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1" id="labelUserDesa">Desa Binaan <span class="text-red-500">*</span></label>
+                    <div id="userDesaContainer" class="border rounded-xl p-3 max-h-48 overflow-y-auto bg-gray-50 grid grid-cols-2 gap-2.5 shadow-inner">
+                        <span class="col-span-2 text-xs text-gray-400 italic">Pilih kecamatan terlebih dahulu</span>
+                    </div>
                 </div>
             </div>
 

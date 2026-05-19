@@ -415,8 +415,7 @@
         if (document.getElementById('tglRekapMulai')) document.getElementById('tglRekapMulai').value = today;
         if (document.getElementById('tglRekapAkhir')) document.getElementById('tglRekapAkhir').value = today;
         generateOpsiFilter();
-        muatDashboard();
-        muatChartTarget();
+        muatDashboard(); // muatDashboard sudah memanggil muatChartTarget() secara internal
     }
 
     function generateOpsiFilter() {
@@ -460,6 +459,16 @@
         }
     }
 
+    function formatAngkaLTT(val) {
+        const num = Number(val);
+        if (isNaN(num)) return val;
+        if (Number.isInteger(num)) {
+            return num.toLocaleString('id-ID');
+        } else {
+            return num.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+    }
+
     function muatDashboard(forceRefresh = false) {
         const sel = document.getElementById('filterBulanDashboard');
         const labelPeriode = document.getElementById('labelPeriodeDashboard');
@@ -485,18 +494,19 @@
             .withSuccessHandler(function (dash) {
                 if (btnIcon) btnIcon.classList.remove('fa-spin');
                 lastDashData = dash;
-                if (document.getElementById('tanamPadi')) document.getElementById('tanamPadi').innerText = (dash.komposisiTanam['Padi'] || 0) + ' Ha';
-                if (document.getElementById('tanamJagung')) document.getElementById('tanamJagung').innerText = (dash.komposisiTanam['Jagung'] || 0) + ' Ha';
-                if (document.getElementById('tanamUbi')) document.getElementById('tanamUbi').innerText = (dash.komposisiTanam['Ubi Kayu'] || 0) + ' Ha';
-                if (document.getElementById('panenPadi')) document.getElementById('panenPadi').innerText = (dash.komposisiPanen['Padi'] || 0) + ' Ha';
-                if (document.getElementById('panenJagung')) document.getElementById('panenJagung').innerText = (dash.komposisiPanen['Jagung'] || 0) + ' Ha';
-                if (document.getElementById('panenUbi')) document.getElementById('panenUbi').innerText = (dash.komposisiPanen['Ubi Kayu'] || 0) + ' Ha';
+                if (document.getElementById('tanamPadi')) document.getElementById('tanamPadi').innerText = formatAngkaLTT(dash.komposisiTanam['Padi'] || 0) + ' Ha';
+                if (document.getElementById('tanamJagung')) document.getElementById('tanamJagung').innerText = formatAngkaLTT(dash.komposisiTanam['Jagung'] || 0) + ' Ha';
+                if (document.getElementById('tanamUbi')) document.getElementById('tanamUbi').innerText = formatAngkaLTT(dash.komposisiTanam['Ubi Kayu'] || 0) + ' Ha';
+                if (document.getElementById('panenPadi')) document.getElementById('panenPadi').innerText = formatAngkaLTT(dash.komposisiPanen['Padi'] || 0) + ' Ha';
+                if (document.getElementById('panenJagung')) document.getElementById('panenJagung').innerText = formatAngkaLTT(dash.komposisiPanen['Jagung'] || 0) + ' Ha';
+                if (document.getElementById('panenUbi')) document.getElementById('panenUbi').innerText = formatAngkaLTT(dash.komposisiPanen['Ubi Kayu'] || 0) + ' Ha';
                 if (document.getElementById('angkaPctVerified')) document.getElementById('angkaPctVerified').innerText = dash.pctVerified;
                 if (document.getElementById('angkaMenunggu')) document.getElementById('angkaMenunggu').innerText = dash.countMenunggu;
                 renderChart(dash);
             })
-            .withFailureHandler(function() {
+            .withFailureHandler(function(err) {
                 if (btnIcon) btnIcon.classList.remove('fa-spin');
+                Swal.fire('Error', 'Gagal memuat dashboard: ' + (err.message || err), 'error');
             })
             .getDashboardKab(params);
     }
@@ -515,7 +525,7 @@
                 html += `
                 <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-100">
                     <span class="font-bold text-gray-700 uppercase text-xs">${jenis}</span>
-                    <span class="font-bold ${color}">${data[jenis].toLocaleString('id-ID')} Ha</span>
+                    <span class="font-bold ${color}">${formatAngkaLTT(data[jenis])} Ha</span>
                 </div>`;
             }
         }
@@ -549,7 +559,7 @@
                 html += `
                 <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-100 animate__animated animate__fadeInUp">
                     <span class="font-bold text-gray-700 uppercase text-xs">${jenis}</span>
-                    <span class="font-bold ${color}">${val.toLocaleString('id-ID')} Ha</span>
+                    <span class="font-bold ${color}">${formatAngkaLTT(val)} Ha</span>
                 </div>`;
             }
         }
@@ -610,15 +620,15 @@
         // Konstruksi Cache Key
         const cacheKey = currentRekapTab + '_' + tglMulai + '_' + tglAkhir + '_' + (jenisLTT || 'semua');
 
-        // Hanya gunakan cache jika pencarian adalah hari ini saja
-        if (isTodayOnly && !force && cacheRekap[cacheKey]) {
+        // Gunakan cache jika tersedia dan tidak dipaksa refresh
+        if (!force && cacheRekap[cacheKey]) {
             const data = cacheRekap[cacheKey];
             lastRekapData = data.harian;
             lastRekapKecData = data.kecamatan;
             
             // Render UI Harian
-            document.getElementById('rTanam').innerText = lastRekapData.totalTanam;
-            document.getElementById('rPanen').innerText = lastRekapData.totalPanen;
+            document.getElementById('rTanam').innerText = formatAngkaLTT(lastRekapData.totalTanam);
+            document.getElementById('rPanen').innerText = formatAngkaLTT(lastRekapData.totalPanen);
             
             if (currentRekapTab === 'rekap-padi') {
                 const typeText = jenisLTT ? '(' + jenisLTT + ')' : '(Semua)';
@@ -645,9 +655,7 @@
 
         function cobaSimpanCache() {
             if (tempHarian && tempKec) {
-                if (isTodayOnly) {
-                    cacheRekap[cacheKey] = { harian: tempHarian, kecamatan: tempKec };
-                }
+                cacheRekap[cacheKey] = { harian: tempHarian, kecamatan: tempKec };
                 if (btnIcon) btnIcon.classList.remove('fa-spin');
             }
         }
@@ -659,8 +667,8 @@
                 lastRekapData = d.harian;
                 lastRekapKecData = d.kecamatan;
                 
-                document.getElementById('rTanam').innerText = d.harian.totalTanam;
-                document.getElementById('rPanen').innerText = d.harian.totalPanen;
+                document.getElementById('rTanam').innerText = formatAngkaLTT(d.harian.totalTanam);
+                document.getElementById('rPanen').innerText = formatAngkaLTT(d.harian.totalPanen);
                 const typeText = jenisLTT ? '(' + jenisLTT + ')' : '(Semua)';
                 document.getElementById('labelTanamType').innerText = typeText;
                 document.getElementById('labelPanenType').innerText = typeText;
@@ -685,8 +693,8 @@
                 lastRekapData = d.harian;
                 lastRekapKecData = d.kecamatan;
                 
-                document.getElementById('rTanam').innerText = d.harian.totalTanam;
-                document.getElementById('rPanen').innerText = d.harian.totalPanen;
+                document.getElementById('rTanam').innerText = formatAngkaLTT(d.harian.totalTanam);
+                document.getElementById('rPanen').innerText = formatAngkaLTT(d.harian.totalPanen);
                 document.getElementById('labelTanamType').innerText = '(Semua)';
                 document.getElementById('labelPanenType').innerText = '(Semua)';
                 
@@ -873,22 +881,22 @@
                 <tr class="border-b border-gray-50 transition ${zebraClass} ${rowClass} ${borderTop}">
                     <td class="p-3 text-sm">${tampilKec}</td>
                     <td class="p-3 text-xs text-gray-600">${r[1]}</td>
-                    <td class="p-3 text-right text-sm font-bold ${r[2] > 0 ? 'text-blue-600' : 'text-gray-600'}">${r[2]} Ha</td>
-                    <td class="p-3 text-right text-sm font-bold ${r[3] > 0 ? 'text-yellow-600' : 'text-gray-600'}">${r[3]} Ha</td>
+                    <td class="p-3 text-right text-sm font-bold ${r[2] > 0 ? 'text-blue-600' : 'text-gray-600'}">${formatAngkaLTT(r[2])} Ha</td>
+                    <td class="p-3 text-right text-sm font-bold ${r[3] > 0 ? 'text-yellow-600' : 'text-gray-600'}">${formatAngkaLTT(r[3])} Ha</td>
                 </tr>`;
             } else {
                 return `
                 <tr class="border-b border-gray-50 transition ${zebraClass} ${rowClass} ${borderTop}">
                     <td class="p-3 text-sm">${tampilKec}</td>
-                    <td class="p-3 text-right text-sm font-bold ${r[2] > 0 ? 'text-blue-600' : 'text-gray-600'}">${r[2]} Ha</td>
-                    <td class="p-3 text-right text-sm font-bold ${r[3] > 0 ? 'text-yellow-600' : 'text-gray-600'}">${r[3]} Ha</td>
+                    <td class="p-3 text-right text-sm font-bold ${r[2] > 0 ? 'text-blue-600' : 'text-gray-600'}">${formatAngkaLTT(r[2])} Ha</td>
+                    <td class="p-3 text-right text-sm font-bold ${r[3] > 0 ? 'text-yellow-600' : 'text-gray-600'}">${formatAngkaLTT(r[3])} Ha</td>
                 </tr>`;
             }
         }).join('')
             + `<tr class="bg-green-50 border-t-2 border-green-200 font-bold text-sm">
                 <td class="p-3 text-center" colspan="${isPadi ? 2 : 1}">TOTAL KABUPATEN</td>
-                <td class="p-3 text-right text-blue-700">${d.totalTanam} Ha</td>
-                <td class="p-3 text-right text-yellow-700">${d.totalPanen} Ha</td>
+                <td class="p-3 text-right text-blue-700">${formatAngkaLTT(d.totalTanam)} Ha</td>
+                <td class="p-3 text-right text-yellow-700">${formatAngkaLTT(d.totalPanen)} Ha</td>
             </tr>`;
     }
 
@@ -959,7 +967,7 @@
         checkboxes.forEach(cb => idTerpilih.push(cb.value));
         Swal.fire({ title: 'Sahkan?', showCancelButton: true }).then(res => {
             if (res.isConfirmed) {
-                google.script.run.withSuccessHandler(() => muatUlangBPP()).prosesVerifikasiMassal(idTerpilih, 'Admin_BPP');
+                google.script.run.withSuccessHandler(() => { cacheRekap = {}; muatUlangBPP(); }).prosesVerifikasiMassal(idTerpilih, 'Admin_BPP');
             }
         });
     }
@@ -2101,7 +2109,9 @@
     }
 
     function muatUlangDashboard() {
+        cacheRekap = {};
         muatDashboard(true);
+        muatRekap(true);
     }
 
     function setTab(el, filter) {
@@ -2228,6 +2238,7 @@
                 google.script.run
                     .withSuccessHandler(() => {
                         Swal.fire({ title: 'Berhasil!', text: 'Laporan Kec. ' + kecamatan + ' telah disahkan.', icon: 'success', timer: 2000, showConfirmButton: false });
+                        cacheRekap = {};
                         muatVerifikasi();
                         muatDashboard();
                     })
@@ -2267,9 +2278,10 @@
         if (listKecamatan.length === 0) {
             google.script.run.withSuccessHandler(res => {
                 listKecamatan = res;
-                const html = '<option value="">Semua Kecamatan</option>' + res.map(k => `<option value="${k}">${k}</option>`).join('');
-                document.getElementById('filterKecUser').innerHTML = html;
-                document.getElementById('userKec').innerHTML = '<option value="-">Pilih Kecamatan</option>' + html;
+                const filterHtml = '<option value="">Semua Kecamatan</option>' + res.map(k => `<option value="${k}">${k}</option>`).join('');
+                const formHtml = '<option value="-">Pilih Kecamatan</option>' + res.map(k => `<option value="${k}">${k}</option>`).join('');
+                document.getElementById('filterKecUser').innerHTML = filterHtml;
+                document.getElementById('userKec').innerHTML = formHtml;
             }).getDaftarKecamatan();
         }
 
@@ -2317,9 +2329,9 @@
         }
 
         tbody.innerHTML = paginated.map((u, i) => {
-            const badgeRole = { 'Admin_Kab': 'bg-purple-100 text-purple-700', 'BPP': 'bg-blue-100 text-blue-700', 'PPL': 'bg-green-100 text-green-700' };
+            const badgeRole = { 'Admin_Kab': 'bg-purple-100 text-purple-700', 'Admin_BPP': 'bg-blue-100 text-blue-700', 'Penyuluh': 'bg-green-100 text-green-700' };
             const badgeStatus = u.status === 'Aktif' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700';
-            const wilayah = u.role === 'Admin_Kab' ? 'Kabupaten' : (u.role === 'BPP' ? u.kecamatan : `${u.kecamatan}<br><span class="text-[10px] text-gray-400">${u.desa || '-'}</span>`);
+            const wilayah = u.role === 'Admin_Kab' ? 'Kabupaten' : `${u.kecamatan}<br><span class="text-[10px] text-gray-400">${u.desa || '-'}</span>`;
 
             return `
             <tr class="border-b border-gray-50 hover:bg-gray-50 transition">
@@ -2347,6 +2359,7 @@
         document.getElementById('userId').value = '';
         document.getElementById('modalUserTitle').innerText = 'Tambah User Baru';
         handleRoleChange();
+        handleKecamatanChange([]);
         
         const modal = document.getElementById('modalUser');
         modal.classList.remove('hidden');
@@ -2378,17 +2391,71 @@
         const role = document.getElementById('userRole').value;
         const divWilayah = document.getElementById('divWilayah');
         const divDesa = document.getElementById('divDesa');
+        const labelUserDesa = document.getElementById('labelUserDesa');
         
         if (role === 'Admin_Kab') {
             divWilayah.classList.add('hidden');
         } else {
             divWilayah.classList.remove('hidden');
-            if (role === 'BPP') {
-                divDesa.classList.add('hidden');
+            divDesa.classList.remove('hidden');
+            if (role === 'Admin_BPP' || role === 'Penyuluh') {
+                labelUserDesa.innerHTML = 'Desa Binaan <span class="text-red-500">*</span>';
             } else {
-                divDesa.classList.remove('hidden');
+                labelUserDesa.innerHTML = 'Desa Binaan <span class="text-gray-400 font-normal">(Opsional)</span>';
             }
         }
+    }
+
+    let daftarDesaKecamatanLokalAdmin = [];
+
+    function handleKecamatanChange(checkedDesaList = []) {
+        const kec = document.getElementById('userKec').value;
+        const container = document.getElementById('userDesaContainer');
+        if (!container) return;
+        
+        if (kec === '-' || kec === '') {
+            daftarDesaKecamatanLokalAdmin = [];
+            container.innerHTML = '<span class="col-span-2 text-xs text-gray-400 italic">Pilih kecamatan terlebih dahulu</span>';
+            return;
+        }
+        
+        container.innerHTML = '<span class="col-span-2 text-xs text-gray-400 italic"><i class="fa-solid fa-circle-notch fa-spin"></i> Memuat daftar desa...</span>';
+        
+        google.script.run.withSuccessHandler(res => {
+            daftarDesaKecamatanLokalAdmin = res || [];
+            let checkedArr = [];
+            if (typeof checkedDesaList === 'string') {
+                checkedArr = checkedDesaList.split(',').map(d => d.trim());
+            } else if (Array.isArray(checkedDesaList)) {
+                checkedArr = checkedDesaList;
+            }
+            renderChecklistDesaAdmin(checkedArr);
+        }).getDaftarDesabyKecamatan(kec);
+    }
+
+    function renderChecklistDesaAdmin(checkedDesaList = []) {
+        const container = document.getElementById('userDesaContainer');
+        if (!container) return;
+        
+        if (daftarDesaKecamatanLokalAdmin.length === 0) {
+            container.innerHTML = '<span class="col-span-2 text-xs text-gray-400 italic">Belum ada data desa terdaftar untuk kecamatan ini.</span>';
+            return;
+        }
+        
+        const checkedSet = new Set(
+            (checkedDesaList || []).map(d => d.toString().toLowerCase().trim())
+        );
+        
+        container.innerHTML = daftarDesaKecamatanLokalAdmin.map((desa, idx) => {
+            const isChecked = checkedSet.has(desa.toLowerCase().trim()) ? 'checked' : '';
+            return `
+                <label class="flex items-center gap-2.5 px-3 py-2 hover:bg-green-50 rounded-xl cursor-pointer transition select-none text-xs text-gray-700 font-semibold border border-transparent hover:border-green-100 bg-white shadow-sm">
+                    <input type="checkbox" name="userDesaBinaan" value="${desa}" ${isChecked}
+                        class="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500 cursor-pointer transition">
+                    <span>Desa ${desa}</span>
+                </label>
+            `;
+        }).join('');
     }
 
     function editUser(id) {
@@ -2402,11 +2469,11 @@
         document.getElementById('userPassword').value = u.password;
         document.getElementById('userRole').value = u.role;
         document.getElementById('userKec').value = u.kecamatan;
-        document.getElementById('userDesa').value = u.desa;
         document.getElementById('userStatus').value = u.status;
         
         document.getElementById('modalUserTitle').innerText = 'Edit Akun User';
         handleRoleChange();
+        handleKecamatanChange(u.desa);
         
         const modal = document.getElementById('modalUser');
         modal.classList.remove('hidden');
@@ -2418,21 +2485,55 @@
 
     function simpanUser(e) {
         e.preventDefault();
+        
+        const id = document.getElementById('userId').value;
+        const nama = document.getElementById('userNama').value.trim();
+        const nip = document.getElementById('userNIP').value.trim();
+        const password = document.getElementById('userPassword').value;
+        const role = document.getElementById('userRole').value;
+        let kecamatan = document.getElementById('userKec').value;
+        const status = document.getElementById('userStatus').value;
+
+        const checkedDesas = document.querySelectorAll('#userDesaContainer input[name="userDesaBinaan"]:checked');
+        const desaArr = Array.from(checkedDesas).map(cb => cb.value.trim());
+        let desa = desaArr.join(', ');
+
+        // Validasi input
+        if (password.length < 4) {
+            Swal.fire('Peringatan', 'Password minimal harus 4 karakter.', 'warning');
+            return;
+        }
+
+        // Pembersihan & validasi data wilayah berdasarkan role
+        if (role === 'Admin_Kab') {
+            kecamatan = '-';
+            desa = '-';
+        } else if (role === 'Admin_BPP') {
+            if (kecamatan === '-' || kecamatan === '') {
+                Swal.fire('Peringatan', 'Silakan pilih kecamatan untuk akun BPP.', 'warning');
+                return;
+            }
+            if (desaArr.length === 0) {
+                Swal.fire('Peringatan', 'Silakan pilih minimal satu desa binaan untuk akun BPP.', 'warning');
+                return;
+            }
+        } else if (role === 'Penyuluh') {
+            if (kecamatan === '-' || kecamatan === '') {
+                Swal.fire('Peringatan', 'Silakan pilih kecamatan untuk akun PPL.', 'warning');
+                return;
+            }
+            if (desaArr.length === 0) {
+                Swal.fire('Peringatan', 'Silakan pilih minimal satu desa binaan untuk akun PPL.', 'warning');
+                return;
+            }
+        }
+
         const btn = document.getElementById('btnSimpanUser');
         const oldText = btn.innerHTML;
         btn.disabled = true;
         btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Menyimpan...';
 
-        const data = {
-            id: document.getElementById('userId').value,
-            nama: document.getElementById('userNama').value,
-            nip: document.getElementById('userNIP').value,
-            password: document.getElementById('userPassword').value,
-            role: document.getElementById('userRole').value,
-            kecamatan: document.getElementById('userKec').value,
-            desa: document.getElementById('userDesa').value,
-            status: document.getElementById('userStatus').value
-        };
+        const data = { id, nama, nip, password, role, kecamatan, desa, status };
 
         google.script.run.withSuccessHandler(res => {
             btn.disabled = false;
@@ -2440,7 +2541,7 @@
             if (res.status === 'success') {
                 Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message, timer: 2000, showConfirmButton: false });
                 tutupModalUser();
-                muatDaftarUser();
+                muatDaftarUser(true);
             } else {
                 Swal.fire('Gagal', res.message, 'error');
             }
@@ -2460,7 +2561,7 @@
                 google.script.run.withSuccessHandler(res => {
                     if (res.status === 'success') {
                         Swal.fire('Dihapus!', res.message, 'success');
-                        muatDaftarUser();
+                        muatDaftarUser(true);
                     } else {
                         Swal.fire('Gagal', res.message, 'error');
                     }
