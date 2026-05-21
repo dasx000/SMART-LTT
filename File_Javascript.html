@@ -435,7 +435,7 @@
     }
 
     function navigasi(section) {
-        ['sectionDashboard', 'sectionVerifikasi', 'sectionManajemen', 'sectionLogs', 'sectionTarget'].forEach(id => {
+        ['sectionDashboard', 'sectionVerifikasi', 'sectionManajemen', 'sectionLogs', 'sectionTarget', 'sectionDetailTarget'].forEach(id => {
             const el = document.getElementById(id);
             if(el) el.classList.add('hidden');
         });
@@ -2808,28 +2808,23 @@
         document.getElementById('modalTargetBulanTitle').textContent = `Detail Target — ${NAMA_BULAN[bulan]}`;
         document.getElementById('modalTargetBulanSubtitle').textContent = `Komoditas: ${targetKomoditasAktif}`;
 
-        const modal = document.getElementById('modalTargetBulan');
-        modal.classList.remove('hidden');
-        requestAnimationFrame(() => {
-            modal.classList.remove('opacity-0');
-            modal.querySelector('div').classList.remove('scale-95');
-        });
+        document.getElementById('sectionTarget').classList.add('hidden');
+        document.getElementById('sectionDetailTarget').classList.remove('hidden');
 
         setTabDetailTarget('Kabupaten');
         muatDetailTargetBulan();
     }
 
     function tutupModalTargetBulan() {
-        const modal = document.getElementById('modalTargetBulan');
-        modal.classList.add('opacity-0');
-        modal.querySelector('div').classList.add('scale-95');
-        setTimeout(() => modal.classList.add('hidden'), 280);
+        document.getElementById('sectionDetailTarget').classList.add('hidden');
+        document.getElementById('sectionTarget').classList.remove('hidden');
     }
 
     function setTabDetailTarget(level) {
         targetTabLevel = level;
+        const tabIdMap = { Kabupaten: 'tabTgtKab', Kecamatan: 'tabTgtKec', Desa: 'tabTgtDesa' };
         ['Kabupaten', 'Kecamatan', 'Desa'].forEach(l => {
-            const btn = document.getElementById('tabTgt' + l.replace(/\s/g,'').substring(0,3));
+            const btn = document.getElementById(tabIdMap[l]);
             if (!btn) return;
             const isActive = l === level;
             btn.className = `px-5 py-2.5 text-sm font-bold border-b-2 transition ${isActive ? 'border-green-600 text-green-700' : 'border-transparent text-gray-500 hover:text-green-600'}`;
@@ -2903,7 +2898,7 @@
                 <td class="p-3 text-xs text-gray-500">${t.pembuat || '—'}</td>
                 <td class="p-3 text-center">
                     <div class="flex items-center justify-center gap-2">
-                        <button onclick="bukaFormTarget(${JSON.stringify(t).replace(/'/g, '&apos;')})"
+                        <button onclick="bukaFormTarget(${JSON.stringify(t).replace(/"/g, '&quot;')})"
                             class="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition" title="Edit">
                             <i class="fa-solid fa-pen text-xs"></i>
                         </button>
@@ -2922,6 +2917,8 @@
 
     let jenisLTTOptions = [];
 
+    let _geoCache = null;
+
     function bukaFormTarget(targetData) {
         const isEdit = !!targetData;
         document.getElementById('modalFormTargetTitle').textContent = isEdit ? 'Edit Target' : 'Tambah Target';
@@ -2930,10 +2927,58 @@
         document.getElementById('tgtLevel').value = targetTabLevel;
         document.getElementById('tgtKomoditas').value = targetKomoditasAktif;
 
-        document.getElementById('tgtWilayahDisplay').textContent = isEdit ? targetData.namaGeografi : '— pilih dari tabel —';
         document.getElementById('tgtKomoditasDisplay').textContent = targetKomoditasAktif;
         document.getElementById('tgtBulanDisplay').textContent = NAMA_BULAN[targetBulanAktif];
         document.getElementById('tgtTotalTarget').value = isEdit ? targetData.totalTarget : '';
+
+        // Wilayah: Kabupaten → readonly, Kecamatan/Desa → dropdown
+        const wilayahDisplay = document.getElementById('tgtWilayahDisplay');
+        const wilayahWrapper = document.getElementById('tgtWilayahSelectWrapper');
+        const desaSel = document.getElementById('tgtDesaSelect');
+
+        if (targetTabLevel === 'Kabupaten') {
+            wilayahDisplay.classList.remove('hidden');
+            wilayahWrapper.classList.add('hidden');
+            wilayahDisplay.textContent = isEdit ? targetData.namaGeografi : (typeof userAktif !== 'undefined' && userAktif.kabupaten ? userAktif.kabupaten : 'Kabupaten Way Kanan');
+        } else {
+            wilayahDisplay.classList.add('hidden');
+            wilayahWrapper.classList.remove('hidden');
+            desaSel.classList.add('hidden');
+
+            const initDropdown = (geo) => {
+                _geoCache = geo;
+                const kecSel = document.getElementById('tgtKecamatanFilter');
+                kecSel.innerHTML = '<option value="">— Pilih Kecamatan —</option>' +
+                    geo.kecamatan.map(k => `<option value="${k}">${k}</option>`).join('');
+
+                if (targetTabLevel === 'Kecamatan') {
+                    if (isEdit) kecSel.value = targetData.namaGeografi;
+                } else {
+                    desaSel.classList.remove('hidden');
+                    if (isEdit) {
+                        for (const [kec, desas] of Object.entries(geo.desaByKec)) {
+                            if (desas.indexOf(targetData.namaGeografi) !== -1) {
+                                kecSel.value = kec;
+                                populateDesaSelect(kec, targetData.namaGeografi);
+                                break;
+                            }
+                        }
+                    }
+                }
+            };
+
+            if (_geoCache) {
+                initDropdown(_geoCache);
+            } else {
+                document.getElementById('tgtKecamatanFilter').innerHTML = '<option value="">— Memuat... —</option>';
+                google.script.run
+                    .withSuccessHandler(initDropdown)
+                    .withFailureHandler(() => {
+                        document.getElementById('tgtKecamatanFilter').innerHTML = '<option value="">— Gagal memuat —</option>';
+                    })
+                    .getSemuaGeografi();
+            }
+        }
 
         // Desa-specific fields
         const desaSection = document.getElementById('sectionDesaFields');
@@ -2972,6 +3017,18 @@
             modal.classList.remove('opacity-0');
             modal.querySelector('div').classList.remove('scale-95');
         });
+    }
+
+    function onKecamatanFilterChange() {
+        if (document.getElementById('tgtLevel').value !== 'Desa') return;
+        populateDesaSelect(document.getElementById('tgtKecamatanFilter').value);
+    }
+
+    function populateDesaSelect(kec, selectedDesa) {
+        const desaSel = document.getElementById('tgtDesaSelect');
+        const desas = (_geoCache && kec) ? (_geoCache.desaByKec[kec] || []) : [];
+        desaSel.innerHTML = '<option value="">— Pilih Desa —</option>' +
+            desas.map(d => `<option value="${d}" ${d === selectedDesa ? 'selected' : ''}>${d}</option>`).join('');
     }
 
     function tutupFormTarget() {
@@ -3031,7 +3088,21 @@
             if (jenis) details.push({ jenisLtt: jenis, luas });
         });
 
-        const namaGeo = document.getElementById('tgtWilayahDisplay').textContent.trim();
+        const level = document.getElementById('tgtLevel').value;
+        let namaGeo;
+        if (level === 'Kabupaten') {
+            namaGeo = document.getElementById('tgtWilayahDisplay').textContent.trim();
+        } else if (level === 'Kecamatan') {
+            namaGeo = document.getElementById('tgtKecamatanFilter').value;
+        } else {
+            namaGeo = document.getElementById('tgtDesaSelect').value;
+        }
+        if (!namaGeo) {
+            btn.disabled = false;
+            btn.innerHTML = 'Simpan Target';
+            Swal.fire('Peringatan', 'Pilih wilayah terlebih dahulu.', 'warning');
+            return;
+        }
 
         const formData = {
             id:           document.getElementById('tgtIdTarget').value,

@@ -9,7 +9,7 @@
         class="w-64 bg-green-800 text-white flex flex-col shadow-2xl flex-shrink-0 fixed inset-y-0 left-0 z-50 transform -translate-x-full md:relative md:translate-x-0 transition-all duration-300 ease-in-out">
         <div class="h-20 flex items-center justify-between px-4 border-b border-green-700">
             <div class="flex items-center">
-                <i class="fa-solid fa-seedling text-3xl text-green-300 mr-3"></i>
+                <img src="<?= logoSrc ?>" class="w-9 h-9 mr-3 object-contain drop-shadow">
                 <div>
                     <h1 class="text-xl font-bold tracking-wider">e-LTT CWS</h1>
                     <p class="text-[10px] text-green-300">Kabupaten Way Kanan</p>
@@ -824,6 +824,76 @@
             </div>
         </div> <!-- end sectionTarget -->
 
+        <!-- ===== SECTION: DETAIL TARGET BULANAN ===== -->
+        <div id="sectionDetailTarget" class="hidden">
+            <div class="p-6 md:p-8">
+
+                <!-- Back + Title -->
+                <div class="flex items-center gap-4 mb-6">
+                    <button onclick="tutupModalTargetBulan()"
+                        class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-50 transition shadow-sm">
+                        <i class="fa-solid fa-arrow-left"></i> Kembali
+                    </button>
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800" id="modalTargetBulanTitle">Detail Target — Januari</h2>
+                        <p class="text-sm text-gray-500 mt-0.5" id="modalTargetBulanSubtitle">Komoditas: Padi</p>
+                    </div>
+                </div>
+
+                <!-- Tab Navigation -->
+                <div class="border-b border-gray-200 mb-6 flex gap-1">
+                    <button id="tabTgtKab" onclick="setTabDetailTarget('Kabupaten')"
+                        class="px-5 py-2.5 text-sm font-bold border-b-2 border-green-600 text-green-700 transition">
+                        <i class="fa-solid fa-city mr-1"></i> Kab / Kota
+                    </button>
+                    <button id="tabTgtKec" onclick="setTabDetailTarget('Kecamatan')"
+                        class="px-5 py-2.5 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-green-600 transition">
+                        <i class="fa-solid fa-map-location-dot mr-1"></i> Kecamatan
+                    </button>
+                    <button id="tabTgtDesa" onclick="setTabDetailTarget('Desa')"
+                        class="px-5 py-2.5 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-green-600 transition">
+                        <i class="fa-solid fa-house mr-1"></i> Desa / Kelurahan
+                    </button>
+                </div>
+
+                <!-- Stat Row -->
+                <div id="statRowTargetBulan" class="grid grid-cols-3 gap-4 mb-5"></div>
+
+                <!-- Table -->
+                <div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                    <div class="p-4 border-b border-gray-100 flex items-center justify-between">
+                        <p class="text-sm font-bold text-gray-700" id="labelTabDetailTarget">Target Kabupaten</p>
+                        <button onclick="bukaFormTarget(null)"
+                            class="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700 transition">
+                            <i class="fa-solid fa-plus"></i> Tambah Target
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="bg-gray-50 border-b border-gray-100">
+                                    <th class="p-3 text-left text-xs font-bold text-gray-400 uppercase">Wilayah</th>
+                                    <th class="p-3 text-right text-xs font-bold text-gray-400 uppercase">Total Target (Ha)</th>
+                                    <th class="p-3 text-left text-xs font-bold text-gray-400 uppercase">Rincian Jenis</th>
+                                    <th class="p-3 text-left text-xs font-bold text-gray-400 uppercase">Pembuat</th>
+                                    <th class="p-3 text-center text-xs font-bold text-gray-400 uppercase">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelDetailTarget">
+                                <tr>
+                                    <td colspan="5" class="p-8 text-center text-gray-400">
+                                        <i class="fa-solid fa-circle-notch fa-spin text-xl text-green-500 mb-2 block"></i>
+                                        Memuat data...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div> <!-- end sectionDetailTarget -->
+
     </div> <!-- end main content div -->
 </div> <!-- end flex container div -->
 
@@ -914,72 +984,6 @@
     </div>
 </div>
 
-<!-- ===== MODAL: Detail Target Bulanan ===== -->
-<div id="modalTargetBulan"
-    class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[110] flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
-    <div class="bg-white w-full max-w-5xl max-h-[92vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden transform scale-95 transition-transform duration-300">
-        <div class="bg-green-700 p-5 text-white flex justify-between items-center flex-shrink-0">
-            <div>
-                <h3 class="font-bold text-lg" id="modalTargetBulanTitle">Detail Target — Januari</h3>
-                <p class="text-xs text-green-200 mt-0.5" id="modalTargetBulanSubtitle">Komoditas: Padi</p>
-            </div>
-            <button onclick="tutupModalTargetBulan()"
-                class="hover:bg-white/20 w-8 h-8 rounded-full flex items-center justify-center transition">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-        </div>
-        <div class="flex-shrink-0 border-b border-gray-200 px-6 pt-4 flex gap-1">
-            <button id="tabTgtKab" onclick="setTabDetailTarget('Kabupaten')"
-                class="px-5 py-2.5 text-sm font-bold border-b-2 border-green-600 text-green-700 transition">
-                <i class="fa-solid fa-city mr-1"></i> Kab / Kota
-            </button>
-            <button id="tabTgtKec" onclick="setTabDetailTarget('Kecamatan')"
-                class="px-5 py-2.5 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-green-600 transition">
-                <i class="fa-solid fa-map-location-dot mr-1"></i> Kecamatan
-            </button>
-            <button id="tabTgtDesa" onclick="setTabDetailTarget('Desa')"
-                class="px-5 py-2.5 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-green-600 transition">
-                <i class="fa-solid fa-house mr-1"></i> Desa / Kelurahan
-            </button>
-        </div>
-        <div class="flex-1 overflow-y-auto p-6">
-            <!-- Summary stat row -->
-            <div id="statRowTargetBulan" class="grid grid-cols-3 gap-4 mb-5"></div>
-            <!-- Table -->
-            <div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
-                <div class="p-4 border-b border-gray-100 flex items-center justify-between">
-                    <p class="text-sm font-bold text-gray-700" id="labelTabDetailTarget">Target Kabupaten</p>
-                    <button onclick="bukaFormTarget(null)"
-                        class="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700 transition">
-                        <i class="fa-solid fa-plus"></i> Tambah Target
-                    </button>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
-                        <thead>
-                            <tr class="bg-gray-50 border-b border-gray-100">
-                                <th class="p-3 text-left text-xs font-bold text-gray-400 uppercase">Wilayah</th>
-                                <th class="p-3 text-right text-xs font-bold text-gray-400 uppercase">Total Target (Ha)</th>
-                                <th class="p-3 text-left text-xs font-bold text-gray-400 uppercase">Rincian Jenis</th>
-                                <th class="p-3 text-left text-xs font-bold text-gray-400 uppercase">Pembuat</th>
-                                <th class="p-3 text-center text-xs font-bold text-gray-400 uppercase">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabelDetailTarget">
-                            <tr>
-                                <td colspan="5" class="p-8 text-center text-gray-400">
-                                    <i class="fa-solid fa-circle-notch fa-spin text-xl text-green-500 mb-2 block"></i>
-                                    Memuat data...
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- ===== MODAL: Form Input Target ===== -->
 <div id="modalFormTarget"
     class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[120] flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
@@ -997,12 +1001,24 @@
             <input type="hidden" id="tgtLevel">
             <input type="hidden" id="tgtKomoditas">
 
-            <!-- Wilayah Display -->
+            <!-- Wilayah -->
             <div>
-                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Wilayah</label>
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Wilayah <span class="text-red-500">*</span></label>
+                <!-- Kabupaten: readonly -->
                 <div id="tgtWilayahDisplay"
                     class="w-full px-4 py-2.5 border rounded-xl bg-gray-50 text-gray-700 font-semibold text-sm">
                     -</div>
+                <!-- Kecamatan / Desa: dropdown -->
+                <div id="tgtWilayahSelectWrapper" class="hidden space-y-2">
+                    <select id="tgtKecamatanFilter" onchange="onKecamatanFilterChange()"
+                        class="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition text-sm bg-white">
+                        <option value="">— Memuat kecamatan... —</option>
+                    </select>
+                    <select id="tgtDesaSelect"
+                        class="hidden w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition text-sm bg-white">
+                        <option value="">— Pilih desa —</option>
+                    </select>
+                </div>
             </div>
 
             <!-- Komoditas + Bulan Info -->

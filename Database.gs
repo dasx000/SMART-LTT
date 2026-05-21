@@ -1126,9 +1126,9 @@ function inisialisasiDatabase_() {
     sr.setFrozenRows(1);
   }
 
-  // Sheet: jenis_ltt
-  if (!ss.getSheetByName('jenis_ltt')) {
-    var sj = ss.insertSheet('jenis_ltt');
+  // Sheet: Jenis_LTT
+  if (!ss.getSheetByName('Jenis_LTT')) {
+    var sj = ss.insertSheet('Jenis_LTT');
     sj.appendRow(['ID_Jenis_LTT', 'Nama_Jenis_LTT', 'Komoditas']);
     sj.getRange('A1:C1').setFontWeight('bold').setBackground('#d0e0ff');
     sj.setFrozenRows(1);
@@ -1136,12 +1136,11 @@ function inisialisasiDatabase_() {
     var seeds = [
       ['1', 'LTT Reguler', 'Padi'],
       ['2', 'LTT Padi Gogo', 'Padi'],
-      ['3', 'LTT Oplah 2025', 'Padi'],
-      ['4', 'LTT Pompanisasi', 'Padi'],
-      ['5', 'LTT Oplah 2024', 'Padi'],
-      ['6', 'LTT IP400', 'Padi'],
-      ['7', 'Jagung Hibrida', 'Jagung'],
-      ['8', 'Jagung Komposit', 'Jagung'],
+      ['3', 'LTT Oplah 2024', 'Padi'],
+      ['4', 'LTT  Oplah 2025', 'Padi'],
+      ['5', 'LTT CSR', 'Padi'],
+      ['6', 'LTT Rehap Bencana', 'Padi'],
+      ['7', 'Jagung', 'Jagung'],
       ['9', 'Ubi Kayu', 'Ubi Kayu']
     ];
     sj.getRange(2, 1, seeds.length, 3).setValues(seeds);
@@ -2039,10 +2038,33 @@ function clearAllAppCaches() {
 // NEW: TARGET KOMODITAS BULANAN FUNCTIONS
 // =========================================================================
 
+function getSemuaGeografi() {
+  try {
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var sheet = ss.getSheetByName('Data_Geografi');
+    if (!sheet) return { kecamatan: [], desaByKec: {} };
+    var data = sheet.getDataRange().getValues();
+    var kecSet = [];
+    var desaByKec = {};
+    for (var i = 1; i < data.length; i++) {
+      var kec = (data[i][1] || '').toString().trim();
+      var desa = (data[i][3] || '').toString().trim();
+      if (!kec) continue;
+      if (kecSet.indexOf(kec) === -1) kecSet.push(kec);
+      if (!desaByKec[kec]) desaByKec[kec] = [];
+      if (desa && desaByKec[kec].indexOf(desa) === -1) desaByKec[kec].push(desa);
+    }
+    return { kecamatan: kecSet, desaByKec: desaByKec };
+  } catch (e) {
+    console.error("Error getSemuaGeografi: " + e.toString());
+    return { kecamatan: [], desaByKec: {} };
+  }
+}
+
 function getJenisLTT(komoditas) {
   try {
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    var sheet = ss.getSheetByName('jenis_ltt');
+    var sheet = ss.getSheetByName('Jenis_LTT');
     if (!sheet) return [];
     var data = sheet.getDataRange().getValues();
     var result = [];
@@ -2381,27 +2403,10 @@ function rollupDesaToKecamatan_(bulan, komoditas, kecamatanName, pembuat) {
     }
   }
   
-  if (foundIndex === -1 || sumDesa > currentKecTarget) {
-    var rowData = [
-      kecId,
-      bulan,
-      'Kecamatan',
-      kecId,
-      kecamatanName,
-      komoditas,
-      sumDesa,
-      0,
-      0,
-      0,
-      pembuat,
-      new Date()
-    ];
-    
-    if (foundIndex !== -1) {
-      shBulanan.getRange(foundIndex, 1, 1, 12).setValues([rowData]);
-    } else {
-      shBulanan.appendRow(rowData);
-    }
+  // Rollup hanya update jika baris Kecamatan sudah ada dan sum desa > target saat ini
+  if (foundIndex !== -1 && sumDesa > currentKecTarget) {
+    shBulanan.getRange(foundIndex, 7).setValue(sumDesa);
+    shBulanan.getRange(foundIndex, 12).setValue(new Date());
   }
 }
 
@@ -2427,27 +2432,10 @@ function rollupKecamatanToKabupaten_(bulan, komoditas, pembuat) {
     }
   }
   
-  if (foundIndex === -1 || sumKec > currentKabTarget) {
-    var rowData = [
-      kabId,
-      bulan,
-      'Kabupaten',
-      kabId,
-      kabName,
-      komoditas,
-      sumKec,
-      0,
-      0,
-      0,
-      pembuat,
-      new Date()
-    ];
-    
-    if (foundIndex !== -1) {
-      shBulanan.getRange(foundIndex, 1, 1, 12).setValues([rowData]);
-    } else {
-      shBulanan.appendRow(rowData);
-    }
+  // Rollup hanya update jika baris Kabupaten sudah ada dan sum kec > target saat ini
+  if (foundIndex !== -1 && sumKec > currentKabTarget) {
+    shBulanan.getRange(foundIndex, 7).setValue(sumKec);
+    shBulanan.getRange(foundIndex, 12).setValue(new Date());
   }
 }
 

@@ -1,4 +1,4 @@
-// =========================================================================
+﻿// =========================================================================
 // FILE: Code.gs
 // DESKRIPSI: Routing Utama dan Setup Web App
 // =========================================================================
@@ -23,8 +23,12 @@ function doGet(e) {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
+var LOGO_SRC_ = 'https://lh3.googleusercontent.com/d/1eT8hkuReypIqxGP7O8G0zGS5hGjSFrmt';
+
 function include(filename) {
-  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+  var tmpl = HtmlService.createTemplateFromFile(filename);
+  tmpl.logoSrc = LOGO_SRC_;
+  return tmpl.evaluate().getContent();
 }
 
 // =========================================================================
