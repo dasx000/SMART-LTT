@@ -435,7 +435,7 @@
     }
 
     function navigasi(section) {
-        ['sectionDashboard', 'sectionVerifikasi', 'sectionManajemen', 'sectionLogs'].forEach(id => {
+        ['sectionDashboard', 'sectionVerifikasi', 'sectionManajemen', 'sectionLogs', 'sectionTarget'].forEach(id => {
             const el = document.getElementById(id);
             if(el) el.classList.add('hidden');
         });
@@ -453,6 +453,10 @@
             document.getElementById('sectionLogs').classList.remove('hidden');
             document.getElementById('nav-logs').classList.add('bg-green-700', 'text-white', 'font-bold');
             muatLogsSinkron();
+        } else if (section === 'target') {
+            document.getElementById('sectionTarget').classList.remove('hidden');
+            document.getElementById('nav-target').classList.add('bg-green-700', 'text-white', 'font-bold');
+            muatTabelTargetBulan();
         } else {
             document.getElementById('sectionDashboard').classList.remove('hidden');
             document.getElementById('nav-dashboard').classList.add('bg-green-700', 'text-white', 'font-bold');
@@ -471,7 +475,6 @@
 
     function muatDashboard(forceRefresh = false) {
         const sel = document.getElementById('filterBulanDashboard');
-        const labelPeriode = document.getElementById('labelPeriodeDashboard');
         const btnIcon = document.getElementById('iconRefreshDash');
         
         const params = {};
@@ -481,10 +484,6 @@
             const parts = sel.value.split('-');
             params.tahun = parseInt(parts[0]);
             params.bulan = parseInt(parts[1]);
-            
-            // Update Teks Label
-            const text = sel.options[sel.selectedIndex].text;
-            if (labelPeriode) labelPeriode.innerText = `REKAP DATA ${text.toUpperCase()}`;
         }
         
         if (btnIcon) btnIcon.classList.add('fa-spin');
@@ -620,8 +619,8 @@
         // Konstruksi Cache Key
         const cacheKey = currentRekapTab + '_' + tglMulai + '_' + tglAkhir + '_' + (jenisLTT || 'semua');
 
-        // Gunakan cache jika tersedia dan tidak dipaksa refresh
-        if (!force && cacheRekap[cacheKey]) {
+        // Gunakan cache jika tersedia, tidak dipaksa refresh, dan filter adalah hari ini (isTodayOnly)
+        if (!force && isTodayOnly && cacheRekap[cacheKey]) {
             const data = cacheRekap[cacheKey];
             lastRekapData = data.harian;
             lastRekapKecData = data.kecamatan;
@@ -655,7 +654,9 @@
 
         function cobaSimpanCache() {
             if (tempHarian && tempKec) {
-                cacheRekap[cacheKey] = { harian: tempHarian, kecamatan: tempKec };
+                if (isTodayOnly) {
+                    cacheRekap[cacheKey] = { harian: tempHarian, kecamatan: tempKec };
+                }
                 if (btnIcon) btnIcon.classList.remove('fa-spin');
             }
         }
@@ -2122,13 +2123,11 @@
         el.classList.add('bg-green-600', 'text-white', 'hover:bg-green-700');
         el.classList.remove('text-gray-500', 'hover:text-green-600');
 
-        const wrapperLabel = document.getElementById('wrapperLabelPeriode');
         const wrapperFilter = document.getElementById('wrapperFilterBulan');
 
         if (filter === 'rekap-padi' || filter === 'jagung' || filter === 'ubi-kayu') {
             document.getElementById('panelDashboard').classList.add('hidden');
             document.getElementById('panelRekap').classList.remove('hidden');
-            if (wrapperLabel) wrapperLabel.classList.add('hidden');
             if (wrapperFilter) wrapperFilter.classList.add('hidden');
             
             currentRekapTab = filter;
@@ -2148,7 +2147,6 @@
         } else {
             document.getElementById('panelDashboard').classList.remove('hidden');
             document.getElementById('panelRekap').classList.add('hidden');
-            if (wrapperLabel) wrapperLabel.classList.remove('hidden');
             if (wrapperFilter) wrapperFilter.classList.remove('hidden');
         }
     }
@@ -2706,5 +2704,664 @@
             _tutupModalUserDOM();
             return;
         }
+
+        // 6. Target Modals
+        const modalFormTarget = document.getElementById('modalFormTarget');
+        if (modalFormTarget && !modalFormTarget.classList.contains('hidden')) {
+            tutupFormTarget();
+            return;
+        }
+        const modalTargetBulan = document.getElementById('modalTargetBulan');
+        if (modalTargetBulan && !modalTargetBulan.classList.contains('hidden')) {
+            tutupModalTargetBulan();
+            return;
+        }
     });
+
+    // =========================================================================
+    // MODUL: TARGET KOMODITAS BULANAN (ADMIN)
+    // =========================================================================
+
+    const NAMA_BULAN = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    const KOMODITAS_LIST = ['Padi', 'Jagung', 'Ubi Kayu'];
+
+    let targetKomoditasAktif = 'Padi';
+    let targetBulanAktif = null;       // bulan integer yang sedang dibuka di modal
+    let targetTabLevel = 'Kabupaten'; // tab aktif di modal detail
+    let cacheTargetBulanan = {};       // { bulan: { Padi: [...], Jagung: [...], ... } }
+    let jenisLTTCache = {};            // { komoditas: [...jenisNama] }
+
+    function setTargetKomoditas(komoditas) {
+        targetKomoditasAktif = komoditas;
+        KOMODITAS_LIST.forEach(k => {
+            const btn = document.getElementById('tgtKom-' + k);
+            if (!btn) return;
+            const isActive = k === komoditas;
+            btn.className = `px-4 py-2 text-sm font-bold rounded-lg transition-all ${isActive ? 'bg-green-600 text-white' : 'text-gray-500 hover:bg-white'}`;
+        });
+        muatTabelTargetBulan();
+    }
+
+    function muatTabelTargetBulan() {
+        const tbody = document.getElementById('tabelTargetBulan');
+        if (!tbody) return;
+        tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-400">
+            <i class="fa-solid fa-circle-notch fa-spin text-2xl text-green-500 mb-2 block"></i>Memuat...</td></tr>`;
+
+        google.script.run
+            .withSuccessHandler(data => renderTabelTargetBulan(data))
+            .withFailureHandler(err => {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-red-400">
+                    <i class="fa-solid fa-circle-exclamation mr-2"></i>${err.message}</td></tr>`;
+            })
+            .ambilTargetBulanan({ bulan: 0, komoditas: targetKomoditasAktif }); // bulan=0 => semua bulan aggregated
+    }
+
+    function renderTabelTargetBulan(semua) {
+        // Build per-bulan summary map
+        const perBulan = {};
+        (semua || []).forEach(t => {
+            const b = t.bulan;
+            if (!perBulan[b]) perBulan[b] = { kab: 0, kec: 0, desa: 0 };
+            if (t.level === 'Kabupaten') perBulan[b].kab += t.totalTarget;
+            else if (t.level === 'Kecamatan') perBulan[b].kec += t.totalTarget;
+            else if (t.level === 'Desa') perBulan[b].desa += t.totalTarget;
+        });
+
+        const tbody = document.getElementById('tabelTargetBulan');
+        let html = '';
+        for (let b = 1; b <= 12; b++) {
+            const d = perBulan[b] || { kab: 0, kec: 0, desa: 0 };
+            const hasData = d.kab > 0 || d.kec > 0 || d.desa > 0;
+            const statusBadge = hasData
+                ? `<span class="px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700"><i class="fa-solid fa-check mr-1"></i>Ada Target</span>`
+                : `<span class="px-2 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-400">Belum Ada</span>`;
+            const fmt = v => v > 0 ? v.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2}) + ' Ha' : '<span class="text-gray-300">—</span>';
+            html += `
+            <tr class="border-b border-gray-100 hover:bg-green-50/40 transition-colors cursor-pointer" onclick="bukaDetailTargetBulan(${b})">
+                <td class="p-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-green-100 text-green-700 flex items-center justify-center font-bold text-sm">${b}</div>
+                        <span class="font-semibold text-gray-800">${NAMA_BULAN[b]}</span>
+                    </div>
+                </td>
+                <td class="p-4 text-center text-sm font-semibold text-gray-700">${fmt(d.kab)}</td>
+                <td class="p-4 text-center text-sm font-semibold text-gray-700">${fmt(d.kec)}</td>
+                <td class="p-4 text-center text-sm font-semibold text-gray-700">${fmt(d.desa)}</td>
+                <td class="p-4 text-center">${statusBadge}</td>
+                <td class="p-4 text-center">
+                    <button onclick="event.stopPropagation(); bukaDetailTargetBulan(${b})"
+                        class="px-3 py-1.5 bg-white border border-green-200 text-green-700 rounded-lg text-xs font-bold hover:bg-green-50 transition">
+                        <i class="fa-solid fa-eye mr-1"></i>Detail
+                    </button>
+                </td>
+            </tr>`;
+        }
+        tbody.innerHTML = html;
+    }
+
+    function bukaDetailTargetBulan(bulan) {
+        targetBulanAktif = bulan;
+        targetTabLevel = 'Kabupaten';
+
+        document.getElementById('modalTargetBulanTitle').textContent = `Detail Target — ${NAMA_BULAN[bulan]}`;
+        document.getElementById('modalTargetBulanSubtitle').textContent = `Komoditas: ${targetKomoditasAktif}`;
+
+        const modal = document.getElementById('modalTargetBulan');
+        modal.classList.remove('hidden');
+        requestAnimationFrame(() => {
+            modal.classList.remove('opacity-0');
+            modal.querySelector('div').classList.remove('scale-95');
+        });
+
+        setTabDetailTarget('Kabupaten');
+        muatDetailTargetBulan();
+    }
+
+    function tutupModalTargetBulan() {
+        const modal = document.getElementById('modalTargetBulan');
+        modal.classList.add('opacity-0');
+        modal.querySelector('div').classList.add('scale-95');
+        setTimeout(() => modal.classList.add('hidden'), 280);
+    }
+
+    function setTabDetailTarget(level) {
+        targetTabLevel = level;
+        ['Kabupaten', 'Kecamatan', 'Desa'].forEach(l => {
+            const btn = document.getElementById('tabTgt' + l.replace(/\s/g,'').substring(0,3));
+            if (!btn) return;
+            const isActive = l === level;
+            btn.className = `px-5 py-2.5 text-sm font-bold border-b-2 transition ${isActive ? 'border-green-600 text-green-700' : 'border-transparent text-gray-500 hover:text-green-600'}`;
+        });
+
+        const labels = { Kabupaten: 'Target Kabupaten / Kota', Kecamatan: 'Target Kecamatan', Desa: 'Target Desa / Kelurahan' };
+        document.getElementById('labelTabDetailTarget').textContent = labels[level] || '';
+        renderDetailTargetTable();
+    }
+
+    function muatDetailTargetBulan() {
+        const tbody = document.getElementById('tabelDetailTarget');
+        tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-gray-400">
+            <i class="fa-solid fa-circle-notch fa-spin text-xl text-green-500 mb-2 block"></i>Memuat...</td></tr>`;
+
+        google.script.run
+            .withSuccessHandler(data => {
+                if (!cacheTargetBulanan[targetBulanAktif]) cacheTargetBulanan[targetBulanAktif] = {};
+                cacheTargetBulanan[targetBulanAktif][targetKomoditasAktif] = data;
+                renderDetailTargetTable();
+                renderStatRowTarget(data);
+            })
+            .withFailureHandler(err => {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-red-400">${err.message}</td></tr>`;
+            })
+            .ambilTargetBulanan({ bulan: targetBulanAktif, komoditas: targetKomoditasAktif });
+    }
+
+    function renderStatRowTarget(data) {
+        const kab  = (data || []).filter(t => t.level === 'Kabupaten').reduce((s, t) => s + t.totalTarget, 0);
+        const kec  = (data || []).filter(t => t.level === 'Kecamatan').reduce((s, t) => s + t.totalTarget, 0);
+        const desa = (data || []).filter(t => t.level === 'Desa').reduce((s, t) => s + t.totalTarget, 0);
+        const fmt  = v => v.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+        const el = document.getElementById('statRowTargetBulan');
+        if (!el) return;
+        el.innerHTML = [
+            { label: 'Target Kabupaten', val: kab, icon: 'fa-city', color: 'blue' },
+            { label: 'Total Kecamatan', val: kec, icon: 'fa-map-location-dot', color: 'green' },
+            { label: 'Total Desa Input', val: desa, icon: 'fa-house', color: 'amber' }
+        ].map(s => `
+            <div class="bg-${s.color}-50 border border-${s.color}-100 rounded-2xl p-4">
+                <div class="flex items-center gap-2 mb-1">
+                    <i class="fa-solid ${s.icon} text-${s.color}-500 text-sm"></i>
+                    <span class="text-xs font-bold text-${s.color}-500 uppercase">${s.label}</span>
+                </div>
+                <p class="text-2xl font-black text-gray-800">${fmt(s.val)} <span class="text-sm font-semibold text-gray-400">Ha</span></p>
+            </div>`).join('');
+    }
+
+    function renderDetailTargetTable() {
+        const cached = cacheTargetBulanan[targetBulanAktif]?.[targetKomoditasAktif] || [];
+        const filtered = cached.filter(t => t.level === targetTabLevel);
+        const tbody = document.getElementById('tabelDetailTarget');
+        const fmt = v => v.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="p-10 text-center text-gray-400 italic">Belum ada target untuk level ini.<br>
+                <button onclick="bukaFormTarget(null)" class="mt-3 px-4 py-2 bg-green-600 text-white rounded-xl text-xs font-bold hover:bg-green-700">
+                    <i class="fa-solid fa-plus mr-1"></i>Tambah Sekarang</button></td></tr>`;
+            return;
+        }
+
+        const rows = filtered.map(t => {
+            const rincian = (t.details || []).map(d =>
+                `<span class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-700 rounded-full text-xs font-semibold">${d.jenisLtt}: ${fmt(d.luas)} Ha</span>`
+            ).join(' ');
+            return `<tr class="border-b border-gray-100 hover:bg-gray-50 transition">
+                <td class="p-3 font-semibold text-gray-800">${t.namaGeografi}</td>
+                <td class="p-3 text-right font-bold text-green-700">${fmt(t.totalTarget)}</td>
+                <td class="p-3 text-xs">${rincian || '<span class="text-gray-300">—</span>'}</td>
+                <td class="p-3 text-xs text-gray-500">${t.pembuat || '—'}</td>
+                <td class="p-3 text-center">
+                    <div class="flex items-center justify-center gap-2">
+                        <button onclick="bukaFormTarget(${JSON.stringify(t).replace(/'/g, '&apos;')})"
+                            class="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition" title="Edit">
+                            <i class="fa-solid fa-pen text-xs"></i>
+                        </button>
+                        <button onclick="hapusTargetItem('${t.id}')"
+                            class="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition" title="Hapus">
+                            <i class="fa-solid fa-trash text-xs"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+        tbody.innerHTML = rows;
+    }
+
+    // ---- Form Target CRUD ----
+
+    let jenisLTTOptions = [];
+
+    function bukaFormTarget(targetData) {
+        const isEdit = !!targetData;
+        document.getElementById('modalFormTargetTitle').textContent = isEdit ? 'Edit Target' : 'Tambah Target';
+        document.getElementById('tgtIdTarget').value = isEdit ? targetData.id : '';
+        document.getElementById('tgtBulan').value = targetBulanAktif;
+        document.getElementById('tgtLevel').value = targetTabLevel;
+        document.getElementById('tgtKomoditas').value = targetKomoditasAktif;
+
+        document.getElementById('tgtWilayahDisplay').textContent = isEdit ? targetData.namaGeografi : '— pilih dari tabel —';
+        document.getElementById('tgtKomoditasDisplay').textContent = targetKomoditasAktif;
+        document.getElementById('tgtBulanDisplay').textContent = NAMA_BULAN[targetBulanAktif];
+        document.getElementById('tgtTotalTarget').value = isEdit ? targetData.totalTarget : '';
+
+        // Desa-specific fields
+        const desaSection = document.getElementById('sectionDesaFields');
+        if (targetTabLevel === 'Desa') {
+            desaSection.classList.remove('hidden');
+            document.getElementById('tgtIPEksisting').value = isEdit ? (targetData.ipEksisting || '') : '';
+            document.getElementById('tgtLuasBaku').value = isEdit ? (targetData.luasBakuSawah || '') : '';
+            document.getElementById('tgtStandingCrop').value = isEdit ? (targetData.luasStandingCrop || '') : '';
+        } else {
+            desaSection.classList.add('hidden');
+        }
+
+        // Jenis LTT section (Padi only)
+        const jenisSection = document.getElementById('sectionJenisLTT');
+        const container = document.getElementById('containerJenisLTT');
+        container.innerHTML = '';
+
+        if (targetKomoditasAktif === 'Padi') {
+            jenisSection.classList.remove('hidden');
+            // Load jenis options
+            google.script.run
+                .withSuccessHandler(list => {
+                    jenisLTTOptions = list;
+                    if (isEdit && targetData.details?.length > 0) {
+                        targetData.details.forEach(d => tambahBarisJenisLTT(d.jenisLtt, d.luas));
+                    }
+                })
+                .getJenisLTT('Padi');
+        } else {
+            jenisSection.classList.add('hidden');
+        }
+
+        const modal = document.getElementById('modalFormTarget');
+        modal.classList.remove('hidden');
+        requestAnimationFrame(() => {
+            modal.classList.remove('opacity-0');
+            modal.querySelector('div').classList.remove('scale-95');
+        });
+    }
+
+    function tutupFormTarget() {
+        const modal = document.getElementById('modalFormTarget');
+        modal.classList.add('opacity-0');
+        modal.querySelector('div').classList.add('scale-95');
+        setTimeout(() => modal.classList.add('hidden'), 280);
+    }
+
+    function tambahBarisJenisLTT(jenisNama = '', luas = '') {
+        const container = document.getElementById('containerJenisLTT');
+        const idx = container.children.length;
+        const optionsHtml = jenisLTTOptions.map(j =>
+            `<option value="${j}" ${j === jenisNama ? 'selected' : ''}>${j}</option>`
+        ).join('');
+
+        const div = document.createElement('div');
+        div.className = 'flex items-center gap-2 p-2 bg-gray-50 rounded-xl';
+        div.innerHTML = `
+            <select class="flex-1 px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-green-500 bg-white" name="jenisLttNama">
+                <option value="">— Pilih Jenis —</option>${optionsHtml}
+            </select>
+            <input type="number" step="0.01" min="0" value="${luas}" placeholder="Ha" name="jenisLttLuas"
+                class="w-28 px-3 py-2 border rounded-lg text-sm text-right outline-none focus:ring-2 focus:ring-green-500"
+                oninput="hitungTotalTargetOtomatis()">
+            <button type="button" onclick="this.closest('div').remove(); hitungTotalTargetOtomatis();"
+                class="w-8 h-8 flex items-center justify-center text-red-400 hover:bg-red-50 rounded-lg transition">
+                <i class="fa-solid fa-xmark text-xs"></i>
+            </button>`;
+        container.appendChild(div);
+        hitungTotalTargetOtomatis();
+    }
+
+    function hitungTotalTargetOtomatis() {
+        const container = document.getElementById('containerJenisLTT');
+        if (!container) return;
+        let total = 0;
+        container.querySelectorAll('[name="jenisLttLuas"]').forEach(inp => {
+            total += parseFloat(inp.value) || 0;
+        });
+        if (total > 0) {
+            document.getElementById('tgtTotalTarget').value = total.toFixed(2);
+        }
+    }
+
+    function simpanFormTarget(event) {
+        event.preventDefault();
+        const btn = document.getElementById('btnSimpanFormTarget');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i>Menyimpan...';
+
+        const details = [];
+        const container = document.getElementById('containerJenisLTT');
+        container.querySelectorAll('div').forEach(row => {
+            const jenis = row.querySelector('[name="jenisLttNama"]')?.value;
+            const luas  = parseFloat(row.querySelector('[name="jenisLttLuas"]')?.value) || 0;
+            if (jenis) details.push({ jenisLtt: jenis, luas });
+        });
+
+        const namaGeo = document.getElementById('tgtWilayahDisplay').textContent.trim();
+
+        const formData = {
+            id:           document.getElementById('tgtIdTarget').value,
+            bulan:        parseInt(document.getElementById('tgtBulan').value),
+            level:        document.getElementById('tgtLevel').value,
+            namaGeografi: namaGeo,
+            komoditas:    document.getElementById('tgtKomoditas').value,
+            totalTarget:  parseFloat(document.getElementById('tgtTotalTarget').value) || 0,
+            ipEksisting:  parseFloat(document.getElementById('tgtIPEksisting').value) || 0,
+            luasBakuSawah: parseFloat(document.getElementById('tgtLuasBaku').value) || 0,
+            luasStandingCrop: parseFloat(document.getElementById('tgtStandingCrop').value) || 0,
+            pembuat:      (typeof userAktif !== 'undefined' ? userAktif.nama : 'Admin'),
+            details:      details
+        };
+
+        google.script.run
+            .withSuccessHandler(res => {
+                btn.disabled = false;
+                btn.innerHTML = 'Simpan Target';
+                if (res.status === 'success') {
+                    tutupFormTarget();
+                    // Invalidate cache and reload
+                    if (cacheTargetBulanan[targetBulanAktif]) delete cacheTargetBulanan[targetBulanAktif][targetKomoditasAktif];
+                    muatDetailTargetBulan();
+                    muatTabelTargetBulan();
+                    Swal.fire({ icon: 'success', title: 'Berhasil!', text: 'Target berhasil disimpan.', timer: 2000, showConfirmButton: false });
+                } else {
+                    Swal.fire('Gagal', res.message, 'error');
+                }
+            })
+            .withFailureHandler(err => {
+                btn.disabled = false;
+                btn.innerHTML = 'Simpan Target';
+                Swal.fire('Error', err.message, 'error');
+            })
+            .simpanTargetBulanan(formData);
+    }
+
+    function hapusTargetItem(idTarget) {
+        Swal.fire({
+            title: 'Hapus Target?',
+            text: 'Tindakan ini akan menghapus target ini dan memperbarui sinkronisasi secara otomatis.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, Hapus!',
+            cancelButtonText: 'Batal',
+            confirmButtonColor: '#dc2626'
+        }).then(result => {
+            if (!result.isConfirmed) return;
+            google.script.run
+                .withSuccessHandler(res => {
+                    if (res.status === 'success') {
+                        if (cacheTargetBulanan[targetBulanAktif]) delete cacheTargetBulanan[targetBulanAktif][targetKomoditasAktif];
+                        muatDetailTargetBulan();
+                        muatTabelTargetBulan();
+                        Swal.fire({ icon: 'success', title: 'Dihapus!', timer: 1500, showConfirmButton: false });
+                    } else {
+                        Swal.fire('Gagal', res.message, 'error');
+                    }
+                })
+                .withFailureHandler(err => Swal.fire('Error', err.message, 'error'))
+                .hapusTargetBulanan(idTarget);
+        });
+    }
+
+    // =========================================================================
+    // MODUL: TARGET KOMODITAS — BPP (Scoped ke Kecamatan)
+    // =========================================================================
+
+    let bppTargetKomoditasAktif = 'Padi';
+    let cacheBppTarget = {};
+
+    function setBppTargetKomoditas(komoditas) {
+        bppTargetKomoditasAktif = komoditas;
+        ['Padi', 'Jagung', 'Ubi Kayu'].forEach(k => {
+            const btn = document.getElementById('bppTgtKom-' + k);
+            if (!btn) return;
+            const isActive = k === komoditas;
+            btn.className = `px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${isActive ? 'bg-green-600 text-white' : 'text-gray-500 hover:bg-white'}`;
+        });
+        muatBppTargetBulan();
+    }
+
+    function muatBppTargetBulan() {
+        const tbody = document.getElementById('tabelBppTargetBulan');
+        if (!tbody) return;
+        tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-400">
+            <i class="fa-solid fa-circle-notch fa-spin text-green-500 mr-2"></i>Memuat...</td></tr>`;
+
+        google.script.run
+            .withSuccessHandler(data => renderBppTargetBulan(data))
+            .withFailureHandler(err => {
+                if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-red-400">${err.message}</td></tr>`;
+            })
+            .ambilTargetBulanan({ bulan: 0, komoditas: bppTargetKomoditasAktif });
+    }
+
+    function renderBppTargetBulan(semua) {
+        const kecamatan = (typeof userAktif !== 'undefined' && userAktif.kecamatan) ? userAktif.kecamatan.toLowerCase() : '';
+
+        // Build per-bulan map: only Kecamatan & Desa rows relevant to BPP's kecamatan
+        const perBulan = {};
+        (semua || []).forEach(t => {
+            const b = t.bulan;
+            const geoLow = t.namaGeografi.toLowerCase();
+            if (!perBulan[b]) perBulan[b] = { kec: 0, desa: 0, kecId: null };
+
+            if (t.level === 'Kecamatan' && geoLow === kecamatan) {
+                perBulan[b].kec += t.totalTarget;
+                perBulan[b].kecId = t.id;
+            } else if (t.level === 'Desa') {
+                perBulan[b].desa += t.totalTarget;
+            }
+        });
+
+        const tbody = document.getElementById('tabelBppTargetBulan');
+        if (!tbody) return;
+        const NAMA_BULAN_BPP = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+        const fmt = v => v > 0 ? v.toLocaleString('id-ID', { maximumFractionDigits: 2 }) + ' Ha' : '<span class="text-gray-300">—</span>';
+
+        let html = '';
+        for (let b = 1; b <= 12; b++) {
+            const d = perBulan[b] || { kec: 0, desa: 0 };
+            const hasData = d.kec > 0 || d.desa > 0;
+            const statusBadge = hasData
+                ? `<span class="px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700"><i class="fa-solid fa-check mr-1"></i>Ada</span>`
+                : `<span class="px-2 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-400">Kosong</span>`;
+
+            html += `<tr class="border-b border-gray-100 hover:bg-green-50/30 transition cursor-pointer" onclick="bukaBppDetailBulan(${b})">
+                <td class="p-3">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-xl bg-green-100 text-green-700 flex items-center justify-center font-bold text-xs">${b}</div>
+                        <span class="font-semibold text-gray-800 text-sm">${NAMA_BULAN_BPP[b]}</span>
+                    </div>
+                </td>
+                <td class="p-3 text-center text-sm font-semibold text-gray-700">${fmt(d.kec)}</td>
+                <td class="p-3 text-center text-sm font-semibold text-gray-700">${fmt(d.desa)}</td>
+                <td class="p-3 text-center">${statusBadge}</td>
+                <td class="p-3 text-center">
+                    <button onclick="event.stopPropagation(); bukaBppDetailBulan(${b})"
+                        class="px-3 py-1.5 bg-white border border-green-200 text-green-700 rounded-lg text-xs font-bold hover:bg-green-50 transition">
+                        <i class="fa-solid fa-eye mr-1"></i>Detail
+                    </button>
+                </td>
+            </tr>`;
+        }
+        tbody.innerHTML = html;
+    }
+
+    // BPP opens the shared Admin modal scoped to their kecamatan
+    function bukaBppDetailBulan(bulan) {
+        if (typeof bukaDetailTargetBulan === 'function') {
+            targetKomoditasAktif = bppTargetKomoditasAktif;
+            bukaDetailTargetBulan(bulan);
+        }
+    }
+
+    // =========================================================================
+    // MODUL: TARGET KOMODITAS — PPL (Scoped ke Desa Binaan)
+    // =========================================================================
+
+    let pplTargetKomoditasAktif = 'Padi';
+    let cachePplTarget = {};
+
+    function cekBukaTarget() {
+        bukaTargetPPL();
+    }
+
+    function bukaTargetPPL() {
+        const area = document.getElementById('targetArea');
+        if (!area) return;
+        area.classList.remove('hidden');
+
+        const desaBinaan = (typeof userAktif !== 'undefined' && userAktif.desa)
+            ? userAktif.desa
+            : 'Desa binaanmu';
+        const subtitle = document.getElementById('pplTargetSubtitle');
+        if (subtitle) subtitle.textContent = desaBinaan;
+
+        muatPplTargetBulan();
+    }
+
+    function tutupTargetPPL() {
+        const area = document.getElementById('targetArea');
+        if (area) area.classList.add('hidden');
+    }
+
+    function setPplTargetKomoditas(komoditas) {
+        pplTargetKomoditasAktif = komoditas;
+        ['Padi', 'Jagung', 'Ubi Kayu'].forEach(k => {
+            const btn = document.getElementById('pplTgtKom-' + k);
+            if (!btn) return;
+            const isActive = k === komoditas;
+            btn.className = `flex-1 py-2 text-xs font-bold rounded-lg transition-all ${isActive ? 'bg-green-600 text-white' : 'text-gray-500 hover:bg-white'}`;
+        });
+        muatPplTargetBulan();
+    }
+
+    function muatPplTargetBulan() {
+        const tbody = document.getElementById('tabelPplTargetBulan');
+        if (!tbody) return;
+        tbody.innerHTML = `<tr><td colspan="3" class="p-6 text-center text-gray-400">
+            <i class="fa-solid fa-circle-notch fa-spin text-green-500 mr-2"></i>Memuat...</td></tr>`;
+
+        google.script.run
+            .withSuccessHandler(data => renderPplTargetBulan(data))
+            .withFailureHandler(err => {
+                if (tbody) tbody.innerHTML = `<tr><td colspan="3" class="p-6 text-center text-red-400">${err.message}</td></tr>`;
+            })
+            .ambilTargetBulanan({ bulan: 0, komoditas: pplTargetKomoditasAktif });
+    }
+
+    function renderPplTargetBulan(semua) {
+        // Get desa binaan (can be multiple, stored as comma or array)
+        let desaList = [];
+        if (typeof userAktif !== 'undefined' && userAktif.desa) {
+            desaList = userAktif.desa.toString().split(',').map(d => d.trim().toLowerCase());
+        }
+
+        const perBulan = {};
+        (semua || []).forEach(t => {
+            const b = t.bulan;
+            const geoLow = t.namaGeografi.toLowerCase().trim();
+            if (t.level === 'Desa' && desaList.includes(geoLow)) {
+                if (!perBulan[b]) perBulan[b] = { total: 0, id: null };
+                perBulan[b].total += t.totalTarget;
+                perBulan[b].id = t.id;
+            }
+        });
+
+        const tbody = document.getElementById('tabelPplTargetBulan');
+        if (!tbody) return;
+        const NAMA_BULAN_PPL = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+        const fmt = v => v > 0 ? v.toLocaleString('id-ID', { maximumFractionDigits: 2 }) + ' Ha' : '<span class="text-gray-300">—</span>';
+
+        let html = '';
+        for (let b = 1; b <= 12; b++) {
+            const d = perBulan[b];
+            const hasData = d && d.total > 0;
+            html += `<tr class="border-b border-gray-100 hover:bg-green-50/30 transition">
+                <td class="p-3">
+                    <div class="flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-lg bg-green-100 text-green-700 flex items-center justify-center font-bold text-xs">${b}</div>
+                        <span class="font-semibold text-gray-800 text-sm">${NAMA_BULAN_PPL[b]}</span>
+                    </div>
+                </td>
+                <td class="p-3 text-center text-sm font-semibold ${hasData ? 'text-green-700' : 'text-gray-300'}">${fmt(hasData ? d.total : 0)}</td>
+                <td class="p-3 text-center">
+                    <button onclick="bukaFormTargetPPL(${b}, ${d ? JSON.stringify(d) : null})"
+                        class="px-3 py-1.5 ${hasData ? 'bg-blue-50 border border-blue-200 text-blue-600' : 'bg-green-600 text-white'} rounded-lg text-xs font-bold hover:opacity-80 transition">
+                        <i class="fa-solid ${hasData ? 'fa-pen' : 'fa-plus'} mr-1"></i>${hasData ? 'Edit' : 'Input'}
+                    </button>
+                </td>
+            </tr>`;
+        }
+        tbody.innerHTML = html;
+    }
+
+    function bukaFormTargetPPL(bulan, existingData) {
+        document.getElementById('modalFormTargetPPLTitle').textContent = `Target Desa — ${['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][bulan]}`;
+        document.getElementById('pplTgtBulan').value = bulan;
+        document.getElementById('pplTgtKomoditas').value = pplTargetKomoditasAktif;
+        document.getElementById('pplTgtIdTarget').value = existingData?.id || '';
+        document.getElementById('pplTgtTotal').value = existingData?.total || '';
+        document.getElementById('pplTgtIP').value = '';
+        document.getElementById('pplTgtLuasBaku').value = '';
+        document.getElementById('pplTgtStanding').value = '';
+
+        // Populate desa dropdown from userAktif.desa
+        const desaSel = document.getElementById('pplTgtDesa');
+        desaSel.innerHTML = '';
+        const desaStr = (typeof userAktif !== 'undefined' && userAktif.desa) ? userAktif.desa.toString() : '';
+        desaStr.split(',').map(d => d.trim()).filter(Boolean).forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d;
+            opt.textContent = d;
+            desaSel.appendChild(opt);
+        });
+
+        document.getElementById('modalFormTargetPPL').classList.remove('hidden');
+    }
+
+    function tutupFormTargetPPL() {
+        document.getElementById('modalFormTargetPPL').classList.add('hidden');
+    }
+
+    function simpanFormTargetPPL(event) {
+        event.preventDefault();
+        const btn = document.getElementById('btnSimpanFormTargetPPL');
+        btn.disabled = true;
+        btn.textContent = 'Menyimpan...';
+
+        const bulan = parseInt(document.getElementById('pplTgtBulan').value);
+        const komoditas = document.getElementById('pplTgtKomoditas').value;
+        const desa = document.getElementById('pplTgtDesa').value;
+
+        const formData = {
+            id:               document.getElementById('pplTgtIdTarget').value,
+            bulan:            bulan,
+            level:            'Desa',
+            namaGeografi:     desa,
+            komoditas:        komoditas,
+            totalTarget:      parseFloat(document.getElementById('pplTgtTotal').value) || 0,
+            ipEksisting:      parseFloat(document.getElementById('pplTgtIP').value) || 0,
+            luasBakuSawah:    parseFloat(document.getElementById('pplTgtLuasBaku').value) || 0,
+            luasStandingCrop: parseFloat(document.getElementById('pplTgtStanding').value) || 0,
+            pembuat:          (typeof userAktif !== 'undefined' ? userAktif.nama : 'PPL'),
+            details:          []
+        };
+
+        google.script.run
+            .withSuccessHandler(res => {
+                btn.disabled = false;
+                btn.textContent = 'Simpan';
+                if (res.status === 'success') {
+                    tutupFormTargetPPL();
+                    muatPplTargetBulan();
+                    Swal.fire({ icon: 'success', title: 'Tersimpan!', timer: 1800, showConfirmButton: false });
+                } else {
+                    Swal.fire('Gagal', res.message, 'error');
+                }
+            })
+            .withFailureHandler(err => {
+                btn.disabled = false;
+                btn.textContent = 'Simpan';
+                Swal.fire('Error', err.message, 'error');
+            })
+            .simpanTargetBulanan(formData);
+    }
+
 </script>

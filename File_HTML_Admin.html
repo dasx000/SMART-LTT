@@ -33,6 +33,10 @@
                 class="nav-item flex items-center px-4 py-3 text-green-200 hover:bg-green-700 hover:text-white rounded-lg transition">
                 <i class="fa-solid fa-users-gear w-6"></i> Manajemen Penyuluh
             </a>
+            <a href="#" id="nav-target" onclick="navigasi('target'); toggleSidebar(true)"
+                class="nav-item flex items-center px-4 py-3 text-green-200 hover:bg-green-700 hover:text-white rounded-lg transition">
+                <i class="fa-solid fa-bullseye w-6"></i> Target Komoditas
+            </a>
             <a href="#" id="nav-logs" onclick="navigasi('logs'); toggleSidebar(true)"
                 class="nav-item flex items-center px-4 py-3 text-green-200 hover:bg-green-700 hover:text-white rounded-lg transition">
                 <i class="fa-solid fa-clock-rotate-left w-6"></i> Log Sinkronisasi
@@ -97,13 +101,7 @@
                             class="tab-btn px-5 py-2 text-sm font-bold text-gray-500 hover:text-green-600 transition-all">Ubi
                             Kayu</button>
                     </div>
-                    <div id="wrapperLabelPeriode" class="flex items-center gap-2 mx-auto md:mx-0">
-                        <div class="hidden md:block h-8 w-[2px] bg-gray-200 mr-2"></div>
-                        <span id="labelPeriodeDashboard"
-                            class="text-[13px] md:text-[15px] font-black text-green-700 bg-green-50 px-5 py-2 rounded-full border-2 border-green-200 uppercase tracking-widest whitespace-nowrap shadow-sm">
-                            REKAP DATA -
-                        </span>
-                    </div>
+
                     <div id="wrapperFilterBulan" class="flex items-center gap-2">
                         <i class="fa-solid fa-calendar-days text-green-600 text-sm"></i>
                         <select id="filterBulanDashboard" onchange="muatDashboard()"
@@ -770,6 +768,62 @@
             </div>
         </div>
 
+        <!-- ===== SECTION: TARGET KOMODITAS ===== -->
+        <div id="sectionTarget" class="hidden">
+            <div class="p-6 md:p-8">
+
+                <!-- Header -->
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">Target Komoditas Bulanan</h2>
+                        <p class="text-sm text-gray-500 mt-0.5">Atur target tanam per komoditas untuk setiap bulan</p>
+                    </div>
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <!-- Filter Komoditas -->
+                        <div class="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
+                            <button id="tgtKom-Padi" onclick="setTargetKomoditas('Padi')"
+                                class="px-4 py-2 text-sm font-bold rounded-lg bg-green-600 text-white transition-all">
+                                <i class="fa-solid fa-wheat-awn mr-1"></i> Padi
+                            </button>
+                            <button id="tgtKom-Jagung" onclick="setTargetKomoditas('Jagung')"
+                                class="px-4 py-2 text-sm font-bold rounded-lg text-gray-500 hover:bg-white transition-all">
+                                <i class="fa-solid fa-seedling mr-1"></i> Jagung
+                            </button>
+                            <button id="tgtKom-Ubi Kayu" onclick="setTargetKomoditas('Ubi Kayu')"
+                                class="px-4 py-2 text-sm font-bold rounded-lg text-gray-500 hover:bg-white transition-all">
+                                <i class="fa-solid fa-leaf mr-1"></i> Ubi Kayu
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Month List Table -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="bg-green-700 text-white">
+                                <th class="p-4 text-left text-xs font-bold uppercase">Bulan</th>
+                                <th class="p-4 text-center text-xs font-bold uppercase">Target Kab (Ha)</th>
+                                <th class="p-4 text-center text-xs font-bold uppercase">Target Kec (Ha)</th>
+                                <th class="p-4 text-center text-xs font-bold uppercase">Target Desa (Ha)</th>
+                                <th class="p-4 text-center text-xs font-bold uppercase">Status</th>
+                                <th class="p-4 text-center text-xs font-bold uppercase">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelTargetBulan">
+                            <tr>
+                                <td colspan="6" class="p-12 text-center text-gray-400">
+                                    <i class="fa-solid fa-circle-notch fa-spin text-2xl text-green-500 mb-2 block"></i>
+                                    Memuat data target...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div> <!-- end sectionTarget -->
+
     </div> <!-- end main content div -->
 </div> <!-- end flex container div -->
 
@@ -859,3 +913,161 @@
         </form>
     </div>
 </div>
+
+<!-- ===== MODAL: Detail Target Bulanan ===== -->
+<div id="modalTargetBulan"
+    class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[110] flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+    <div class="bg-white w-full max-w-5xl max-h-[92vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden transform scale-95 transition-transform duration-300">
+        <div class="bg-green-700 p-5 text-white flex justify-between items-center flex-shrink-0">
+            <div>
+                <h3 class="font-bold text-lg" id="modalTargetBulanTitle">Detail Target — Januari</h3>
+                <p class="text-xs text-green-200 mt-0.5" id="modalTargetBulanSubtitle">Komoditas: Padi</p>
+            </div>
+            <button onclick="tutupModalTargetBulan()"
+                class="hover:bg-white/20 w-8 h-8 rounded-full flex items-center justify-center transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="flex-shrink-0 border-b border-gray-200 px-6 pt-4 flex gap-1">
+            <button id="tabTgtKab" onclick="setTabDetailTarget('Kabupaten')"
+                class="px-5 py-2.5 text-sm font-bold border-b-2 border-green-600 text-green-700 transition">
+                <i class="fa-solid fa-city mr-1"></i> Kab / Kota
+            </button>
+            <button id="tabTgtKec" onclick="setTabDetailTarget('Kecamatan')"
+                class="px-5 py-2.5 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-green-600 transition">
+                <i class="fa-solid fa-map-location-dot mr-1"></i> Kecamatan
+            </button>
+            <button id="tabTgtDesa" onclick="setTabDetailTarget('Desa')"
+                class="px-5 py-2.5 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-green-600 transition">
+                <i class="fa-solid fa-house mr-1"></i> Desa / Kelurahan
+            </button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-6">
+            <!-- Summary stat row -->
+            <div id="statRowTargetBulan" class="grid grid-cols-3 gap-4 mb-5"></div>
+            <!-- Table -->
+            <div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                <div class="p-4 border-b border-gray-100 flex items-center justify-between">
+                    <p class="text-sm font-bold text-gray-700" id="labelTabDetailTarget">Target Kabupaten</p>
+                    <button onclick="bukaFormTarget(null)"
+                        class="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700 transition">
+                        <i class="fa-solid fa-plus"></i> Tambah Target
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="bg-gray-50 border-b border-gray-100">
+                                <th class="p-3 text-left text-xs font-bold text-gray-400 uppercase">Wilayah</th>
+                                <th class="p-3 text-right text-xs font-bold text-gray-400 uppercase">Total Target (Ha)</th>
+                                <th class="p-3 text-left text-xs font-bold text-gray-400 uppercase">Rincian Jenis</th>
+                                <th class="p-3 text-left text-xs font-bold text-gray-400 uppercase">Pembuat</th>
+                                <th class="p-3 text-center text-xs font-bold text-gray-400 uppercase">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelDetailTarget">
+                            <tr>
+                                <td colspan="5" class="p-8 text-center text-gray-400">
+                                    <i class="fa-solid fa-circle-notch fa-spin text-xl text-green-500 mb-2 block"></i>
+                                    Memuat data...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MODAL: Form Input Target ===== -->
+<div id="modalFormTarget"
+    class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[120] flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+    <div class="bg-white w-full max-w-lg max-h-[92vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden transform scale-95 transition-transform duration-300">
+        <div class="bg-green-600 p-5 text-white flex justify-between items-center flex-shrink-0">
+            <h3 class="font-bold text-lg" id="modalFormTargetTitle">Tambah Target</h3>
+            <button onclick="tutupFormTarget()"
+                class="hover:bg-white/20 w-8 h-8 rounded-full flex items-center justify-center transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <form id="formTarget" onsubmit="simpanFormTarget(event)" class="p-6 space-y-4 overflow-y-auto flex-1">
+            <input type="hidden" id="tgtIdTarget">
+            <input type="hidden" id="tgtBulan">
+            <input type="hidden" id="tgtLevel">
+            <input type="hidden" id="tgtKomoditas">
+
+            <!-- Wilayah Display -->
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Wilayah</label>
+                <div id="tgtWilayahDisplay"
+                    class="w-full px-4 py-2.5 border rounded-xl bg-gray-50 text-gray-700 font-semibold text-sm">
+                    -</div>
+            </div>
+
+            <!-- Komoditas + Bulan Info -->
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Komoditas</label>
+                    <div id="tgtKomoditasDisplay"
+                        class="w-full px-4 py-2.5 border rounded-xl bg-gray-50 text-gray-700 font-semibold text-sm">
+                        -</div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Bulan</label>
+                    <div id="tgtBulanDisplay"
+                        class="w-full px-4 py-2.5 border rounded-xl bg-gray-50 text-gray-700 font-semibold text-sm">
+                        -</div>
+                </div>
+            </div>
+
+            <!-- Dynamic Jenis LTT Rows (Padi only) -->
+            <div id="sectionJenisLTT" class="hidden">
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Rincian Jenis LTT <span class="text-green-600">(opsional)</span></label>
+                <div id="containerJenisLTT" class="space-y-2"></div>
+                <button type="button" onclick="tambahBarisJenisLTT()"
+                    class="mt-2 w-full py-2 border-2 border-dashed border-green-300 text-green-600 rounded-xl text-sm font-bold hover:bg-green-50 transition">
+                    <i class="fa-solid fa-plus mr-1"></i> Tambah Jenis LTT
+                </button>
+            </div>
+
+            <!-- Total Target (auto-sum or manual) -->
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Total Target Luas Tanam (Ha) <span class="text-red-500">*</span></label>
+                <input type="number" step="0.01" min="0" id="tgtTotalTarget" required placeholder="0.00"
+                    class="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition text-right font-bold text-lg">
+                <p class="text-xs text-gray-400 mt-1">* Otomatis terisi dari jumlah jenis LTT di atas (jika ada)</p>
+            </div>
+
+            <!-- Desa-specific fields -->
+            <div id="sectionDesaFields" class="hidden space-y-4">
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">IP Eksisting</label>
+                        <input type="number" step="0.01" min="0" id="tgtIPEksisting" placeholder="0.00"
+                            class="w-full px-3 py-2.5 border rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Luas Baku Sawah (Ha)</label>
+                        <input type="number" step="0.01" min="0" id="tgtLuasBaku" placeholder="0.00"
+                            class="w-full px-3 py-2.5 border rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Standing Crop (Ha)</label>
+                        <input type="number" step="0.01" min="0" id="tgtStandingCrop" placeholder="0.00"
+                            class="w-full px-3 py-2.5 border rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition text-sm">
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-4 flex gap-3">
+                <button type="button" onclick="tutupFormTarget()"
+                    class="flex-1 py-3 border border-gray-200 rounded-xl font-bold text-gray-500 hover:bg-gray-50 transition">Batal</button>
+                <button type="submit" id="btnSimpanFormTarget"
+                    class="flex-1 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition shadow-lg shadow-green-600/20">
+                    Simpan Target
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

@@ -312,7 +312,119 @@
         </div>
         <!-- ===== AKHIR PANEL PROFIL PPL ===== -->
 
+        <!-- ===== PANEL TARGET BULANAN PPL ===== -->
+        <div id="targetArea" class="hidden px-5 pt-6 absolute top-0 bg-white w-full h-full z-30 overflow-y-auto pb-20">
 
+            <div class="flex items-center mb-5 border-b pb-3">
+                <button onclick="tutupTargetPPL()"
+                    class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex justify-center items-center text-gray-600 mr-3 transition active:scale-95">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <div>
+                    <h2 class="text-base font-bold text-green-700 uppercase">Target Bulanan</h2>
+                    <p class="text-xs text-gray-500" id="pplTargetSubtitle">Desa binaanmu</p>
+                </div>
+            </div>
+
+            <!-- Commodity filter -->
+            <div class="flex gap-1 bg-gray-100 p-1 rounded-xl mb-4">
+                <button id="pplTgtKom-Padi" onclick="setPplTargetKomoditas('Padi')"
+                    class="flex-1 py-2 text-xs font-bold rounded-lg bg-green-600 text-white transition-all">
+                    <i class="fa-solid fa-wheat-awn mr-1"></i> Padi
+                </button>
+                <button id="pplTgtKom-Jagung" onclick="setPplTargetKomoditas('Jagung')"
+                    class="flex-1 py-2 text-xs font-bold rounded-lg text-gray-500 hover:bg-white transition-all">
+                    <i class="fa-solid fa-seedling mr-1"></i> Jagung
+                </button>
+                <button id="pplTgtKom-Ubi Kayu" onclick="setPplTargetKomoditas('Ubi Kayu')"
+                    class="flex-1 py-2 text-xs font-bold rounded-lg text-gray-500 hover:bg-white transition-all">
+                    <i class="fa-solid fa-leaf mr-1"></i> Ubi Kayu
+                </button>
+            </div>
+
+            <!-- 12-Month list -->
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="bg-green-700 text-white">
+                            <th class="p-3 text-left text-xs font-bold uppercase">Bulan</th>
+                            <th class="p-3 text-center text-xs font-bold uppercase">Target Desa (Ha)</th>
+                            <th class="p-3 text-center text-xs font-bold uppercase">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelPplTargetBulan">
+                        <tr>
+                            <td colspan="3" class="p-8 text-center text-gray-400">
+                                <i class="fa-solid fa-circle-notch fa-spin text-xl text-green-500 mb-2 block"></i>
+                                Memuat...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+        <!-- ===== AKHIR PANEL TARGET BULANAN PPL ===== -->
+
+        <!-- ===== MODAL: Form Input Target PPL ===== -->
+        <div id="modalFormTargetPPL"
+            class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[120] flex items-center justify-center hidden">
+            <div class="bg-white w-full max-w-sm mx-4 rounded-3xl shadow-2xl flex flex-col overflow-hidden">
+                <div class="bg-green-600 p-5 text-white flex justify-between items-center">
+                    <h3 class="font-bold text-base" id="modalFormTargetPPLTitle">Target Desa — Januari</h3>
+                    <button onclick="tutupFormTargetPPL()"
+                        class="hover:bg-white/20 w-8 h-8 rounded-full flex items-center justify-center transition">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <form id="formTargetPPL" onsubmit="simpanFormTargetPPL(event)" class="p-5 space-y-4 overflow-y-auto">
+                    <input type="hidden" id="pplTgtIdTarget">
+                    <input type="hidden" id="pplTgtBulan">
+                    <input type="hidden" id="pplTgtKomoditas">
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Desa Binaan</label>
+                        <select id="pplTgtDesa" required
+                            class="w-full px-3 py-2.5 border rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-sm bg-white">
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Total Target Tanam (Ha) <span class="text-red-500">*</span></label>
+                        <input type="number" step="0.01" min="0" id="pplTgtTotal" required placeholder="0.00"
+                            class="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition text-right font-bold text-lg">
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">IP Eksisting</label>
+                            <input type="number" step="0.01" min="0" id="pplTgtIP" placeholder="0.00"
+                                class="w-full px-3 py-2.5 border rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Luas Baku (Ha)</label>
+                            <input type="number" step="0.01" min="0" id="pplTgtLuasBaku" placeholder="0.00"
+                                class="w-full px-3 py-2.5 border rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Standing Crop</label>
+                            <input type="number" step="0.01" min="0" id="pplTgtStanding" placeholder="0.00"
+                                class="w-full px-3 py-2.5 border rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-sm">
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3 pt-2">
+                        <button type="button" onclick="tutupFormTargetPPL()"
+                            class="flex-1 py-2.5 border border-gray-200 rounded-xl font-bold text-gray-500 hover:bg-gray-50 transition">Batal</button>
+                        <button type="submit" id="btnSimpanFormTargetPPL"
+                            class="flex-1 py-2.5 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition">
+                            Simpan
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <!-- ===== AKHIR MODAL FORM TARGET PPL ===== -->
 
     </div>
 </div>

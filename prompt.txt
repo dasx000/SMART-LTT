@@ -1,10 +1,22 @@
-BUAT ISSUE.MD  BERISI PLANNING
+BUAT plan.MD  BERISI PLANNING
+
+Kita akan rancang fitur target setiap komoditas, jadi di dasboard admin ada list target bulan 1-12, tak peduli tahun berapa poknnya selalu fix 12 bulan tampilannya, 
+Lalu di atas tabel itu ada filter komditasnya, 
+ketika klik bulan terntantu disitu ada target kabupaten, kecamtan , dan desa, admin desa bisa input semuanya, kemudain 3 target ini harus sinkron, patokanny adalah yang paling tinggi, 
+untuk admin bbpp tentu bs crud target kecamtan dan desa
+susunlah databse sedemikian rupa/best praktice, yang sekrangny memudahkan saya nnti buat tarik target lansguns dari epusluh maupun input manual
+nama geografi ambl di databse. 
+jenis ltt ambil di db jenis_ltt
+fomr inutnya tentu ada nama geografinya, jenis ltt an luas targetnya, total targetnya
+untuk desa lebih komplek dan ada di foto, formatnya sesuaikan
+untuk penyuluh , tentu cm edit desa binaanya dia saja,
+
+
+nanti akan saya tampilakn contoh nya tentu harus kamu modifikasi dan sempurnakan
 
 
 
-
-
-JANGAN TERLALU LOW LEVELATAU DETAIL
+JANGAN TERLALU LOW LEVEL ATAU DETAIL
 CUKUP INSTRUKSIKAN SECARA HIGH LEVEL
 NANTI PLANINGNYA AKAN DI EKSEKUSI OLEH JUNIOR PROGRAMMER ATAU LLM LEBIH MURAH
 

@@ -129,70 +129,50 @@
         </div>
     </div>
 
-    <!-- Form Input Target -->
+    <!-- Target Komoditas Baru (Per-Bulan, Scoped ke Kecamatan BPP) -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
         <div class="p-5 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-50 gap-3">
             <div>
-                <h3 class="text-lg font-bold text-gray-800">Input Target Bulanan</h3>
-                <p class="text-xs text-gray-500">Isi target luas tanam & panen kecamatan Anda per komoditi.</p>
+                <h3 class="text-lg font-bold text-gray-800">Target Komoditas Kecamatan</h3>
+                <p class="text-xs text-gray-500">Kelola target luas tanam per komoditas dan per desa di wilayah Anda.</p>
             </div>
-            <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-                <div class="flex items-center gap-2">
-                    <i class="fa-solid fa-calendar-days text-green-600 text-sm"></i>
-                    <select id="filterBulanTarget"
-                        class="text-xs font-bold text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-1.5 outline-none focus:border-green-500 cursor-pointer shadow-sm">
-                    </select>
+            <div class="flex items-center gap-2 flex-wrap justify-end">
+                <div class="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
+                    <button id="bppTgtKom-Padi" onclick="setBppTargetKomoditas('Padi')"
+                        class="px-3 py-1.5 text-xs font-bold rounded-lg bg-green-600 text-white transition-all">
+                        <i class="fa-solid fa-wheat-awn mr-1"></i> Padi
+                    </button>
+                    <button id="bppTgtKom-Jagung" onclick="setBppTargetKomoditas('Jagung')"
+                        class="px-3 py-1.5 text-xs font-bold rounded-lg text-gray-500 hover:bg-white transition-all">
+                        <i class="fa-solid fa-seedling mr-1"></i> Jagung
+                    </button>
+                    <button id="bppTgtKom-Ubi Kayu" onclick="setBppTargetKomoditas('Ubi Kayu')"
+                        class="px-3 py-1.5 text-xs font-bold rounded-lg text-gray-500 hover:bg-white transition-all">
+                        <i class="fa-solid fa-leaf mr-1"></i> Ubi Kayu
+                    </button>
                 </div>
-                <button onclick="toggleTargetBulanan()" id="btnToggleTarget"
-                    class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 border border-gray-200 shadow-sm">
-                    <i class="fa-solid fa-chevron-down" id="iconToggleTarget"></i> <span id="textToggleTarget">Tampilkan</span>
-                </button>
             </div>
         </div>
-        <div id="kontenTargetBulanan" class="p-5 hidden animate__animated animate__fadeIn">
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm border-collapse">
-                    <thead>
-                        <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider border-b border-gray-200">
-                            <th class="p-3 text-left font-bold">Komoditi / Jenis</th>
-                            <th class="p-3 text-center font-bold text-blue-600">Target Tanam (Ha)</th>
-                            <th class="p-3 text-center font-bold text-orange-600">Target Panen (Ha)</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100">
-                        <tr class="hover:bg-gray-50">
-                            <td class="p-3 font-bold text-gray-700"><i class="fa-solid fa-wheat-awn text-green-500 mr-2"></i>LTT Reguler</td>
-                            <td class="p-3"><input type="number" step="0.01" min="0" id="tgt_LTTReguler_Tanam" class="w-full p-2 border border-gray-200 rounded-lg text-sm text-center outline-none focus:border-green-500 bg-blue-50" placeholder="0"></td>
-                            <td class="p-3"><input type="number" step="0.01" min="0" id="tgt_LTTReguler_Panen" class="w-full p-2 border border-gray-200 rounded-lg text-sm text-center outline-none focus:border-orange-400 bg-orange-50" placeholder="0"></td>
-                        </tr>
-                        <tr class="hover:bg-gray-50">
-                            <td class="p-3 font-bold text-gray-700"><i class="fa-solid fa-wheat-awn text-teal-500 mr-2"></i>LTT Padi Gogo</td>
-                            <td class="p-3"><input type="number" step="0.01" min="0" id="tgt_PadiGogo_Tanam" class="w-full p-2 border border-gray-200 rounded-lg text-sm text-center outline-none focus:border-green-500 bg-blue-50" placeholder="0"></td>
-                            <td class="p-3"><input type="number" step="0.01" min="0" id="tgt_PadiGogo_Panen" class="w-full p-2 border border-gray-200 rounded-lg text-sm text-center outline-none focus:border-orange-400 bg-orange-50" placeholder="0"></td>
-                        </tr>
-                        <tr class="hover:bg-gray-50">
-                            <td class="p-3 font-bold text-gray-700"><i class="fa-solid fa-wheat-awn text-cyan-500 mr-2"></i>LTT Oplah 2025</td>
-                            <td class="p-3"><input type="number" step="0.01" min="0" id="tgt_Oplah2025_Tanam" class="w-full p-2 border border-gray-200 rounded-lg text-sm text-center outline-none focus:border-green-500 bg-blue-50" placeholder="0"></td>
-                            <td class="p-3"><input type="number" step="0.01" min="0" id="tgt_Oplah2025_Panen" class="w-full p-2 border border-gray-200 rounded-lg text-sm text-center outline-none focus:border-orange-400 bg-orange-50" placeholder="0"></td>
-                        </tr>
-                        <tr class="hover:bg-gray-50">
-                            <td class="p-3 font-bold text-gray-700"><i class="fa-solid fa-corn text-yellow-500 mr-2"></i>Jagung</td>
-                            <td class="p-3"><input type="number" step="0.01" min="0" id="tgt_Jagung_Tanam" class="w-full p-2 border border-gray-200 rounded-lg text-sm text-center outline-none focus:border-green-500 bg-blue-50" placeholder="0"></td>
-                            <td class="p-3"><input type="number" step="0.01" min="0" id="tgt_Jagung_Panen" class="w-full p-2 border border-gray-200 rounded-lg text-sm text-center outline-none focus:border-orange-400 bg-orange-50" placeholder="0"></td>
-                        </tr>
-                        <tr class="hover:bg-gray-50">
-                            <td class="p-3 font-bold text-gray-700"><i class="fa-solid fa-carrot text-orange-500 mr-2"></i>Ubi Kayu</td>
-                            <td class="p-3"><input type="number" step="0.01" min="0" id="tgt_UbiKayu_Tanam" class="w-full p-2 border border-gray-200 rounded-lg text-sm text-center outline-none focus:border-green-500 bg-blue-50" placeholder="0"></td>
-                            <td class="p-3"><input type="number" step="0.01" min="0" id="tgt_UbiKayu_Panen" class="w-full p-2 border border-gray-200 rounded-lg text-sm text-center outline-none focus:border-orange-400 bg-orange-50" placeholder="0"></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            <button onclick="simpanTargetBPP()"
-                class="mt-5 w-full bg-green-600 text-white font-bold py-3 rounded-lg flex justify-center items-center gap-2 shadow-lg shadow-green-200 hover:bg-green-700 transition active:scale-95">
-                <i class="fa-solid fa-floppy-disk"></i>
-                <span id="btnSimpanTargetText">Simpan Target</span>
-            </button>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="bg-green-700 text-white">
+                        <th class="p-3 text-left text-xs font-bold uppercase">Bulan</th>
+                        <th class="p-3 text-center text-xs font-bold uppercase">Target Kec (Ha)</th>
+                        <th class="p-3 text-center text-xs font-bold uppercase">Target Desa (Ha)</th>
+                        <th class="p-3 text-center text-xs font-bold uppercase">Status</th>
+                        <th class="p-3 text-center text-xs font-bold uppercase">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelBppTargetBulan">
+                    <tr>
+                        <td colspan="5" class="p-8 text-center text-gray-400">
+                            <i class="fa-solid fa-circle-notch fa-spin text-xl text-green-500 mb-2 block"></i>
+                            Memuat...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
@@ -208,6 +188,7 @@
                     class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 border border-gray-200 w-full sm:w-auto justify-center shadow-sm">
                     <i class="fa-solid fa-chevron-down" id="iconTogglePPL"></i> <span id="textTogglePPL">Tampilkan</span>
                 </button>
+
                 <button onclick="bukaTambahPPL()" id="btnTambahPPL"
                     class="bg-green-600 text-white px-4 py-1.5 rounded-lg text-xs font-bold hover:bg-green-700 transition shadow flex items-center gap-1.5 w-full sm:w-auto justify-center hidden animate__animated animate__fadeIn">
                     <i class="fa-solid fa-user-plus"></i> Tambah Penyuluh

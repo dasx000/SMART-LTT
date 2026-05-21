@@ -5,6 +5,16 @@
 
 // Fungsi utama penjalan Web App
 function doGet(e) {
+  // Jika URL GAS dipanggil untuk memuat kode Bookmarklet/Tuyul
+  if (e && e.parameter && e.parameter.action) {
+    if (e.parameter.action === 'target') {
+      return ContentService.createTextOutput(getKodeTuyulTarget()).setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    if (e.parameter.action === 'eltt') {
+      return ContentService.createTextOutput(getKodeTuyulEltt()).setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+  }
+
   inisialisasiDatabase_(); // Auto-setup: pastikan semua sheet ada
   return HtmlService.createTemplateFromFile('Index')
     .evaluate()
