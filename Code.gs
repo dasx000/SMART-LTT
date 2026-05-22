@@ -1,4 +1,4 @@
-﻿// =========================================================================
+// =========================================================================
 // FILE: Code.gs
 // DESKRIPSI: Routing Utama dan Setup Web App
 // =========================================================================
@@ -12,6 +12,10 @@ function doGet(e) {
     }
     if (e.parameter.action === 'eltt') {
       return ContentService.createTextOutput(getKodeTuyulEltt()).setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    if (e.parameter.action === 'migrasi') {
+      var result = migrasiTargetKeV2();
+      return ContentService.createTextOutput(result).setMimeType(ContentService.MimeType.TEXT);
     }
   }
 
@@ -54,6 +58,11 @@ function doPost(e) {
     var request = JSON.parse(e.postData.contents);
     if (request.aksi === 'sinkron_padi') {
       var result = terimaSinkronPadi(request.data, request.logData);
+      return ContentService.createTextOutput(JSON.stringify(result))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    if (request.aksi === 'import_target_epusluh') {
+      var result = importTargetEpusluh(request.bulan, request.komoditas, request.data, request.pembuat);
       return ContentService.createTextOutput(JSON.stringify(result))
         .setMimeType(ContentService.MimeType.JSON);
     }

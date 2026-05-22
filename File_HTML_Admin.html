@@ -37,6 +37,10 @@
                 class="nav-item flex items-center px-4 py-3 text-green-200 hover:bg-green-700 hover:text-white rounded-lg transition">
                 <i class="fa-solid fa-bullseye w-6"></i> Target Komoditas
             </a>
+            <a href="#" id="nav-laporan-ltt" onclick="navigasi('laporan-ltt'); toggleSidebar(true)"
+                class="nav-item flex items-center px-4 py-3 text-green-200 hover:bg-green-700 hover:text-white rounded-lg transition">
+                <i class="fa-solid fa-file-lines w-6"></i> Laporan LTT
+            </a>
             <a href="#" id="nav-logs" onclick="navigasi('logs'); toggleSidebar(true)"
                 class="nav-item flex items-center px-4 py-3 text-green-200 hover:bg-green-700 hover:text-white rounded-lg transition">
                 <i class="fa-solid fa-clock-rotate-left w-6"></i> Log Sinkronisasi
@@ -803,16 +807,15 @@
                         <thead>
                             <tr class="bg-green-700 text-white">
                                 <th class="p-4 text-left text-xs font-bold uppercase">Bulan</th>
-                                <th class="p-4 text-center text-xs font-bold uppercase">Target Kab (Ha)</th>
-                                <th class="p-4 text-center text-xs font-bold uppercase">Target Kec (Ha)</th>
-                                <th class="p-4 text-center text-xs font-bold uppercase">Target Desa (Ha)</th>
-                                <th class="p-4 text-center text-xs font-bold uppercase">Status</th>
+                                <th class="p-4 text-center text-xs font-bold uppercase">Target Kabupaten</th>
+                                <th class="p-4 text-center text-xs font-bold uppercase">Target Kecamatan</th>
+                                <th class="p-4 text-center text-xs font-bold uppercase">Target Desa</th>
                                 <th class="p-4 text-center text-xs font-bold uppercase">Aksi</th>
                             </tr>
                         </thead>
                         <tbody id="tabelTargetBulan">
                             <tr>
-                                <td colspan="6" class="p-12 text-center text-gray-400">
+                                <td colspan="5" class="p-12 text-center text-gray-400">
                                     <i class="fa-solid fa-circle-notch fa-spin text-2xl text-green-500 mb-2 block"></i>
                                     Memuat data target...
                                 </td>
@@ -863,16 +866,25 @@
                 <div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
                     <div class="p-4 border-b border-gray-100 flex items-center justify-between">
                         <p class="text-sm font-bold text-gray-700" id="labelTabDetailTarget">Target Kabupaten</p>
-                        <button onclick="bukaFormTarget(null)"
+                        <button id="btnTambahTarget" onclick="bukaFormTarget(null)"
                             class="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700 transition">
                             <i class="fa-solid fa-plus"></i> Tambah Target
                         </button>
+                    </div>
+                    <div id="targetDesaSearchContainer" class="hidden px-4 py-3 border-b border-gray-100">
+                        <div class="relative">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                            <input type="text" id="targetDesaSearch" oninput="onTargetSearch(this.value)"
+                                placeholder="Cari desa atau kecamatan..."
+                                class="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-green-400">
+                        </div>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm">
                             <thead>
                                 <tr class="bg-gray-50 border-b border-gray-100">
                                     <th class="p-3 text-left text-xs font-bold text-gray-400 uppercase">Wilayah</th>
+                                    <th class="p-3 text-left text-xs font-bold text-gray-400 uppercase">Kecamatan</th>
                                     <th class="p-3 text-right text-xs font-bold text-gray-400 uppercase">Total Target (Ha)</th>
                                     <th class="p-3 text-left text-xs font-bold text-gray-400 uppercase">Rincian Jenis</th>
                                     <th class="p-3 text-left text-xs font-bold text-gray-400 uppercase">Pembuat</th>
@@ -881,7 +893,7 @@
                             </thead>
                             <tbody id="tabelDetailTarget">
                                 <tr>
-                                    <td colspan="5" class="p-8 text-center text-gray-400">
+                                    <td colspan="6" class="p-8 text-center text-gray-400">
                                         <i class="fa-solid fa-circle-notch fa-spin text-xl text-green-500 mb-2 block"></i>
                                         Memuat data...
                                     </td>
@@ -889,10 +901,183 @@
                             </tbody>
                         </table>
                     </div>
+                    <div id="targetPaginationContainer" class="hidden px-4 py-3 border-t border-gray-100 flex items-center justify-between gap-3"></div>
                 </div>
 
             </div>
         </div> <!-- end sectionDetailTarget -->
+
+        <!-- ===== SECTION: LAPORAN LTT ===== -->
+        <div id="sectionLaporanLTT" class="hidden">
+            <div class="p-6 md:p-8">
+
+                <!-- Header -->
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">Laporan LTT</h2>
+                        <p class="text-sm text-gray-500">Data lengkap laporan Padi, Jagung & Ubi Kayu dari seluruh PPL</p>
+                    </div>
+                    <div class="flex gap-2 flex-wrap">
+                        <button onclick="unduhExcelLaporan()"
+                            class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-2">
+                            <i class="fa-solid fa-file-excel"></i> Unduh Excel
+                        </button>
+                        <button onclick="muatLaporanLTT(true)"
+                            class="bg-blue-50 text-blue-600 border border-blue-200 px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-2 hover:bg-blue-600 hover:text-white">
+                            <i class="fa-solid fa-rotate-right" id="iconRefreshLaporan"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Filter Bar -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <!-- Tanggal -->
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Tanggal</label>
+                            <input type="date" id="filterTglLaporan"
+                                class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-300 bg-white">
+                        </div>
+                        <!-- Komoditas -->
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Komoditas</label>
+                            <select id="filterKomLaporan"
+                                class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-300 bg-white">
+                                <option value="">Padi</option>
+                                <option value="Jagung">Jagung</option>
+                                <option value="Ubi Kayu">Ubi Kayu</option>
+                            </select>
+                        </div>
+                        <!-- Kecamatan -->
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Kecamatan</label>
+                            <select id="filterKecLaporan" onchange="onKecLaporanChange()"
+                                class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-300 bg-white">
+                                <option value="">Semua Kecamatan</option>
+                            </select>
+                        </div>
+                        <!-- Desa -->
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Desa</label>
+                            <select id="filterDesaLaporan" disabled
+                                class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-300 bg-white disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed">
+                                <option value="">— Pilih Kecamatan dulu —</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex gap-3 mt-4">
+                        <button onclick="terapkanFilterLaporan()"
+                            class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-xl text-sm font-bold transition flex items-center gap-2">
+                            <i class="fa-solid fa-filter"></i> Terapkan Filter
+                        </button>
+                        <button onclick="resetFilterLaporan()"
+                            class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-5 py-2 rounded-xl text-sm font-bold transition flex items-center gap-2">
+                            <i class="fa-solid fa-xmark"></i> Reset
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Ringkasan Singkat -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6" id="ringkasanLaporanLTT">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center gap-3">
+                        <div class="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center">
+                            <i class="fa-solid fa-list-check"></i>
+                        </div>
+                        <div>
+                            <p class="text-[10px] text-gray-400 font-bold uppercase">Total Data</p>
+                            <p class="text-xl font-bold text-gray-800" id="statTotalLaporan">-</p>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center gap-3">
+                        <div class="w-10 h-10 bg-green-50 text-green-600 rounded-lg flex items-center justify-center">
+                            <i class="fa-solid fa-seedling"></i>
+                        </div>
+                        <div>
+                            <p class="text-[10px] text-gray-400 font-bold uppercase">Total Tanam</p>
+                            <p class="text-xl font-bold text-gray-800" id="statTotalTanam">-</p>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center gap-3">
+                        <div class="w-10 h-10 bg-yellow-50 text-yellow-600 rounded-lg flex items-center justify-center">
+                            <i class="fa-solid fa-wheat-awn"></i>
+                        </div>
+                        <div>
+                            <p class="text-[10px] text-gray-400 font-bold uppercase">Total Panen</p>
+                            <p class="text-xl font-bold text-gray-800" id="statTotalPanen">-</p>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center gap-3">
+                        <div class="w-10 h-10 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center">
+                            <i class="fa-solid fa-magnifying-glass-chart"></i>
+                        </div>
+                        <div>
+                            <p class="text-[10px] text-gray-400 font-bold uppercase">Hasil Pencarian</p>
+                            <p class="text-xl font-bold text-gray-800" id="statHasilCari">-</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Search + Pagination Options -->
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4">
+                    <div class="relative flex-1 w-full sm:max-w-sm">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                        <input type="text" id="searchLaporan" oninput="onSearchLaporan()"
+                            placeholder="Cari nama penyuluh, kecamatan, atau desa..."
+                            class="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-300">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-gray-500 font-bold whitespace-nowrap">Tampilkan:</span>
+                        <select id="pageSizeLaporan" onchange="setPageSizeLaporan()"
+                            class="px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-300 font-bold">
+                            <option value="10">10</option>
+                            <option value="50">50</option>
+                            <option value="5">5</option>
+                            <option value="0">Semua</option>
+                        </select>
+                        <span class="text-xs text-gray-400" id="infoPageLaporan">data per halaman</span>
+                    </div>
+                </div>
+
+                <!-- Tabel Laporan LTT -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs whitespace-nowrap">
+                            <thead>
+                                <tr class="bg-gray-50 text-gray-600 uppercase tracking-wider border-b border-gray-200 text-[10px] cursor-pointer select-none">
+                                    <th class="p-3 border-r border-gray-100 font-bold w-8 text-center">No</th>
+                                    <th class="p-3 border-r border-gray-100 font-bold" onclick="sortLaporan('timestamp')">Tanggal Laporan <i id="sortIcon-timestamp" class="fa-solid fa-sort text-gray-300 ml-1"></i></th>
+                                    <th class="p-3 border-r border-gray-100 font-bold" onclick="sortLaporan('pelapor')">Nama Penyuluh <i id="sortIcon-pelapor" class="fa-solid fa-sort text-gray-300 ml-1"></i></th>
+                                    <th class="p-3 border-r border-gray-100 font-bold" onclick="sortLaporan('kecamatan')">Kecamatan <i id="sortIcon-kecamatan" class="fa-solid fa-sort text-gray-300 ml-1"></i></th>
+                                    <th class="p-3 border-r border-gray-100 font-bold" onclick="sortLaporan('desa')">Desa <i id="sortIcon-desa" class="fa-solid fa-sort text-gray-300 ml-1"></i></th>
+                                    <th class="p-3 border-r border-gray-100 font-bold">Komoditas</th>
+                                    <th class="p-3 border-r border-gray-100 font-bold">Jenis LTT</th>
+                                    <th class="p-3 border-r border-gray-100 font-bold text-right" onclick="sortLaporan('luas_bera')">Bera (Ha) <i id="sortIcon-luas_bera" class="fa-solid fa-sort text-gray-300 ml-1"></i></th>
+                                    <th class="p-3 border-r border-gray-100 font-bold text-right" onclick="sortLaporan('olah_lahan')">Olah (Ha) <i id="sortIcon-olah_lahan" class="fa-solid fa-sort text-gray-300 ml-1"></i></th>
+                                    <th class="p-3 border-r border-gray-100 font-bold text-right" onclick="sortLaporan('luas_tanam')">Tanam (Ha) <i id="sortIcon-luas_tanam" class="fa-solid fa-sort text-gray-300 ml-1"></i></th>
+                                    <th class="p-3 border-r border-gray-100 font-bold text-right" onclick="sortLaporan('luas_panen')">Panen (Ha) <i id="sortIcon-luas_panen" class="fa-solid fa-sort text-gray-300 ml-1"></i></th>
+                                    <th class="p-3 border-r border-gray-100 font-bold">Keterangan</th>
+                                    <th class="p-3 font-bold">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyLaporanLTT" class="divide-y divide-gray-100">
+                                <tr>
+                                    <td colspan="13" class="p-12 text-center text-gray-400 italic">
+                                        <i class="fa-solid fa-circle-notch fa-spin text-2xl text-green-500 mb-3 block"></i>
+                                        Memuat data laporan...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Pagination -->
+                    <div class="px-5 py-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3" id="paginationLaporan">
+                        <p class="text-xs text-gray-500" id="infoPaginasiLaporan">Menampilkan - dari - data</p>
+                        <div class="flex gap-1" id="btnPaginasiLaporan"></div>
+                    </div>
+                </div>
+
+            </div>
+        </div> <!-- end sectionLaporanLTT -->
 
     </div> <!-- end main content div -->
 </div> <!-- end flex container div -->

@@ -1,20 +1,13 @@
 BUAT plan.MD  BERISI PLANNING
 
-Kita akan rancang fitur target setiap komoditas, jadi di dasboard admin ada list target bulan 1-12, tak peduli tahun berapa poknnya selalu fix 12 bulan tampilannya, 
-Lalu di atas tabel itu ada filter komditasnya, 
-ketika klik bulan terntantu disitu ada target kabupaten, kecamtan , dan desa, admin desa bisa input semuanya, kemudain 3 target ini harus sinkron, patokanny adalah yang paling tinggi, 
-untuk admin bbpp tentu bs crud target kecamtan dan desa
-susunlah databse sedemikian rupa/best praktice, yang sekrangny memudahkan saya nnti buat tarik target lansguns dari epusluh maupun input manual
-nama geografi ambl di databse. 
-jenis ltt ambil di db jenis_ltt
-fomr inutnya tentu ada nama geografinya, jenis ltt an luas targetnya, total targetnya
-untuk desa lebih komplek dan ada di foto, formatnya sesuaikan
-untuk penyuluh , tentu cm edit desa binaanya dia saja,
-
-
-nanti akan saya tampilakn contoh nya tentu harus kamu modifikasi dan sempurnakan
-
-
+kita akan menambahkan lagi di sidebar menu "Laporan LTT"
+ini isinya detail laporan dari databse (termasuk waktu, statsus, lahan bera dll) sesuaikann dengan kolom db 
+untuk selain padi nilai jenis ltt kosongkan saja, tapi klolomnya ketiga komodtias ini sama
+ada fitur filetr : tanggal (gsush kasih from-to) kecamtan, desa,komoditas
+ada juga live search untuk cari nama desa atau kecamatan atau penyuluh
+susun chaching sebaik mungkin
+ada pagination 5 ,10 ,50, semua.
+ada yang mau km tambahkan?
 
 JANGAN TERLALU LOW LEVEL ATAU DETAIL
 CUKUP INSTRUKSIKAN SECARA HIGH LEVEL

@@ -1161,6 +1161,46 @@ function inisialisasiDatabase_() {
     std.getRange('A1:D1').setFontWeight('bold').setBackground('#ffe599');
     std.setFrozenRows(1);
   }
+
+  // Sheet: Target_Desa_Padi
+  if (!ss.getSheetByName('Target_Desa_Padi')) {
+    var sdp = ss.insertSheet('Target_Desa_Padi');
+    sdp.appendRow(['Bulan', 'Kecamatan', 'NamaDesa', 'LTT_Reguler', 'Padi_Gogo', 'Oplah_2024', 'Oplah_2025', 'CSR', 'Rehab_Bencana', 'Total_Target', 'IP_Eksisting', 'Luas_Baku_Sawah', 'Luas_Standing_Crop', 'Pembuat', 'Waktu_Update']);
+    sdp.getRange('A1:O1').setFontWeight('bold').setBackground('#ffe599');
+    sdp.setFrozenRows(1);
+  }
+
+  // Sheet: Target_Desa_Jagung
+  if (!ss.getSheetByName('Target_Desa_Jagung')) {
+    var sdj = ss.insertSheet('Target_Desa_Jagung');
+    sdj.appendRow(['Bulan', 'Kecamatan', 'NamaDesa', 'Total_Target', 'Pembuat', 'Waktu_Update']);
+    sdj.getRange('A1:F1').setFontWeight('bold').setBackground('#ffe599');
+    sdj.setFrozenRows(1);
+  }
+
+  // Sheet: Target_Desa_UbiKayu
+  if (!ss.getSheetByName('Target_Desa_UbiKayu')) {
+    var sdu = ss.insertSheet('Target_Desa_UbiKayu');
+    sdu.appendRow(['Bulan', 'Kecamatan', 'NamaDesa', 'Total_Target', 'Pembuat', 'Waktu_Update']);
+    sdu.getRange('A1:F1').setFontWeight('bold').setBackground('#ffe599');
+    sdu.setFrozenRows(1);
+  }
+
+  // Sheet: Target_Kabupaten
+  if (!ss.getSheetByName('Target_Kabupaten')) {
+    var skb = ss.insertSheet('Target_Kabupaten');
+    skb.appendRow(['Bulan', 'Komoditas', 'Total_Target', 'Pembuat', 'Waktu_Update']);
+    skb.getRange('A1:E1').setFontWeight('bold').setBackground('#ffe599');
+    skb.setFrozenRows(1);
+  }
+
+  // Sheet: Target_Kecamatan
+  if (!ss.getSheetByName('Target_Kecamatan')) {
+    var skc = ss.insertSheet('Target_Kecamatan');
+    skc.appendRow(['Bulan', 'Komoditas', 'NamaKecamatan', 'Total_Target', 'Waktu_Rebuild']);
+    skc.getRange('A1:E1').setFontWeight('bold').setBackground('#ffe599');
+    skc.setFrozenRows(1);
+  }
 }
 
 // =========================================================================
@@ -1688,25 +1728,77 @@ function getDashboardTarget(params) {
   var bulanTahun = tahun + '-' + bulanStr;
   var isPast = bulan0 !== now.getMonth() || tahun !== now.getFullYear();
 
-  // 1. Target dari Data_Target
+  // 1. Target aggregated dynamically from V2 desa sheets
   var targetMap = {};
-  var shTarget = ss.getSheetByName('Data_Target');
-  if (shTarget && shTarget.getLastRow() > 1) {
-    var tData = shTarget.getDataRange().getValues();
-    for (var i = 1; i < tData.length; i++) {
-      var rawBln = tData[i][1];
-      var rowBulanTahun = (rawBln instanceof Date)
-        ? Utilities.formatDate(rawBln, 'Asia/Jakarta', 'yyyy-MM')
-        : rawBln.toString().trim();
-      if (rowBulanTahun !== bulanTahun) continue;
-      var kec = tData[i][2];
-      targetMap[kec] = {
-        LTTReguler: { tanam: tData[i][3],  panen: tData[i][4]  },
-        PadiGogo:   { tanam: tData[i][5],  panen: tData[i][6]  },
-        Oplah2025:  { tanam: tData[i][7],  panen: tData[i][8]  },
-        Jagung:     { tanam: tData[i][9],  panen: tData[i][10] },
-        UbiKayu:    { tanam: tData[i][11], panen: tData[i][12] },
-      };
+  
+  // Padi
+  var shPadi = ss.getSheetByName('Target_Desa_Padi');
+  if (shPadi && shPadi.getLastRow() > 1) {
+    var data = shPadi.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      var rBulan = parseInt(data[i][0]);
+      if (rBulan !== bulan) continue;
+      var kec = String(data[i][1]).trim();
+      if (!kec) continue;
+      
+      if (!targetMap[kec]) {
+        targetMap[kec] = {
+          LTTReguler: { tanam: 0, panen: 0 },
+          PadiGogo:   { tanam: 0, panen: 0 },
+          Oplah2025:  { tanam: 0, panen: 0 },
+          Jagung:     { tanam: 0, panen: 0 },
+          UbiKayu:    { tanam: 0, panen: 0 }
+        };
+      }
+      targetMap[kec].LTTReguler.tanam += parseFloat(data[i][3]) || 0;
+      targetMap[kec].PadiGogo.tanam   += parseFloat(data[i][4]) || 0;
+      targetMap[kec].Oplah2025.tanam  += parseFloat(data[i][6]) || 0;
+    }
+  }
+  
+  // Jagung
+  var shJagung = ss.getSheetByName('Target_Desa_Jagung');
+  if (shJagung && shJagung.getLastRow() > 1) {
+    var data = shJagung.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      var rBulan = parseInt(data[i][0]);
+      if (rBulan !== bulan) continue;
+      var kec = String(data[i][1]).trim();
+      if (!kec) continue;
+      
+      if (!targetMap[kec]) {
+        targetMap[kec] = {
+          LTTReguler: { tanam: 0, panen: 0 },
+          PadiGogo:   { tanam: 0, panen: 0 },
+          Oplah2025:  { tanam: 0, panen: 0 },
+          Jagung:     { tanam: 0, panen: 0 },
+          UbiKayu:    { tanam: 0, panen: 0 }
+        };
+      }
+      targetMap[kec].Jagung.tanam += parseFloat(data[i][3]) || 0;
+    }
+  }
+  
+  // Ubi Kayu
+  var shUbi = ss.getSheetByName('Target_Desa_UbiKayu');
+  if (shUbi && shUbi.getLastRow() > 1) {
+    var data = shUbi.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      var rBulan = parseInt(data[i][0]);
+      if (rBulan !== bulan) continue;
+      var kec = String(data[i][1]).trim();
+      if (!kec) continue;
+      
+      if (!targetMap[kec]) {
+        targetMap[kec] = {
+          LTTReguler: { tanam: 0, panen: 0 },
+          PadiGogo:   { tanam: 0, panen: 0 },
+          Oplah2025:  { tanam: 0, panen: 0 },
+          Jagung:     { tanam: 0, panen: 0 },
+          UbiKayu:    { tanam: 0, panen: 0 }
+        };
+      }
+      targetMap[kec].UbiKayu.tanam += parseFloat(data[i][3]) || 0;
     }
   }
 
@@ -2082,61 +2174,306 @@ function getJenisLTT(komoditas) {
   }
 }
 
+// =========================================================================
+// HELPER & WRAPPER CACHING DATA TARGET
+// =========================================================================
+
+function cacheGetTarget(key) {
+  try {
+    var cache = CacheService.getScriptCache();
+    var cached = cache.get(key);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+  } catch (e) {
+    console.error("Error cacheGetTarget for " + key + ": " + e.toString());
+  }
+  return null;
+}
+
+function cachePutTarget(key, data) {
+  try {
+    var cache = CacheService.getScriptCache();
+    cache.put(key, JSON.stringify(data), 21600); // TTL 6 jam (21600 detik)
+  } catch (e) {
+    console.error("Error cachePutTarget for " + key + ": " + e.toString());
+  }
+}
+
+function cacheDeleteTarget() {
+  try {
+    var cache = CacheService.getScriptCache();
+    var keys = Array.prototype.slice.call(arguments);
+    if (keys.length > 0) {
+      cache.removeAll(keys);
+    }
+  } catch (e) {
+    console.error("Error cacheDeleteTarget: " + e.toString());
+  }
+}
+
+function cacheDeleteBulan(bulan) {
+  try {
+    var komoditasList = ['padi', 'jagung', 'ubikayu'];
+    var keys = [];
+    komoditasList.forEach(function(kom) {
+      keys.push('target_desa_' + kom + '_' + bulan);
+      keys.push('target_kecamatan_' + kom + '_' + bulan);
+      keys.push('target_kabupaten_' + kom + '_' + bulan);
+    });
+    cacheDeleteTarget.apply(null, keys);
+  } catch (e) {
+    console.error("Error cacheDeleteBulan for " + bulan + ": " + e.toString());
+  }
+}
+
+function invalidateAllKecamatanCache() {
+  try {
+    var keys = [];
+    var komoditasList = ['padi', 'jagung', 'ubikayu'];
+    for (var b = 1; b <= 12; b++) {
+      komoditasList.forEach(function(kom) {
+        keys.push('target_kecamatan_' + kom + '_' + b);
+      });
+    }
+    cacheDeleteTarget.apply(null, keys);
+  } catch (e) {
+    console.error("Error invalidateAllKecamatanCache: " + e.toString());
+  }
+}
+
+function invalidateAllTargetCaches() {
+  try {
+    var keys = [];
+    var komoditasList = ['padi', 'jagung', 'ubikayu'];
+    for (var b = 1; b <= 12; b++) {
+      komoditasList.forEach(function(kom) {
+        keys.push('target_desa_' + kom + '_' + b);
+        keys.push('target_kecamatan_' + kom + '_' + b);
+        keys.push('target_kabupaten_' + kom + '_' + b);
+      });
+    }
+    cacheDeleteTarget.apply(null, keys);
+  } catch (e) {
+    console.error("Error invalidateAllTargetCaches: " + e.toString());
+  }
+}
+
+function fetchDesaTargetsFromSheet_(ss, bulan, komoditas) {
+  var normKom = komoditas.toLowerCase().replace(/\s+/g, '');
+  var desaSheetName = '';
+  if (normKom === 'padi') {
+    desaSheetName = 'Target_Desa_Padi';
+  } else if (normKom === 'jagung') {
+    desaSheetName = 'Target_Desa_Jagung';
+  } else if (normKom === 'ubikayu') {
+    desaSheetName = 'Target_Desa_UbiKayu';
+  }
+  
+  var targets = [];
+  if (!desaSheetName) return targets;
+
+  var shDesa = ss.getSheetByName(desaSheetName);
+  if (shDesa && shDesa.getLastRow() > 1) {
+    var dataDesa = shDesa.getDataRange().getValues();
+    var formatDate = function(val) {
+      if (val instanceof Date) {
+        return Utilities.formatDate(val, 'Asia/Jakarta', 'yyyy-MM-dd HH:mm:ss');
+      }
+      return val ? val.toString() : '';
+    };
+
+    for (var i = 1; i < dataDesa.length; i++) {
+      var rBulan = parseInt(dataDesa[i][0]);
+      if (rBulan !== bulan) continue;
+
+      var kec = String(dataDesa[i][1]).trim();
+      var desa = String(dataDesa[i][2]).trim();
+
+      var targetObj = {
+        id: 'Desa|' + rBulan + '|' + kec + '|' + desa + '|' + komoditas,
+        bulan: rBulan,
+        level: 'Desa',
+        kodeGeografi: '',
+        namaGeografi: desa,
+        kecamatan: kec,
+        komoditas: komoditas,
+        details: []
+      };
+
+      if (normKom === 'padi') {
+        targetObj.totalTarget = parseFloat(dataDesa[i][9]) || 0;
+        targetObj.ipEksisting = parseFloat(dataDesa[i][10]) || 0;
+        targetObj.luasBakuSawah = parseFloat(dataDesa[i][11]) || 0;
+        targetObj.luasStandingCrop = parseFloat(dataDesa[i][12]) || 0;
+        targetObj.pembuat = String(dataDesa[i][13]);
+        targetObj.waktuUpdate = formatDate(dataDesa[i][14]);
+
+        var lttTypes = ['LTT Reguler', 'LTT Padi Gogo', 'LTT Oplah 2024', 'LTT  Oplah 2025', 'LTT CSR', 'LTT Rehap Bencana'];
+        var colIndices = [3, 4, 5, 6, 7, 8];
+        for (var k = 0; k < lttTypes.length; k++) {
+          var val = parseFloat(dataDesa[i][colIndices[k]]) || 0;
+          if (val > 0) {
+            targetObj.details.push({
+              jenisLtt: lttTypes[k],
+              luas: val
+            });
+          }
+        }
+      } else {
+        targetObj.totalTarget = parseFloat(dataDesa[i][3]) || 0;
+        targetObj.ipEksisting = 0;
+        targetObj.luasBakuSawah = 0;
+        targetObj.luasStandingCrop = 0;
+        targetObj.pembuat = String(dataDesa[i][4]);
+        targetObj.waktuUpdate = formatDate(dataDesa[i][5]);
+      }
+
+      targets.push(targetObj);
+    }
+  }
+  return targets;
+}
+
+function fetchKecamatanTargetsFromSheet_(ss, bulan, komoditas) {
+  var normKom = komoditas.toLowerCase().replace(/\s+/g, '');
+  var targets = [];
+  var shKec = ss.getSheetByName('Target_Kecamatan');
+  if (shKec && shKec.getLastRow() > 1) {
+    var dataKec = shKec.getDataRange().getValues();
+    var formatDate = function(val) {
+      if (val instanceof Date) {
+        return Utilities.formatDate(val, 'Asia/Jakarta', 'yyyy-MM-dd HH:mm:ss');
+      }
+      return val ? val.toString() : '';
+    };
+
+    for (var i = 1; i < dataKec.length; i++) {
+      var rBulan = parseInt(dataKec[i][0]);
+      var rKomoditas = String(dataKec[i][1]).trim();
+      var kec = String(dataKec[i][2]).trim();
+
+      if (rBulan !== bulan) continue;
+      
+      var normRKom = rKomoditas.toLowerCase().replace(/\s+/g, '');
+      if (normRKom !== normKom) continue;
+
+      targets.push({
+        id: 'Kecamatan|' + rBulan + '|' + kec + '|' + komoditas,
+        bulan: rBulan,
+        level: 'Kecamatan',
+        kodeGeografi: '',
+        namaGeografi: kec,
+        kecamatan: kec,
+        komoditas: komoditas,
+        totalTarget: parseFloat(dataKec[i][3]) || 0,
+        ipEksisting: 0,
+        luasBakuSawah: 0,
+        luasStandingCrop: 0,
+        pembuat: 'System (Computed)',
+        waktuUpdate: formatDate(dataKec[i][4]),
+        details: []
+      });
+    }
+  }
+  return targets;
+}
+
+function fetchKabupatenTargetsFromSheet_(ss, bulan, komoditas) {
+  var normKom = komoditas.toLowerCase().replace(/\s+/g, '');
+  var targets = [];
+  var shKab = ss.getSheetByName('Target_Kabupaten');
+  if (shKab && shKab.getLastRow() > 1) {
+    var dataKab = shKab.getDataRange().getValues();
+    var formatDate = function(val) {
+      if (val instanceof Date) {
+        return Utilities.formatDate(val, 'Asia/Jakarta', 'yyyy-MM-dd HH:mm:ss');
+      }
+      return val ? val.toString() : '';
+    };
+
+    for (var i = 1; i < dataKab.length; i++) {
+      var rBulan = parseInt(dataKab[i][0]);
+      var rKomoditas = String(dataKab[i][1]).trim();
+
+      if (rBulan !== bulan) continue;
+      
+      var normRKom = rKomoditas.toLowerCase().replace(/\s+/g, '');
+      if (normRKom !== normKom) continue;
+
+      targets.push({
+        id: 'Kabupaten|' + rBulan + '|' + komoditas,
+        bulan: rBulan,
+        level: 'Kabupaten',
+        kodeGeografi: '',
+        namaGeografi: 'Kabupaten',
+        kecamatan: '',
+        komoditas: komoditas,
+        totalTarget: parseFloat(dataKab[i][2]) || 0,
+        ipEksisting: 0,
+        luasBakuSawah: 0,
+        luasStandingCrop: 0,
+        pembuat: String(dataKab[i][3]),
+        waktuUpdate: formatDate(dataKab[i][4]),
+        details: []
+      });
+    }
+  }
+  return targets;
+}
+
+function getDesaTargets_(ss, bulan, komoditas) {
+  var normKom = komoditas.toLowerCase().replace(/\s+/g, '');
+  var cacheKey = 'target_desa_' + normKom + '_' + bulan;
+  var cached = cacheGetTarget(cacheKey);
+  if (cached) return cached;
+
+  var data = fetchDesaTargetsFromSheet_(ss, bulan, komoditas);
+  cachePutTarget(cacheKey, data);
+  return data;
+}
+
+function getKecamatanTargets_(ss, bulan, komoditas) {
+  var normKom = komoditas.toLowerCase().replace(/\s+/g, '');
+  var cacheKey = 'target_kecamatan_' + normKom + '_' + bulan;
+  var cached = cacheGetTarget(cacheKey);
+  if (cached) return cached;
+
+  var data = fetchKecamatanTargetsFromSheet_(ss, bulan, komoditas);
+  cachePutTarget(cacheKey, data);
+  return data;
+}
+
+function getKabupatenTargets_(ss, bulan, komoditas) {
+  var normKom = komoditas.toLowerCase().replace(/\s+/g, '');
+  var cacheKey = 'target_kabupaten_' + normKom + '_' + bulan;
+  var cached = cacheGetTarget(cacheKey);
+  if (cached) return cached;
+
+  var data = fetchKabupatenTargetsFromSheet_(ss, bulan, komoditas);
+  cachePutTarget(cacheKey, data);
+  return data;
+}
+
 function ambilTargetBulanan(params) {
   try {
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    var shBulanan = ss.getSheetByName('Target_Bulanan');
-    var shDetail = ss.getSheetByName('Target_Detail_Jenis');
-    
-    if (!shBulanan) return [];
-    
     var bulan = parseInt(params.bulan);
     var komoditas = (params.komoditas || "").toString().trim();
-    
-    var dataBulanan = shBulanan.getDataRange().getValues();
     var targets = [];
-    var bulananMap = {};
-    
-    // Read Target_Bulanan
-    for (var i = 1; i < dataBulanan.length; i++) {
-      var rBulan = parseInt(dataBulanan[i][1]);
-      var rKomoditas = dataBulanan[i][5].toString().trim();
-      if ((bulan === 0 || rBulan === bulan) && rKomoditas === komoditas) {
-        var idTarget = dataBulanan[i][0].toString();
-        var targetObj = {
-          id: idTarget,
-          bulan: rBulan,
-          level: dataBulanan[i][2].toString(),
-          kodeGeografi: dataBulanan[i][3].toString(),
-          namaGeografi: dataBulanan[i][4].toString(),
-          komoditas: rKomoditas,
-          totalTarget: parseFloat(dataBulanan[i][6]) || 0,
-          ipEksisting: parseFloat(dataBulanan[i][7]) || 0,
-          luasBakuSawah: parseFloat(dataBulanan[i][8]) || 0,
-          luasStandingCrop: parseFloat(dataBulanan[i][9]) || 0,
-          pembuat: dataBulanan[i][10].toString(),
-          waktuUpdate: dataBulanan[i][11] instanceof Date ? Utilities.formatDate(dataBulanan[i][11], 'Asia/Jakarta', 'yyyy-MM-dd HH:mm:ss') : dataBulanan[i][11].toString(),
-          details: []
-        };
-        targets.push(targetObj);
-        bulananMap[idTarget] = targetObj;
+
+    if (bulan === 0) {
+      for (var b = 1; b <= 12; b++) {
+        targets = targets.concat(getDesaTargets_(ss, b, komoditas));
+        targets = targets.concat(getKecamatanTargets_(ss, b, komoditas));
+        targets = targets.concat(getKabupatenTargets_(ss, b, komoditas));
       }
+    } else {
+      targets = targets.concat(getDesaTargets_(ss, bulan, komoditas));
+      targets = targets.concat(getKecamatanTargets_(ss, bulan, komoditas));
+      targets = targets.concat(getKabupatenTargets_(ss, bulan, komoditas));
     }
-    
-    // Read Target_Detail_Jenis
-    if (shDetail && shDetail.getLastRow() > 1) {
-      var dataDetail = shDetail.getDataRange().getValues();
-      for (var j = 1; j < dataDetail.length; j++) {
-        var idTargetRef = dataDetail[j][1].toString();
-        if (bulananMap[idTargetRef]) {
-          bulananMap[idTargetRef].details.push({
-            jenisLtt: dataDetail[j][2].toString(),
-            luas: parseFloat(dataDetail[j][3]) || 0
-          });
-        }
-      }
-    }
-    
+
     return targets;
   } catch (e) {
     console.error("Error ambilTargetBulanan: " + e.toString());
@@ -2144,123 +2481,170 @@ function ambilTargetBulanan(params) {
   }
 }
 
+
 function simpanTargetBulanan(formData) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(15000);
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    var shBulanan = ss.getSheetByName('Target_Bulanan');
-    var shDetail = ss.getSheetByName('Target_Detail_Jenis');
     
-    var bulan = parseInt(formData.bulan);
-    var level = formData.level; // 'Kabupaten', 'Kecamatan', 'Desa'
-    var geografi = formData.namaGeografi.trim();
+    var level = formData.level; // 'Desa', 'Kabupaten'
     var komoditas = formData.komoditas.trim();
+    var bulan = parseInt(formData.bulan);
     var pembuat = formData.pembuat || 'System';
     var waktu = new Date();
-    
-    // Formulate ID: Bulan-Level-Geografi-Komoditas
-    var safeGeo = geografi.replace(/\s+/g, '_');
-    var idTarget = bulan + '-' + level + '-' + safeGeo + '-' + komoditas;
-    
-    var totalTarget = parseFloat(formData.totalTarget) || 0;
-    var ipEksisting = parseFloat(formData.ipEksisting) || 0;
-    var luasBakuSawah = parseFloat(formData.luasBakuSawah) || 0;
-    var luasStandingCrop = parseFloat(formData.luasStandingCrop) || 0;
-    
-    var rowData = [
-      idTarget,
-      bulan,
-      level,
-      idTarget,
-      geografi,
-      komoditas,
-      totalTarget,
-      ipEksisting,
-      luasBakuSawah,
-      luasStandingCrop,
-      pembuat,
-      waktu
-    ];
-    
-    // Save/Update in Target_Bulanan
-    var dataBulanan = shBulanan.getDataRange().getValues();
-    var foundIndex = -1;
-    for (var i = 1; i < dataBulanan.length; i++) {
-      if (dataBulanan[i][0] === idTarget) {
-        foundIndex = i + 1;
-        break;
-      }
+
+    if (level === 'Kecamatan') {
+      return { status: 'error', message: 'Target tingkat Kecamatan dihitung otomatis dan tidak dapat disimpan langsung.' };
     }
-    
-    if (foundIndex !== -1) {
-      shBulanan.getRange(foundIndex, 1, 1, 12).setValues([rowData]);
-    } else {
-      shBulanan.appendRow(rowData);
-    }
-    
-    // Save details in Target_Detail_Jenis
-    // Delete existing details first
-    if (shDetail && shDetail.getLastRow() > 1) {
-      var dataDetail = shDetail.getDataRange().getValues();
-      for (var j = dataDetail.length - 1; j >= 1; j--) {
-        if (dataDetail[j][1] === idTarget) {
-          shDetail.deleteRow(j + 1);
-        }
-      }
-    }
-    
-    // Insert new details
-    if (formData.details && formData.details.length > 0) {
-      for (var k = 0; k < formData.details.length; k++) {
-        var det = formData.details[k];
-        var idDetail = idTarget + '-' + det.jenisLtt.replace(/\s+/g, '_');
-        shDetail.appendRow([
-          idDetail,
-          idTarget,
-          det.jenisLtt,
-          parseFloat(det.luas) || 0
-        ]);
-      }
-    }
-    
-    // --- SYNCHRONIZATION LOGIC ---
+
+    var normKom = komoditas.toLowerCase().replace(/\s+/g, '');
+
     if (level === 'Desa') {
-      var kecName = cariKecamatanDariDesa_(geografi);
-      if (kecName) {
-        rollupDesaToKecamatan_(bulan, komoditas, kecName, pembuat);
-        rollupKecamatanToKabupaten_(bulan, komoditas, pembuat);
+      var sheetName = '';
+      if (normKom === 'padi') {
+        sheetName = 'Target_Desa_Padi';
+      } else if (normKom === 'jagung') {
+        sheetName = 'Target_Desa_Jagung';
+      } else if (normKom === 'ubikayu') {
+        sheetName = 'Target_Desa_UbiKayu';
+      } else {
+        return { status: 'error', message: 'Komoditas tidak dikenal: ' + komoditas };
       }
-    } else if (level === 'Kecamatan') {
-      var sumDesa = hitungSumDesaTarget_(bulan, komoditas, geografi);
-      if (sumDesa > totalTarget) {
-        totalTarget = sumDesa;
-        // Re-get correct index after operations
-        dataBulanan = shBulanan.getDataRange().getValues();
-        for (var i = 1; i < dataBulanan.length; i++) {
-          if (dataBulanan[i][0] === idTarget) {
-            shBulanan.getRange(i + 1, 7).setValue(totalTarget);
-            break;
+
+      var sheet = ss.getSheetByName(sheetName);
+      if (!sheet) {
+        return { status: 'error', message: 'Sheet tidak ditemukan: ' + sheetName };
+      }
+
+      var kecamatan = formData.kecamatan ? formData.kecamatan.trim() : '';
+      if (!kecamatan) {
+        kecamatan = lookupKecamatanFromDesa_(ss, formData.namaGeografi);
+      }
+      var namaDesa = formData.namaGeografi.trim();
+
+      var rowIndex = findTargetRowIndex_(sheet, formData.id, {
+        bulan: bulan,
+        kecamatan: kecamatan,
+        namaGeografi: namaDesa
+      }, 'Desa');
+
+      if (normKom === 'padi') {
+        var lttReguler = 0;
+        var padiGogo = 0;
+        var oplah2024 = 0;
+        var oplah2025 = 0;
+        var csr = 0;
+        var rehabBencana = 0;
+
+        if (formData.details && formData.details.length > 0) {
+          for (var i = 0; i < formData.details.length; i++) {
+            var det = formData.details[i];
+            var val = parseFloat(det.luas) || 0;
+            var idx = getPadiColumnIndex_(det.jenisLtt);
+            if (idx === 3) lttReguler = val;
+            else if (idx === 4) padiGogo = val;
+            else if (idx === 5) oplah2024 = val;
+            else if (idx === 6) oplah2025 = val;
+            else if (idx === 7) csr = val;
+            else if (idx === 8) rehabBencana = val;
           }
         }
+
+        var totalTarget = parseFloat(formData.totalTarget) || 0;
+        var ipEksisting = parseFloat(formData.ipEksisting) || 0;
+        var luasBakuSawah = parseFloat(formData.luasBakuSawah) || 0;
+        var luasStandingCrop = parseFloat(formData.luasStandingCrop) || 0;
+
+        var rowValues = [
+          bulan,
+          kecamatan,
+          namaDesa,
+          lttReguler,
+          padiGogo,
+          oplah2024,
+          oplah2025,
+          csr,
+          rehabBencana,
+          totalTarget,
+          ipEksisting,
+          luasBakuSawah,
+          luasStandingCrop,
+          pembuat,
+          waktu
+        ];
+
+        if (rowIndex !== -1) {
+          sheet.getRange(rowIndex, 1, 1, 15).setValues([rowValues]);
+        } else {
+          sheet.appendRow(rowValues);
+        }
+      } else {
+        var totalTarget = parseFloat(formData.totalTarget) || 0;
+        var rowValues = [
+          bulan,
+          kecamatan,
+          namaDesa,
+          totalTarget,
+          pembuat,
+          waktu
+        ];
+
+        if (rowIndex !== -1) {
+          sheet.getRange(rowIndex, 1, 1, 6).setValues([rowValues]);
+        } else {
+          sheet.appendRow(rowValues);
+        }
       }
-      rollupKecamatanToKabupaten_(bulan, komoditas, pembuat);
+
+      rebuildTargetKecamatan(ss);
+      
+      // Invalidate cache
+      var normKom = komoditas.toLowerCase().replace(/\s+/g, '');
+      cacheDeleteTarget('target_desa_' + normKom + '_' + bulan);
+
     } else if (level === 'Kabupaten') {
-      var sumKec = hitungSumKecamatanTarget_(bulan, komoditas);
-      if (sumKec > totalTarget) {
-        totalTarget = sumKec;
-        dataBulanan = shBulanan.getDataRange().getValues();
-        for (var i = 1; i < dataBulanan.length; i++) {
-          if (dataBulanan[i][0] === idTarget) {
-            shBulanan.getRange(i + 1, 7).setValue(totalTarget);
-            break;
-          }
-        }
+      var sheet = ss.getSheetByName('Target_Kabupaten');
+      if (!sheet) {
+        return { status: 'error', message: 'Sheet Target_Kabupaten tidak ditemukan' };
       }
+
+      var rowIndex = findTargetRowIndex_(sheet, formData.id, {
+        bulan: bulan,
+        komoditas: komoditas
+      }, 'Kabupaten');
+
+      var totalTarget = parseFloat(formData.totalTarget) || 0;
+      var rowValues = [
+        bulan,
+        komoditas,
+        totalTarget,
+        pembuat,
+        waktu
+      ];
+
+      if (rowIndex !== -1) {
+        sheet.getRange(rowIndex, 1, 1, 5).setValues([rowValues]);
+      } else {
+        sheet.appendRow(rowValues);
+      }
+
+      // Invalidate cache
+      var normKom = komoditas.toLowerCase().replace(/\s+/g, '');
+      cacheDeleteTarget('target_kabupaten_' + normKom + '_' + bulan);
     }
-    
+
     clearAllAppCaches();
-    return { status: 'success', idTarget: idTarget };
+    
+    var newId = '';
+    if (level === 'Desa') {
+      var kec = formData.kecamatan ? formData.kecamatan.trim() : lookupKecamatanFromDesa_(ss, formData.namaGeografi);
+      newId = 'Desa|' + bulan + '|' + kec + '|' + formData.namaGeografi.trim() + '|' + komoditas;
+    } else {
+      newId = 'Kabupaten|' + bulan + '|' + komoditas;
+    }
+
+    return { status: 'success', idTarget: newId };
   } catch (e) {
     console.error("Error simpanTargetBulanan: " + e.toString());
     return { status: 'error', message: e.toString() };
@@ -2274,46 +2658,130 @@ function hapusTargetBulanan(idTarget) {
   try {
     lock.waitLock(15000);
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    var shBulanan = ss.getSheetByName('Target_Bulanan');
-    var shDetail = ss.getSheetByName('Target_Detail_Jenis');
-    
     var deleted = false;
-    
-    if (shBulanan) {
-      var data = shBulanan.getDataRange().getValues();
-      for (var i = data.length - 1; i >= 1; i--) {
-        if (data[i][0] === idTarget) {
-          var bulan = parseInt(data[i][1]);
-          var level = data[i][2].toString();
-          var geografi = data[i][4].toString();
-          var komoditas = data[i][5].toString();
-          
-          shBulanan.deleteRow(i + 1);
-          deleted = true;
-          
-          if (level === 'Desa') {
-            var kecName = cariKecamatanDariDesa_(geografi);
-            if (kecName) {
-              rollupDesaToKecamatan_(bulan, komoditas, kecName, 'System');
-              rollupKecamatanToKabupaten_(bulan, komoditas, 'System');
+
+    if (idTarget && idTarget.indexOf('|') !== -1) {
+      var parts = idTarget.split('|');
+      var level = parts[0];
+      
+      if (level === 'Desa') {
+        var bulan = parseInt(parts[1]);
+        var kec = parts[2].trim().toLowerCase();
+        var desa = parts[3].trim().toLowerCase();
+        var komoditas = parts[4].trim();
+        var normKom = komoditas.toLowerCase().replace(/\s+/g, '');
+
+        var sheetName = '';
+        if (normKom === 'padi') {
+          sheetName = 'Target_Desa_Padi';
+        } else if (normKom === 'jagung') {
+          sheetName = 'Target_Desa_Jagung';
+        } else if (normKom === 'ubikayu') {
+          sheetName = 'Target_Desa_UbiKayu';
+        }
+
+        if (sheetName) {
+          var sheet = ss.getSheetByName(sheetName);
+          if (sheet && sheet.getLastRow() > 1) {
+            var data = sheet.getDataRange().getValues();
+            for (var i = data.length - 1; i >= 1; i--) {
+              var rBulan = parseInt(data[i][0]);
+              var rKec = String(data[i][1]).trim().toLowerCase();
+              var rDesa = String(data[i][2]).trim().toLowerCase();
+              if (rBulan === bulan && rKec === kec && rDesa === desa) {
+                sheet.deleteRow(i + 1);
+                deleted = true;
+                break;
+              }
             }
-          } else if (level === 'Kecamatan') {
-            rollupKecamatanToKabupaten_(bulan, komoditas, 'System');
           }
-          break;
+        }
+        
+        if (deleted) {
+          rebuildTargetKecamatan(ss);
+          // Invalidate cache
+          cacheDeleteTarget('target_desa_' + normKom + '_' + bulan);
+        }
+
+      } else if (level === 'Kabupaten') {
+        var bulan = parseInt(parts[1]);
+        var komoditas = parts[2].trim().toLowerCase();
+        
+        var sheet = ss.getSheetByName('Target_Kabupaten');
+        if (sheet && sheet.getLastRow() > 1) {
+          var data = sheet.getDataRange().getValues();
+          for (var i = data.length - 1; i >= 1; i--) {
+            var rBulan = parseInt(data[i][0]);
+            var rKom = String(data[i][1]).trim().toLowerCase();
+            if (rBulan === bulan && rKom === komoditas) {
+              sheet.deleteRow(i + 1);
+              deleted = true;
+              break;
+            }
+          }
+        }
+        if (deleted) {
+          var normKom = komoditas.toLowerCase().replace(/\s+/g, '');
+          cacheDeleteTarget('target_kabupaten_' + normKom + '_' + bulan);
+        }
+      }
+    } else {
+      var parts = idTarget.split('-');
+      if (parts.length >= 4) {
+        var bulan = parseInt(parts[0]);
+        var level = parts[1];
+        var geografi = parts[2].replace(/_/g, ' ');
+        var komoditas = parts[3];
+
+        if (level === 'Desa') {
+          var normKom = komoditas.toLowerCase().replace(/\s+/g, '');
+          var sheetName = '';
+          if (normKom === 'padi') sheetName = 'Target_Desa_Padi';
+          else if (normKom === 'jagung') sheetName = 'Target_Desa_Jagung';
+          else if (normKom === 'ubikayu') sheetName = 'Target_Desa_UbiKayu';
+
+          if (sheetName) {
+            var sheet = ss.getSheetByName(sheetName);
+            if (sheet && sheet.getLastRow() > 1) {
+              var data = sheet.getDataRange().getValues();
+              for (var i = data.length - 1; i >= 1; i--) {
+                var rBulan = parseInt(data[i][0]);
+                var rDesa = String(data[i][2]).trim().toLowerCase();
+                var cleanGeo = geografi.toLowerCase();
+                if (rBulan === bulan && cleanGeo.indexOf(rDesa) !== -1) {
+                  sheet.deleteRow(i + 1);
+                  deleted = true;
+                  break;
+                }
+              }
+            }
+          }
+          if (deleted) {
+            rebuildTargetKecamatan(ss);
+            cacheDeleteTarget('target_desa_' + normKom + '_' + bulan);
+          }
+        } else if (level === 'Kabupaten') {
+          var sheet = ss.getSheetByName('Target_Kabupaten');
+          if (sheet && sheet.getLastRow() > 1) {
+            var data = sheet.getDataRange().getValues();
+            for (var i = data.length - 1; i >= 1; i--) {
+              var rBulan = parseInt(data[i][0]);
+              var rKom = String(data[i][1]).trim().toLowerCase();
+              if (rBulan === bulan && rKom === komoditas.toLowerCase()) {
+                sheet.deleteRow(i + 1);
+                deleted = true;
+                break;
+              }
+            }
+          }
+          if (deleted) {
+            var normKom = komoditas.toLowerCase().replace(/\s+/g, '');
+            cacheDeleteTarget('target_kabupaten_' + normKom + '_' + bulan);
+          }
         }
       }
     }
-    
-    if (shDetail && deleted) {
-      var dataDetail = shDetail.getDataRange().getValues();
-      for (var j = dataDetail.length - 1; j >= 1; j--) {
-        if (dataDetail[j][1] === idTarget) {
-          shDetail.deleteRow(j + 1);
-        }
-      }
-    }
-    
+
     clearAllAppCaches();
     return { status: 'success' };
   } catch (e) {
@@ -2324,119 +2792,687 @@ function hapusTargetBulanan(idTarget) {
   }
 }
 
-function cariKecamatanDariDesa_(desaName) {
-  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  var sheet = ss.getSheetByName('Data_Geografi');
-  if (!sheet) return null;
+function importTargetEpusluh(bulan, komoditas, dataArray, pembuat) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    
+    var normKom = komoditas.toLowerCase().replace(/\s+/g, '');
+    var sheetName = '';
+    if (normKom === 'padi') {
+      sheetName = 'Target_Desa_Padi';
+    } else if (normKom === 'jagung') {
+      sheetName = 'Target_Desa_Jagung';
+    } else if (normKom === 'ubikayu') {
+      sheetName = 'Target_Desa_UbiKayu';
+    } else {
+      return { status: 'error', message: 'Komoditas tidak dikenal: ' + komoditas };
+    }
+
+    var sheet = ss.getSheetByName(sheetName);
+    if (!sheet) {
+      return { status: 'error', message: 'Sheet tidak ditemukan: ' + sheetName };
+    }
+
+    var shGeo = ss.getSheetByName('Data_Geografi');
+    if (!shGeo) {
+      return { status: 'error', message: 'Sheet Data_Geografi tidak ditemukan' };
+    }
+
+    var pembuatStr = pembuat || 'ePusluh Import';
+    var waktu = new Date();
+    
+    var dataGeo = shGeo.getDataRange().getValues();
+    var values = sheet.getDataRange().getValues();
+    var headers = values[0];
+    var colCount = headers.length;
+    
+    // Build lookup map from dataArray scraping results: key = "kecamatan|desa" -> targetHa
+    var epusluhMap = {};
+    for (var j = 0; j < dataArray.length; j++) {
+      var item = dataArray[j];
+      var desa = String(item.namaDesa || '').trim().toLowerCase();
+      var kec = String(item.namaKecamatan || '').trim().toLowerCase();
+      var targetHa = parseFloat(item.targetHa) || 0;
+      if (!desa) continue;
+      if (!kec) {
+        kec = lookupKecamatanFromDesa_(ss, item.namaDesa).toLowerCase();
+      }
+      if (!kec) continue;
+      var key = kec + '|' + desa;
+      epusluhMap[key] = targetHa;
+    }
+
+    // Build row index map from existing target sheet
+    var rowMap = {};
+    for (var i = 1; i < values.length; i++) {
+      var rBulan = parseInt(values[i][0]);
+      var rKec = String(values[i][1]).trim().toLowerCase();
+      var rDesa = String(values[i][2]).trim().toLowerCase();
+      var key = rBulan + '|' + rKec + '|' + rDesa;
+      rowMap[key] = i;
+    }
+
+    var updatedCount = 0;
+    var insertedCount = 0;
+    var processedDesas = {};
+
+    // For every village in Data_Geografi list
+    for (var i = 1; i < dataGeo.length; i++) {
+      var kecMaster = String(dataGeo[i][1]).trim();
+      var desaMaster = String(dataGeo[i][3]).trim();
+      if (!kecMaster || !desaMaster) continue;
+
+      var matchKey = kecMaster.toLowerCase() + '|' + desaMaster.toLowerCase();
+      if (processedDesas.hasOwnProperty(matchKey)) continue;
+      processedDesas[matchKey] = true;
+
+      var targetHa = epusluhMap.hasOwnProperty(matchKey) ? epusluhMap[matchKey] : 0;
+      var sheetKey = bulan + '|' + kecMaster.toLowerCase() + '|' + desaMaster.toLowerCase();
+      var isPadi = (normKom === 'padi');
+
+      if (rowMap.hasOwnProperty(sheetKey)) {
+        var idx = rowMap[sheetKey];
+        if (isPadi) {
+          values[idx][3] = targetHa; // LTT_Reguler
+          values[idx][4] = 0;        // Padi_Gogo
+          values[idx][5] = 0;        // Oplah_2024
+          values[idx][6] = 0;        // Oplah_2025
+          values[idx][7] = 0;        // CSR
+          values[idx][8] = 0;        // Rehab_Bencana
+          values[idx][9] = targetHa; // Total_Target
+          // Preserve or reset other fields? Let's reset IP/Baku/Standing if not exists, but we preserve or reset to 0 for consistency
+          values[idx][10] = 0;       // IP_Eksisting
+          values[idx][11] = 0;       // Luas_Baku_Sawah
+          values[idx][12] = 0;       // Luas_Standing_Crop
+          values[idx][13] = pembuatStr;
+          values[idx][14] = waktu;
+        } else {
+          values[idx][3] = targetHa; // Total_Target
+          values[idx][4] = pembuatStr;
+          values[idx][5] = waktu;
+        }
+        updatedCount++;
+      } else {
+        var newRow = [];
+        if (isPadi) {
+          newRow = [
+            bulan,
+            kecMaster,
+            desaMaster,
+            targetHa, // LTT_Reguler
+            0,        // Padi_Gogo
+            0,        // Oplah_2024
+            0,        // Oplah_2025
+            0,        // CSR
+            0,        // Rehab_Bencana
+            targetHa, // Total_Target
+            0,        // IP_Eksisting
+            0,        // Luas_Baku_Sawah
+            0,        // Luas_Standing_Crop
+            pembuatStr,
+            waktu
+          ];
+        } else {
+          newRow = [
+            bulan,
+            kecMaster,
+            desaMaster,
+            targetHa,
+            pembuatStr,
+            waktu
+          ];
+        }
+        values.push(newRow);
+        rowMap[sheetKey] = values.length - 1;
+        insertedCount++;
+      }
+    }
+
+    sheet.getRange(1, 1, values.length, colCount).setValues(values);
+
+    rebuildTargetKecamatan(ss);
+
+    // Invalidate cache
+    var normKom = komoditas.toLowerCase().replace(/\s+/g, '');
+    cacheDeleteTarget('target_desa_' + normKom + '_' + bulan);
+
+    clearAllAppCaches();
+    return { status: 'success', imported: dataArray.length, updated: updatedCount, inserted: insertedCount };
+  } catch (e) {
+    console.error('importTargetEpusluh: ' + e.toString());
+    return { status: 'error', message: e.toString() };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function rebuildTargetKecamatan(ss) {
+  if (!ss) ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var shKec = ss.getSheetByName('Target_Kecamatan');
+  if (!shKec) return;
+
+  var groups = {};
+  var nowStr = Utilities.formatDate(new Date(), 'Asia/Jakarta', 'yyyy-MM-dd HH:mm:ss');
+
+  var shPadi = ss.getSheetByName('Target_Desa_Padi');
+  if (shPadi && shPadi.getLastRow() > 1) {
+    var data = shPadi.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      var bul = parseInt(data[i][0]);
+      var kec = String(data[i][1]).trim();
+      var tot = parseFloat(data[i][9]) || 0;
+      if (!kec || isNaN(bul)) continue;
+      
+      var key = bul + '|Padi|' + kec;
+      groups[key] = (groups[key] || 0) + tot;
+    }
+  }
+
+  var shJagung = ss.getSheetByName('Target_Desa_Jagung');
+  if (shJagung && shJagung.getLastRow() > 1) {
+    var data = shJagung.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      var bul = parseInt(data[i][0]);
+      var kec = String(data[i][1]).trim();
+      var tot = parseFloat(data[i][3]) || 0;
+      if (!kec || isNaN(bul)) continue;
+
+      var key = bul + '|Jagung|' + kec;
+      groups[key] = (groups[key] || 0) + tot;
+    }
+  }
+
+  var shUbi = ss.getSheetByName('Target_Desa_UbiKayu');
+  if (shUbi && shUbi.getLastRow() > 1) {
+    var data = shUbi.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      var bul = parseInt(data[i][0]);
+      var kec = String(data[i][1]).trim();
+      var tot = parseFloat(data[i][3]) || 0;
+      if (!kec || isNaN(bul)) continue;
+
+      var key = bul + '|Ubi Kayu|' + kec;
+      groups[key] = (groups[key] || 0) + tot;
+    }
+  }
+
+  if (shKec.getLastRow() > 1) {
+    shKec.getRange(2, 1, shKec.getLastRow() - 1, 5).clearContent();
+  }
+
+  var rows = [];
+  for (var key in groups) {
+    var parts = key.split('|');
+    var bul = parseInt(parts[0]);
+    var kom = parts[1];
+    var kec = parts[2];
+    var total = groups[key];
+    rows.push([bul, kom, kec, total, nowStr]);
+  }
+
+  if (rows.length > 0) {
+    shKec.getRange(2, 1, rows.length, 5).setValues(rows);
+  }
+  invalidateAllKecamatanCache();
+}
+
+function lookupKecamatanFromDesa_(ss, desaName) {
+  try {
+    var shGeo = ss.getSheetByName('Data_Geografi');
+    if (!shGeo) return '';
+    var data = shGeo.getDataRange().getValues();
+    var cleanDesa = desaName.trim().toLowerCase();
+    for (var i = 1; i < data.length; i++) {
+      var rDesa = String(data[i][3]).trim().toLowerCase();
+      if (rDesa === cleanDesa) {
+        return String(data[i][1]).trim();
+      }
+    }
+  } catch (e) {
+    console.error("Error lookupKecamatanFromDesa_: " + e.toString());
+  }
+  return '';
+}
+
+function findTargetRowIndex_(sheet, id, currentKeys, level) {
   var data = sheet.getDataRange().getValues();
-  var targetDesa = desaName.toLowerCase().trim();
-  for (var i = 1; i < data.length; i++) {
-    var dName = (data[i][3] || "").toString().toLowerCase().trim();
-    if (dName === targetDesa) {
-      return data[i][1].toString().trim();
+  if (data.length < 2) return -1;
+
+  if (id && id.indexOf('|') !== -1) {
+    var parts = id.split('|');
+    if (parts[0] === 'Desa' && level === 'Desa') {
+      var oldBulan = parseInt(parts[1]);
+      var oldKec = parts[2].trim().toLowerCase();
+      var oldDesa = parts[3].trim().toLowerCase();
+      
+      for (var i = 1; i < data.length; i++) {
+        var rBulan = parseInt(data[i][0]);
+        var rKec = String(data[i][1]).trim().toLowerCase();
+        var rDesa = String(data[i][2]).trim().toLowerCase();
+        if (rBulan === oldBulan && rKec === oldKec && rDesa === oldDesa) {
+          return i + 1;
+        }
+      }
+    } else if (parts[0] === 'Kabupaten' && level === 'Kabupaten') {
+      var oldBulan = parseInt(parts[1]);
+      var oldKom = parts[2].trim().toLowerCase();
+      
+      for (var i = 1; i < data.length; i++) {
+        var rBulan = parseInt(data[i][0]);
+        var rKom = String(data[i][1]).trim().toLowerCase();
+        if (rBulan === oldBulan && rKom === oldKom) {
+          return i + 1;
+        }
+      }
     }
   }
-  return null;
-}
 
-function hitungSumDesaTarget_(bulan, komoditas, kecamatanName) {
-  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  var shBulanan = ss.getSheetByName('Target_Bulanan');
-  if (!shBulanan) return 0;
-  
-  var desasList = getDaftarDesabyKecamatan(kecamatanName);
-  if (desasList.length === 0) return 0;
-  var desasSet = new Set(desasList.map(function(d) { return d.toLowerCase().trim(); }));
-  
-  var data = shBulanan.getDataRange().getValues();
-  var sum = 0;
-  for (var i = 1; i < data.length; i++) {
-    var rBulan = parseInt(data[i][1]);
-    var rLevel = data[i][2].toString().trim();
-    var rGeo = data[i][4].toString().trim().toLowerCase();
-    var rKomoditas = data[i][5].toString().trim();
+  if (level === 'Desa') {
+    var curBulan = parseInt(currentKeys.bulan);
+    var curKec = currentKeys.kecamatan.trim().toLowerCase();
+    var curDesa = currentKeys.namaGeografi.trim().toLowerCase();
     
-    if (rBulan === bulan && rLevel === 'Desa' && rKomoditas === komoditas && desasSet.has(rGeo)) {
-      sum += parseFloat(data[i][6]) || 0;
+    for (var i = 1; i < data.length; i++) {
+      var rBulan = parseInt(data[i][0]);
+      var rKec = String(data[i][1]).trim().toLowerCase();
+      var rDesa = String(data[i][2]).trim().toLowerCase();
+      if (rBulan === curBulan && rKec === curKec && rDesa === curDesa) {
+        return i + 1;
+      }
     }
-  }
-  return sum;
-}
-
-function hitungSumKecamatanTarget_(bulan, komoditas) {
-  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  var shBulanan = ss.getSheetByName('Target_Bulanan');
-  if (!shBulanan) return 0;
-  
-  var data = shBulanan.getDataRange().getValues();
-  var sum = 0;
-  for (var i = 1; i < data.length; i++) {
-    var rBulan = parseInt(data[i][1]);
-    var rLevel = data[i][2].toString().trim();
-    var rKomoditas = data[i][5].toString().trim();
+  } else if (level === 'Kabupaten') {
+    var curBulan = parseInt(currentKeys.bulan);
+    var curKom = currentKeys.komoditas.trim().toLowerCase();
     
-    if (rBulan === bulan && rLevel === 'Kecamatan' && rKomoditas === komoditas) {
-      sum += parseFloat(data[i][6]) || 0;
+    for (var i = 1; i < data.length; i++) {
+      var rBulan = parseInt(data[i][0]);
+      var rKom = String(data[i][1]).trim().toLowerCase();
+      if (rBulan === curBulan && rKom === curKom) {
+        return i + 1;
+      }
     }
   }
-  return sum;
+
+  return -1;
 }
 
-function rollupDesaToKecamatan_(bulan, komoditas, kecamatanName, pembuat) {
+function getPadiColumnIndex_(lttType) {
+  var normalized = String(lttType).trim().replace(/\s+/g, ' ').toLowerCase();
+  if (normalized === 'ltt reguler') return 3;
+  if (normalized === 'ltt padi gogo' || normalized === 'padi gogo') return 4;
+  if (normalized === 'ltt oplah 2024' || normalized === 'oplah 2024') return 5;
+  if (normalized === 'ltt oplah 2025' || normalized === 'oplah 2025') return 6;
+  if (normalized === 'ltt csr' || normalized === 'csr') return 7;
+  if (normalized === 'ltt rehap bencana' || normalized === 'ltt rehab bencana' || normalized === 'rehab bencana') return 8;
+  return -1;
+}
+
+function migrasiTargetKeV2() {
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  
   var shBulanan = ss.getSheetByName('Target_Bulanan');
-  if (!shBulanan) return;
+  var shDetail = ss.getSheetByName('Target_Detail_Jenis');
   
-  var sumDesa = hitungSumDesaTarget_(bulan, komoditas, kecamatanName);
-  var safeGeo = kecamatanName.replace(/\s+/g, '_');
-  var kecId = bulan + '-Kecamatan-' + safeGeo + '-' + komoditas;
-  
-  var data = shBulanan.getDataRange().getValues();
-  var foundIndex = -1;
-  var currentKecTarget = 0;
-  
-  for (var i = 1; i < data.length; i++) {
-    if (data[i][0] === kecId) {
-      foundIndex = i + 1;
-      currentKecTarget = parseFloat(data[i][6]) || 0;
-      break;
+  if (!shBulanan) {
+    Logger.log("Sheet Target_Bulanan tidak ditemukan. Migrasi dibatalkan.");
+    return "Error: Target_Bulanan tidak ditemukan.";
+  }
+
+  var dataBulanan = shBulanan.getDataRange().getValues();
+  var detailsMap = {};
+
+  if (shDetail && shDetail.getLastRow() > 1) {
+    var dataDetail = shDetail.getDataRange().getValues();
+    for (var j = 1; j < dataDetail.length; j++) {
+      var idTargetRef = String(dataDetail[j][1]).trim();
+      var jenisLtt = String(dataDetail[j][2]).trim();
+      var luas = parseFloat(dataDetail[j][3]) || 0;
+      
+      if (!detailsMap[idTargetRef]) {
+        detailsMap[idTargetRef] = [];
+      }
+      detailsMap[idTargetRef].push({ jenisLtt: jenisLtt, luas: luas });
     }
   }
+
+  var padiRows = [];
+  var jagungRows = [];
+  var ubiRows = [];
+  var kabRows = [];
+
+  for (var i = 1; i < dataBulanan.length; i++) {
+    var idTarget = String(dataBulanan[i][0]).trim();
+    var bulan = parseInt(dataBulanan[i][1]);
+    var level = String(dataBulanan[i][2]).trim();
+    var kodeGeografi = String(dataBulanan[i][3]).trim();
+    var namaGeografi = String(dataBulanan[i][4]).trim();
+    var komoditas = String(dataBulanan[i][5]).trim();
+    var totalTarget = parseFloat(dataBulanan[i][6]) || 0;
+    var ipEksisting = parseFloat(dataBulanan[i][7]) || 0;
+    var luasBakuSawah = parseFloat(dataBulanan[i][8]) || 0;
+    var luasStandingCrop = parseFloat(dataBulanan[i][9]) || 0;
+    var pembuat = String(dataBulanan[i][10] || 'System');
+    var waktu = dataBulanan[i][11] instanceof Date ? dataBulanan[i][11] : new Date();
+
+    if (isNaN(bulan) || !komoditas) continue;
+
+    var normKom = komoditas.toLowerCase().replace(/\s+/g, '');
+
+    if (level === 'Desa') {
+      var kec = '';
+      if (kodeGeografi && kodeGeografi !== idTarget && kodeGeografi.toLowerCase().indexOf('desa') === -1) {
+        kec = kodeGeografi;
+      } else {
+        kec = lookupKecamatanFromDesa_(ss, namaGeografi);
+      }
+      if (!kec) {
+        kec = 'Lainnya';
+      }
+
+      if (normKom === 'padi') {
+        var lttReguler = 0;
+        var padiGogo = 0;
+        var oplah2024 = 0;
+        var oplah2025 = 0;
+        var csr = 0;
+        var rehabBencana = 0;
+
+        var details = detailsMap[idTarget] || [];
+        if (details.length > 0) {
+          for (var d = 0; d < details.length; d++) {
+            var det = details[d];
+            var val = det.luas;
+            var idx = getPadiColumnIndex_(det.jenisLtt);
+            if (idx === 3) lttReguler = val;
+            else if (idx === 4) padiGogo = val;
+            else if (idx === 5) oplah2024 = val;
+            else if (idx === 6) oplah2025 = val;
+            else if (idx === 7) csr = val;
+            else if (idx === 8) rehabBencana = val;
+          }
+        } else {
+          lttReguler = totalTarget;
+        }
+
+        padiRows.push([
+          bulan,
+          kec,
+          namaGeografi,
+          lttReguler,
+          padiGogo,
+          oplah2024,
+          oplah2025,
+          csr,
+          rehabBencana,
+          totalTarget,
+          ipEksisting,
+          luasBakuSawah,
+          luasStandingCrop,
+          pembuat,
+          waktu
+        ]);
+      } else if (normKom === 'jagung') {
+        jagungRows.push([
+          bulan,
+          kec,
+          namaGeografi,
+          totalTarget,
+          pembuat,
+          waktu
+        ]);
+      } else if (normKom === 'ubikayu') {
+        ubiRows.push([
+          bulan,
+          kec,
+          namaGeografi,
+          totalTarget,
+          pembuat,
+          waktu
+        ]);
+      }
+    } else if (level === 'Kabupaten') {
+      kabRows.push([
+        bulan,
+        komoditas,
+        totalTarget,
+        pembuat,
+        waktu
+      ]);
+    }
+  }
+
+  var shPadi = ss.getSheetByName('Target_Desa_Padi');
+  if (shPadi && padiRows.length > 0) {
+    if (shPadi.getLastRow() > 1) {
+      shPadi.getRange(2, 1, shPadi.getLastRow() - 1, 15).clearContent();
+    }
+    shPadi.getRange(2, 1, padiRows.length, 15).setValues(padiRows);
+    Logger.log("Migrasi Target_Desa_Padi sukses: " + padiRows.length + " baris.");
+  }
+
+  var shJagung = ss.getSheetByName('Target_Desa_Jagung');
+  if (shJagung && jagungRows.length > 0) {
+    if (shJagung.getLastRow() > 1) {
+      shJagung.getRange(2, 1, shJagung.getLastRow() - 1, 6).clearContent();
+    }
+    shJagung.getRange(2, 1, jagungRows.length, 6).setValues(jagungRows);
+    Logger.log("Migrasi Target_Desa_Jagung sukses: " + jagungRows.length + " baris.");
+  }
+
+  var shUbi = ss.getSheetByName('Target_Desa_UbiKayu');
+  if (shUbi && ubiRows.length > 0) {
+    if (shUbi.getLastRow() > 1) {
+      shUbi.getRange(2, 1, shUbi.getLastRow() - 1, 6).clearContent();
+    }
+    shUbi.getRange(2, 1, ubiRows.length, 6).setValues(ubiRows);
+    Logger.log("Migrasi Target_Desa_UbiKayu sukses: " + ubiRows.length + " baris.");
+  }
+
+  var shKab = ss.getSheetByName('Target_Kabupaten');
+  if (shKab && kabRows.length > 0) {
+    if (shKab.getLastRow() > 1) {
+      shKab.getRange(2, 1, shKab.getLastRow() - 1, 5).clearContent();
+    }
+    shKab.getRange(2, 1, kabRows.length, 5).setValues(kabRows);
+    Logger.log("Migrasi Target_Kabupaten sukses: " + kabRows.length + " baris.");
+  }
+
+  rebuildTargetKecamatan(ss);
+  invalidateAllTargetCaches();
+  clearAllAppCaches();
   
-  // Rollup hanya update jika baris Kecamatan sudah ada dan sum desa > target saat ini
-  if (foundIndex !== -1 && sumDesa > currentKecTarget) {
-    shBulanan.getRange(foundIndex, 7).setValue(sumDesa);
-    shBulanan.getRange(foundIndex, 12).setValue(new Date());
+  Logger.log("Migrasi target selesai dengan sukses.");
+  return "Sukses memigrasikan " + (padiRows.length + jagungRows.length + ubiRows.length + kabRows.length) + " data target.";
+}
+
+
+// =========================================================================
+// FUNGSI LAPORAN LTT — DETAIL LENGKAP (ADMIN)
+// =========================================================================
+
+/**
+ * Mengambil data laporan LTT lengkap dari Data_LTT (Jagung & Ubi Kayu)
+ * dan Data_LTT_Padi (Padi), digabung menjadi satu array.
+ *
+ * @param {Object} params - { tanggal, kecamatan, desa, komoditas }
+ *   - tanggal  : string "yyyy-MM-dd" atau null (default: 30 hari terakhir)
+ *   - kecamatan: string atau null (semua)
+ *   - desa     : string atau null (semua)
+ *   - komoditas: "Padi" | "Jagung" | "Ubi Kayu" | null (semua)
+ * @returns {Object} { status, data: [...], total }
+ */
+function getLaporanLTT(params) {
+  try {
+    var cache = CacheService.getScriptCache();
+    var version = cache.get('DB_VERSION') || '1';
+    var paramStr = JSON.stringify(params || {});
+    var cacheKey = 'laporan_ltt_v' + version + '_' + Utilities.base64Encode(paramStr);
+    var cached = cache.get(cacheKey);
+    if (cached) return JSON.parse(cached);
+
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var now = new Date();
+
+    // Parse params
+    var filterTanggal = params && params.tanggal ? params.tanggal.toString().trim() : null;
+    var filterKec = params && params.kecamatan ? params.kecamatan.toString().trim().toLowerCase() : null;
+    var filterDesa = params && params.desa ? params.desa.toString().trim().toLowerCase() : null;
+    var filterKom = params && params.komoditas ? params.komoditas.toString().trim() : null;
+
+    // Default: 30 hari terakhir jika tidak ada filter tanggal
+    var tglMulai = null;
+    var tglAkhir = null;
+    if (!filterTanggal) {
+      var tglAkhirDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      var tglMulaiDate = new Date(tglAkhirDate.getTime() - 29 * 24 * 60 * 60 * 1000);
+      tglMulai = Utilities.formatDate(tglMulaiDate, 'Asia/Jakarta', 'yyyy-MM-dd');
+      tglAkhir = Utilities.formatDate(tglAkhirDate, 'Asia/Jakarta', 'yyyy-MM-dd');
+    }
+
+    var hasil = [];
+
+    // Helper: proses satu sheet
+    function prosesSheet(namaSheet, komoditasDefault) {
+      var sheet = ss.getSheetByName(namaSheet);
+      if (!sheet || sheet.getLastRow() <= 1) return;
+      var rows = sheet.getDataRange().getValues();
+      for (var i = 1; i < rows.length; i++) {
+        var row = rows[i];
+        if (!row[1]) continue;
+
+        var tglObj = parseTanggalEPusluh_(row[1]);
+        if (!tglObj) continue;
+        var tglStr = Utilities.formatDate(tglObj, 'Asia/Jakarta', 'yyyy-MM-dd');
+
+        // Filter tanggal
+        if (filterTanggal) {
+          if (tglStr !== filterTanggal) continue;
+        } else {
+          if (tglStr < tglMulai || tglStr > tglAkhir) continue;
+        }
+
+        // Tentukan komoditas
+        var kom = komoditasDefault ? komoditasDefault : (row[5] || '').toString().trim();
+
+        // Filter komoditas
+        if (filterKom) {
+          if (kom.toLowerCase() !== filterKom.toLowerCase()) continue;
+        }
+
+        // Filter kecamatan
+        var kec = (row[3] || '').toString().trim();
+        if (filterKec && kec.toLowerCase() !== filterKec) continue;
+
+        // Filter desa
+        var desa = (row[4] || '').toString().trim();
+        if (filterDesa && desa.toLowerCase() !== filterDesa) continue;
+
+        var jenisLTT = kom.toLowerCase() === 'padi' ? (row[6] || '').toString() : '';
+
+        hasil.push({
+          id:           (row[0] || '').toString(),
+          timestamp:    tglStr + ' ' + Utilities.formatDate(tglObj, 'Asia/Jakarta', 'HH:mm'),
+          pelapor:      (row[2] || '').toString(),
+          kecamatan:    kec,
+          desa:         desa,
+          komoditas:    kom,
+          jenis_ltt:    jenisLTT,
+          target_tanam: parseFloat(row[7]) || 0,
+          target_panen: parseFloat(row[8]) || 0,
+          luas_bera:    parseFloat(row[9]) || 0,
+          olah_lahan:   parseFloat(row[10]) || 0,
+          luas_tanam:   parseFloat(row[11]) || 0,
+          luas_panen:   parseFloat(row[12]) || 0,
+          keterangan:   (row[13] || '').toString(),
+          status:       (row[14] || 'Menunggu').toString()
+        });
+      }
+    }
+
+    // Baca sheet sesuai filter komoditas
+    var komLower = filterKom ? filterKom.toLowerCase() : null;
+    if (!komLower || komLower === 'jagung' || komLower === 'ubi kayu') {
+      prosesSheet('Data_LTT', null); // Jagung & Ubi Kayu
+    }
+    if (!komLower || komLower === 'padi') {
+      prosesSheet('Data_LTT_Padi', 'Padi');
+    }
+
+    // Sort terbaru dulu berdasarkan timestamp
+    hasil.sort(function(a, b) {
+      return b.timestamp.localeCompare(a.timestamp);
+    });
+
+    var result = { status: 'success', data: hasil, total: hasil.length };
+
+    // Cache 5 menit
+    try {
+      cache.put(cacheKey, JSON.stringify(result), 300);
+    } catch(cacheErr) {
+      // Abaikan jika data terlalu besar untuk cache
+    }
+
+    return result;
+  } catch (e) {
+    Logger.log('getLaporanLTT error: ' + e.toString());
+    return { status: 'error', message: e.toString() };
   }
 }
 
-function rollupKecamatanToKabupaten_(bulan, komoditas, pembuat) {
-  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  var shBulanan = ss.getSheetByName('Target_Bulanan');
-  if (!shBulanan) return;
-  
-  var sumKec = hitungSumKecamatanTarget_(bulan, komoditas);
-  var kabName = "Way Kanan";
-  var safeGeo = kabName.replace(/\s+/g, '_');
-  var kabId = bulan + '-Kabupaten-' + safeGeo + '-' + komoditas;
-  
-  var data = shBulanan.getDataRange().getValues();
-  var foundIndex = -1;
-  var currentKabTarget = 0;
-  
-  for (var i = 1; i < data.length; i++) {
-    if (data[i][0] === kabId) {
-      foundIndex = i + 1;
-      currentKabTarget = parseFloat(data[i][6]) || 0;
-      break;
+/**
+ * Mengambil daftar kecamatan unik dari Data_LTT dan Data_LTT_Padi
+ * untuk dropdown filter Laporan LTT.
+ */
+function getKecamatanLaporan() {
+  try {
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var kecSet = {};
+
+    function scan(namaSheet) {
+      var sh = ss.getSheetByName(namaSheet);
+      if (!sh || sh.getLastRow() <= 1) return;
+      var rows = sh.getDataRange().getValues();
+      for (var i = 1; i < rows.length; i++) {
+        var kec = (rows[i][3] || '').toString().trim();
+        if (kec) kecSet[kec] = true;
+      }
     }
-  }
-  
-  // Rollup hanya update jika baris Kabupaten sudah ada dan sum kec > target saat ini
-  if (foundIndex !== -1 && sumKec > currentKabTarget) {
-    shBulanan.getRange(foundIndex, 7).setValue(sumKec);
-    shBulanan.getRange(foundIndex, 12).setValue(new Date());
+
+    scan('Data_LTT');
+    scan('Data_LTT_Padi');
+
+    return Object.keys(kecSet).sort();
+  } catch (e) {
+    return [];
   }
 }
 
+function getDesaLaporan(kecamatan) {
+  try {
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var desaSet = {};
+    var kecLower = (kecamatan || '').toString().trim().toLowerCase();
+
+    function scan(namaSheet) {
+      var sh = ss.getSheetByName(namaSheet);
+      if (!sh || sh.getLastRow() <= 1) return;
+      var rows = sh.getDataRange().getValues();
+      for (var i = 1; i < rows.length; i++) {
+        var kec = (rows[i][3] || '').toString().trim().toLowerCase();
+        if (kecLower && kec !== kecLower) continue;
+        var desa = (rows[i][4] || '').toString().trim();
+        if (desa) desaSet[desa] = true;
+      }
+    }
+
+    scan('Data_LTT');
+    scan('Data_LTT_Padi');
+
+    return Object.keys(desaSet).sort();
+  } catch (e) {
+    return [];
+  }
+}
 
