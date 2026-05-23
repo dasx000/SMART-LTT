@@ -1,50 +1,89 @@
 <div class="bg-gray-100 flex items-center justify-center h-screen font-sans">
-    <!-- Spinner saat cek sesi -->
-    <div id="viewLoading" class="text-center">
-        <i class="fa-solid fa-circle-notch fa-spin text-green-600 text-4xl mb-4"></i>
-        <p class="text-gray-500 text-sm">Memuat...</p>
+  <!-- Spinner saat cek sesi -->
+  <div id="viewLoading" class="text-center">
+    <i
+      class="fa-solid fa-circle-notch fa-spin text-green-600 text-4xl mb-4"
+    ></i>
+    <p class="text-gray-500 text-sm">Memuat...</p>
+  </div>
+
+  <!-- Form Login -->
+  <div
+    id="viewLogin"
+    class="hidden bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm mx-4"
+  >
+    <div class="text-center mb-8">
+      <div class="w-16 h-16 flex items-center justify-center mx-auto mb-3">
+        <img
+          src="<?= logoSrc ?>"
+          class="w-16 h-16 object-contain drop-shadow-md"
+        />
+      </div>
+      <h1 class="text-2xl font-bold text-gray-800">e-LTT CWS Way Kanan</h1>
+      <p class="text-xs text-gray-500 mt-1">
+        Kementerian Pertanian Republik Indonesia
+      </p>
     </div>
 
-    <!-- Form Login -->
-    <div id="viewLogin" class="hidden bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm mx-4">
-        <div class="text-center mb-8">
-            <div class="w-16 h-16 flex items-center justify-center mx-auto mb-3">
-                <img src="<?= logoSrc ?>" class="w-16 h-16 object-contain drop-shadow-md">
-            </div>
-            <h1 class="text-2xl font-bold text-gray-800">e-LTT Palawija</h1>
-            <p class="text-xs text-gray-500 mt-1">Kementerian Pertanian Republik Indonesia</p>
+    <form id="formLogin" onsubmit="handleLogin(event)">
+      <div class="mb-4">
+        <label class="block text-sm font-semibold text-gray-700 mb-1"
+          >NIP (Nomor Induk Pegawai)</label
+        >
+        <input
+          type="number"
+          id="nip"
+          class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition"
+          placeholder="Masukkan NIP Anda"
+          required
+        />
+      </div>
+      <div class="mb-6">
+        <label class="block text-sm font-semibold text-gray-700 mb-1"
+          >Password Rahasia</label
+        >
+        <div class="relative">
+          <input
+            type="password"
+            id="password"
+            class="w-full pl-4 pr-10 py-3 rounded-lg border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition"
+            placeholder="******"
+            required
+          />
+          <button
+            type="button"
+            onclick="togglePasswordVisibility('password', this)"
+            class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-green-600 focus:outline-none transition active:scale-95"
+          >
+            <i class="fa-solid fa-eye text-base"></i>
+          </button>
         </div>
+      </div>
+      <button
+        type="submit"
+        id="btnLogin"
+        class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition flex justify-center items-center gap-2"
+      >
+        <span id="loginText">Masuk Sekarang</span>
+        <i
+          id="loginSpinner"
+          class="fa-solid fa-circle-notch fa-spin hidden"
+        ></i>
+      </button>
+    </form>
 
-        <form id="formLogin" onsubmit="handleLogin(event)">
-            <div class="mb-4">
-                <label class="block text-sm font-semibold text-gray-700 mb-1">NIP (Nomor Induk Pegawai)</label>
-                <input type="number" id="nip"
-                    class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition"
-                    placeholder="Masukkan NIP Anda" required>
-            </div>
-            <div class="mb-6">
-                <label class="block text-sm font-semibold text-gray-700 mb-1">Password Rahasia</label>
-                <div class="relative">
-                    <input type="password" id="password"
-                        class="w-full pl-4 pr-10 py-3 rounded-lg border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition"
-                        placeholder="******" required>
-                    <button type="button" onclick="togglePasswordVisibility('password', this)"
-                        class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-green-600 focus:outline-none transition active:scale-95">
-                        <i class="fa-solid fa-eye text-base"></i>
-                    </button>
-                </div>
-            </div>
-            <button type="submit" id="btnLogin"
-                class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition flex justify-center items-center gap-2">
-                <span id="loginText">Masuk Sekarang</span>
-                <i id="loginSpinner" class="fa-solid fa-circle-notch fa-spin hidden"></i>
-            </button>
-        </form>
-
-        <div class="mt-8 text-center">
-            <p class="text-[10px] text-gray-400 font-medium tracking-widest uppercase">
-                Versi 1.3.0 • © 2026 e-LTT Palawija
-            </p>
-        </div>
+    <div class="mt-8 text-center">
+      <p
+        class="text-[10px] text-gray-400 font-medium tracking-widest uppercase"
+      >
+        © 2026 &nbsp;·&nbsp;
+        <a
+          href="https://dasx000.github.io/portofolio/"
+          target="_blank"
+          class="hover:text-green-600 transition normal-case tracking-normal"
+          >Dev - dasx000</a
+        >
+      </p>
     </div>
+  </div>
 </div>

@@ -22,7 +22,7 @@
         </div>
         <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
             <a href="#" id="nav-dashboard" onclick="navigasi('dashboard'); toggleSidebar(true)"
-                class="nav-item flex items-center px-4 py-3 bg-green-700 rounded-lg text-white font-bold transition">
+                class="nav-item flex items-center px-4 py-3 bg-green-700 rounded-lg text-green-200 hover:bg-green-700 hover:text-white text-white font-bold transition">
                 <i class="fa-solid fa-chart-pie w-6"></i> Smart Dashboard
             </a>
             <a href="#" id="nav-verifikasi" onclick="navigasi('verifikasi'); toggleSidebar(true)"
@@ -59,41 +59,29 @@
 
         <!-- Responsive Header -->
         <header
-            class="bg-white shadow-sm flex flex-col sm:flex-row sm:h-20 items-start sm:items-center justify-between px-4 sm:px-8 py-3 sm:py-0 z-10 sticky top-0">
-            <div class="flex items-center justify-between w-full sm:w-auto mb-3 sm:mb-0">
-                <div class="flex items-center gap-3">
-                    <button onclick="toggleSidebar()"
-                        class="text-green-700 p-2 -ml-2 rounded-lg hover:bg-green-50 transition">
-                        <i class="fa-solid fa-bars text-xl"></i>
-                    </button>
-                    <div>
-                        <h2 class="text-lg sm:text-2xl font-bold text-gray-800" id="headerTitle">Ringkasan Eksekutif
-                        </h2>
-                        <p class="text-[10px] sm:text-xs text-gray-500 hidden sm:block">Pemantauan Realisasi LTT &
-                            Sinkronisasi e-Pusluh</p>
-                    </div>
+            class="bg-white shadow-sm flex flex-row h-14 sm:h-20 items-center justify-between px-4 sm:px-8 z-10 sticky top-0">
+            <button onclick="toggleSidebar()"
+                class="text-green-700 p-2 -ml-2 rounded-lg hover:bg-green-50 transition flex-shrink-0">
+                <i class="fa-solid fa-bars text-xl"></i>
+            </button>
+            <div class="flex items-center gap-2 sm:gap-3">
+                <div class="text-right">
+                    <p class="text-xs sm:text-sm font-bold text-gray-800" id="namaAdmin">Memuat...</p>
+                    <p class="text-[9px] sm:text-[10px] text-gray-500 uppercase">Admin Kabupaten</p>
                 </div>
-            </div>
-            <div class="flex items-center justify-end w-full sm:w-auto gap-2">
-                <div class="flex items-center gap-2 sm:gap-3">
-                    <div class="text-right">
-                        <p class="text-xs sm:text-sm font-bold text-gray-800" id="namaAdmin">Memuat...</p>
-                        <p class="text-[9px] sm:text-[10px] text-gray-500 uppercase">Admin Kabupaten</p>
-                    </div>
-                    <div
-                        class="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center font-bold text-sm sm:text-lg">
-                        <i class="fa-solid fa-user-shield"></i>
-                    </div>
+                <div
+                    class="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center font-bold text-sm sm:text-lg">
+                    <i class="fa-solid fa-user-shield"></i>
                 </div>
             </div>
         </header>
 
         <!-- ===== SECTION: DASHBOARD ===== -->
         <div id="sectionDashboard">
-            <div class="p-8">
+            <div class="p-4 sm:p-6 lg:p-8">
 
                 <!-- Tab Filter -->
-                <div class="flex items-center justify-between mb-6 border-b pb-2">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 border-b pb-3 gap-3">
                     <div class="flex gap-2 flex-wrap" id="tabContainer">
                         <button onclick="setTab(this, null)"
                             class="tab-btn px-5 py-2 text-sm font-bold bg-green-600 text-white rounded-t-lg transition-all">Ringkasan</button>
@@ -122,94 +110,94 @@
                 <div id="panelDashboard">
 
                     <!-- KPI Cards (6 Cards Breakdown) -->
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-6 mb-8">
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6 mb-6 sm:mb-8">
                         <!-- TANAM SECTION -->
                         <div
-                            class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
+                            class="bg-white p-3 sm:p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
                             <div class="absolute top-0 right-0 p-2 opacity-10"><i
                                     class="fa-solid fa-wheat-awn text-4xl text-blue-600"></i></div>
                             <div onclick="tampilkanDetailPadi('tanam')"
-                                class="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-lg mr-3 flex-shrink-0 cursor-pointer hover:scale-110 transition-transform shadow-sm"
+                                class="w-8 h-8 sm:w-10 sm:h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-base sm:text-lg mr-2 sm:mr-3 flex-shrink-0 cursor-pointer hover:scale-110 transition-transform shadow-sm"
                                 title="Klik untuk rincian">
                                 <i class="fa-solid fa-seedling"></i>
                             </div>
                             <div>
                                 <p class="text-xs text-gray-400 font-bold uppercase">TANAM PADI</p>
-                                <h3 class="text-xl font-bold text-gray-800" id="tanamPadi">-</h3>
+                                <h3 class="text-base sm:text-xl font-bold text-gray-800" id="tanamPadi">-</h3>
                             </div>
                         </div>
                         <div
-                            class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
+                            class="bg-white p-3 sm:p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
                             <div class="absolute top-0 right-0 p-2 opacity-10"><i
                                     class="fa-solid fa-leaf text-4xl text-blue-600"></i></div>
                             <div
-                                class="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-lg mr-3 flex-shrink-0">
+                                class="w-8 h-8 sm:w-10 sm:h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-base sm:text-lg mr-2 sm:mr-3 flex-shrink-0">
                                 <i class="fa-solid fa-seedling"></i>
                             </div>
                             <div>
                                 <p class="text-xs text-gray-400 font-bold uppercase">TANAM JAGUNG</p>
-                                <h3 class="text-xl font-bold text-gray-800" id="tanamJagung">-</h3>
+                                <h3 class="text-base sm:text-xl font-bold text-gray-800" id="tanamJagung">-</h3>
                             </div>
                         </div>
                         <div
-                            class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
+                            class="bg-white p-3 sm:p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
                             <div class="absolute top-0 right-0 p-2 opacity-10"><i
                                     class="fa-solid fa-carrot text-4xl text-blue-600"></i></div>
                             <div
-                                class="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-lg mr-3 flex-shrink-0">
+                                class="w-8 h-8 sm:w-10 sm:h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-base sm:text-lg mr-2 sm:mr-3 flex-shrink-0">
                                 <i class="fa-solid fa-seedling"></i>
                             </div>
                             <div>
                                 <p class="text-xs text-gray-400 font-bold uppercase">TANAM UBI KAYU</p>
-                                <h3 class="text-xl font-bold text-gray-800" id="tanamUbi">-</h3>
+                                <h3 class="text-base sm:text-xl font-bold text-gray-800" id="tanamUbi">-</h3>
                             </div>
                         </div>
 
                         <!-- PANEN SECTION -->
                         <div
-                            class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
+                            class="bg-white p-3 sm:p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
                             <div class="absolute top-0 right-0 p-2 opacity-10"><i
                                     class="fa-solid fa-wheat-awn-circle-exclamation text-4xl text-yellow-600"></i></div>
                             <div onclick="tampilkanDetailPadi('panen')"
-                                class="w-10 h-10 bg-yellow-50 text-yellow-600 rounded-lg flex items-center justify-center text-lg mr-3 flex-shrink-0 cursor-pointer hover:scale-110 transition-transform shadow-sm"
+                                class="w-8 h-8 sm:w-10 sm:h-10 bg-yellow-50 text-yellow-600 rounded-lg flex items-center justify-center text-base sm:text-lg mr-2 sm:mr-3 flex-shrink-0 cursor-pointer hover:scale-110 transition-transform shadow-sm"
                                 title="Klik untuk rincian">
                                 <i class="fa-solid fa-wheat-awn"></i>
                             </div>
                             <div>
                                 <p class="text-xs text-gray-400 font-bold uppercase">PANEN PADI</p>
-                                <h3 class="text-xl font-bold text-gray-800" id="panenPadi">-</h3>
+                                <h3 class="text-base sm:text-xl font-bold text-gray-800" id="panenPadi">-</h3>
                             </div>
                         </div>
                         <div
-                            class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
+                            class="bg-white p-3 sm:p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
                             <div class="absolute top-0 right-0 p-2 opacity-10"><i
                                     class="fa-solid fa-leaf text-4xl text-yellow-600"></i></div>
                             <div
-                                class="w-10 h-10 bg-yellow-50 text-yellow-600 rounded-lg flex items-center justify-center text-lg mr-3 flex-shrink-0">
+                                class="w-8 h-8 sm:w-10 sm:h-10 bg-yellow-50 text-yellow-600 rounded-lg flex items-center justify-center text-base sm:text-lg mr-2 sm:mr-3 flex-shrink-0">
                                 <i class="fa-solid fa-wheat-awn"></i>
                             </div>
                             <div>
                                 <p class="text-xs text-gray-400 font-bold uppercase">PANEN JAGUNG</p>
-                                <h3 class="text-xl font-bold text-gray-800" id="panenJagung">-</h3>
+                                <h3 class="text-base sm:text-xl font-bold text-gray-800" id="panenJagung">-</h3>
                             </div>
                         </div>
                         <div
-                            class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
+                            class="bg-white p-3 sm:p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
                             <div class="absolute top-0 right-0 p-2 opacity-10"><i
                                     class="fa-solid fa-carrot text-4xl text-yellow-600"></i></div>
                             <div
-                                class="w-10 h-10 bg-yellow-50 text-yellow-600 rounded-lg flex items-center justify-center text-lg mr-3 flex-shrink-0">
+                                class="w-8 h-8 sm:w-10 sm:h-10 bg-yellow-50 text-yellow-600 rounded-lg flex items-center justify-center text-base sm:text-lg mr-2 sm:mr-3 flex-shrink-0">
                                 <i class="fa-solid fa-wheat-awn"></i>
                             </div>
                             <div>
                                 <p class="text-xs text-gray-400 font-bold uppercase">PANEN UBI KAYU</p>
-                                <h3 class="text-xl font-bold text-gray-800" id="panenUbi">-</h3>
+                                <h3 class="text-base sm:text-xl font-bold text-gray-800" id="panenUbi">-</h3>
                             </div>
                         </div>
                     </div>
 
                     <!-- Charts -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
                         <div class="md:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                             <h3 class="text-sm font-bold text-gray-800 mb-4">Tren Luas Tambah Tanam Harian (7 Hari
                                 Terakhir)
@@ -401,7 +389,7 @@
                     <!-- KPI Cards Rekap Padi -->
                     <div class="grid grid-cols-2 gap-6 mb-8">
                         <div
-                            class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
+                            class="bg-white p-3 sm:p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
                             <div class="absolute top-0 right-0 p-2 opacity-10"><i
                                     class="fa-solid fa-wheat-awn text-4xl text-blue-600"></i></div>
                             <div onclick="tampilkanDetailRekapPadi('tanam')"
@@ -417,7 +405,7 @@
                             </div>
                         </div>
                         <div
-                            class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
+                            class="bg-white p-3 sm:p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
                             <div class="absolute top-0 right-0 p-2 opacity-10"><i
                                     class="fa-solid fa-wheat-awn-circle-exclamation text-4xl text-yellow-600"></i></div>
                             <div onclick="tampilkanDetailRekapPadi('panen')"
@@ -803,7 +791,8 @@
 
                 <!-- Month List Table -->
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    <table class="w-full">
+                    <div class="overflow-x-auto">
+                    <table class="w-full min-w-[480px]">
                         <thead>
                             <tr class="bg-green-700 text-white">
                                 <th class="p-4 text-left text-xs font-bold uppercase">Bulan</th>
@@ -822,6 +811,7 @@
                             </tr>
                         </tbody>
                     </table>
+                    </div>
                 </div>
 
             </div>
@@ -829,45 +819,45 @@
 
         <!-- ===== SECTION: DETAIL TARGET BULANAN ===== -->
         <div id="sectionDetailTarget" class="hidden">
-            <div class="p-6 md:p-8">
+            <div class="p-3 sm:p-6 md:p-8">
 
                 <!-- Back + Title -->
-                <div class="flex items-center gap-4 mb-6">
+                <div class="flex items-center gap-2 sm:gap-4 mb-4">
                     <button onclick="tutupModalTargetBulan()"
-                        class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-50 transition shadow-sm">
+                        class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 text-gray-600 rounded-xl text-xs sm:text-sm font-bold hover:bg-gray-50 transition shadow-sm flex-shrink-0">
                         <i class="fa-solid fa-arrow-left"></i> Kembali
                     </button>
-                    <div>
-                        <h2 class="text-2xl font-bold text-gray-800" id="modalTargetBulanTitle">Detail Target — Januari</h2>
-                        <p class="text-sm text-gray-500 mt-0.5" id="modalTargetBulanSubtitle">Komoditas: Padi</p>
+                    <div class="min-w-0">
+                        <h2 class="text-base sm:text-2xl font-bold text-gray-800 truncate" id="modalTargetBulanTitle">Detail Target — Januari</h2>
+                        <p class="text-xs sm:text-sm text-gray-500 mt-0.5" id="modalTargetBulanSubtitle">Komoditas: Padi</p>
                     </div>
                 </div>
 
                 <!-- Tab Navigation -->
-                <div class="border-b border-gray-200 mb-6 flex gap-1">
+                <div class="border-b border-gray-200 mb-4 flex gap-0.5">
                     <button id="tabTgtKab" onclick="setTabDetailTarget('Kabupaten')"
-                        class="px-5 py-2.5 text-sm font-bold border-b-2 border-green-600 text-green-700 transition">
-                        <i class="fa-solid fa-city mr-1"></i> Kab / Kota
+                        class="px-3 sm:px-5 py-2 text-xs sm:text-sm font-bold border-b-2 border-green-600 text-green-700 transition">
+                        <i class="fa-solid fa-city mr-1"></i><span class="hidden xs:inline sm:inline">Kab /</span> Kota
                     </button>
                     <button id="tabTgtKec" onclick="setTabDetailTarget('Kecamatan')"
-                        class="px-5 py-2.5 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-green-600 transition">
+                        class="px-3 sm:px-5 py-2 text-xs sm:text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-green-600 transition">
                         <i class="fa-solid fa-map-location-dot mr-1"></i> Kecamatan
                     </button>
                     <button id="tabTgtDesa" onclick="setTabDetailTarget('Desa')"
-                        class="px-5 py-2.5 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-green-600 transition">
+                        class="px-3 sm:px-5 py-2 text-xs sm:text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-green-600 transition">
                         <i class="fa-solid fa-house mr-1"></i> Desa / Kelurahan
                     </button>
                 </div>
 
                 <!-- Stat Row -->
-                <div id="statRowTargetBulan" class="grid grid-cols-3 gap-4 mb-5"></div>
+                <div id="statRowTargetBulan" class="grid grid-cols-3 gap-2 sm:gap-4 mb-4"></div>
 
                 <!-- Table -->
                 <div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
-                    <div class="p-4 border-b border-gray-100 flex items-center justify-between">
-                        <p class="text-sm font-bold text-gray-700" id="labelTabDetailTarget">Target Kabupaten</p>
+                    <div class="p-3 sm:p-4 border-b border-gray-100 flex items-center justify-between gap-2">
+                        <p class="text-xs sm:text-sm font-bold text-gray-700" id="labelTabDetailTarget">Target Kabupaten</p>
                         <button id="btnTambahTarget" onclick="bukaFormTarget(null)"
-                            class="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700 transition">
+                            class="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 bg-green-600 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-green-700 transition flex-shrink-0">
                             <i class="fa-solid fa-plus"></i> Tambah Target
                         </button>
                     </div>
@@ -936,7 +926,7 @@
                         <div>
                             <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Tanggal</label>
                             <input type="date" id="filterTglLaporan"
-                                class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-300 bg-white">
+                                class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-300 bg-white appearance-none min-h-[42px]">
                         </div>
                         <!-- Komoditas -->
                         <div>
