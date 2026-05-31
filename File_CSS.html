@@ -18,4 +18,15 @@
         background: rgba(255, 255, 255, 0.95);
         backdrop-filter: blur(10px);
     }
+
+    /* Sembunyikan tombol reveal password bawaan browser agar tidak overlap icon kustom */
+    input[type="password"]::-ms-reveal,
+    input[type="password"]::-ms-clear {
+        display: none;
+    }
+    input[type="password"]::-webkit-password-reveal-button,
+    input[type="password"]::-webkit-credentials-auto-fill-button {
+        display: none !important;
+        pointer-events: none;
+    }
 </style>

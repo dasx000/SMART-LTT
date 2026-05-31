@@ -1,44 +1,41 @@
-# Rencana Implementasi (Implementation Plan): Optimasi Load Time Aplikasi e-LTT
+# Rencana Pengembangan: Upgrade Menu Laporan LTT
 
-## 🎯 Tujuan Utama (Goal)
-Memangkas waktu tunggu awal (Load Time) dari 5-7 detik menjadi **kurang dari 1 detik** (Instan).
-Fokus utama adalah menunda pemuatan *resource* yang berat (Lazy Loading) dan mengeliminasi proses *bottleneck* di sisi server pada saat aplikasi pertama kali dibuka.
+Dokumen ini berisi panduan tingkat tinggi (high-level) untuk melakukan upgrade pada fitur "Laporan LTT". Instruksi ini ditujukan agar mudah dieksekusi oleh junior programmer atau asisten AI.
 
----
+## 1. Modifikasi Filter Tanggal (From - To)
+Saat ini filter di Menu Laporan LTT hanya menggunakan satu input tanggal. Ini harus diubah menjadi rentang tanggal (Start Date & End Date).
 
-## 🛠️ Langkah-Langkah High Level (Instruksi untuk Eksekusi)
-
-### Tahap 1: Eliminasi *Bottleneck* di Sisi Server (Code.gs & Database.gs)
-- **Tugas:** Hapus pemanggilan fungsi `inisialisasiDatabase_()` dari dalam fungsi `doGet(e)`.
-- **Alasan:** Pengecekan 14 *sheet* menggunakan API Spreadsheet pada setiap kali aplikasi dimuat sangat memakan waktu.
-- **Tindakan:** Buat satu fungsi baru bernama `setupApp()` yang memanggil `inisialisasiDatabase_()` dan `setupTriggers()`. Fungsi ini HANYA perlu dijalankan sekali secara manual oleh admin saat pertama kali mendeploy aplikasi.
-
-### Tahap 2: Minimalisasi *Payload* Awal (Index.html)
-- **Tugas:** Rombak struktur `Index.html` agar tidak memuat seluruh file aplikasi (Login, PPL, BPP, Admin, dan JS seberat 200KB) secara bersamaan.
-- **Tindakan:** 
-  - `Index.html` HANYA boleh berisi *header* standar, `File_CSS.html`, `File_HTML_Login.html`, dan sebuah skrip kecil (Bootstrap Script).
-  - Sebisa mungkin hindari penggunaan `<?!= include() ?>` yang membutuhkan evaluasi template berat di sisi server (Server-side rendering). Jika memungkinkan, kirim file langsung menggunakan `HtmlService.createHtmlOutputFromFile()`.
-  - Pindahkan *hardcoded* URL seperti `LOGO_SRC_` ke Javascript sisi *client* untuk menghindari keharusan mengevaluasi template.
-
-### Tahap 3: Buat Skrip Bootstrap & *Splash Screen* (Client-Side)
-- **Tugas:** Skrip kecil ini harus berjalan seketika setelah DOM utama dimuat untuk mengecek sesi login pengguna.
-- **Tindakan:** 
-  - Segera cek keberadaan objek `user_eLTT` di `localStorage`.
-  - **Jika pengguna BELUM login:** Tampilkan form login (Instan, karena ukurannya sangat kecil).
-  - **Jika pengguna SUDAH login:** Sembunyikan form login dan tampilkan elemen *Splash Screen* atau *Loading Spinner* berdesain elegan secara instan.
-
-### Tahap 4: Fetch Modul Aplikasi secara Asinkron (*Lazy Loading*)
-- **Tugas:** Buat mekanisme untuk mengunduh modul HTML dan Javascript utama secara asinkron di latar belakang.
-- **Tindakan Sisi Server:** Buat satu fungsi yang bisa dipanggil dari *client* (misalnya `getAppResources()`). Fungsi ini bertugas membaca sisa berkas yang dibutuhkan (PPL, BPP, Admin, Javascript) menggunakan `createHtmlOutputFromFile` dan mereturn string-nya.
-- **Tindakan Sisi Client:** 
-  - Panggil `google.script.run.getAppResources()` segera setelah *Splash Screen* / Layar Login dirender.
-  - Setelah data diterima, injeksikan *string* HTML dan JS tersebut ke dalam DOM utama (misalnya ke dalam sebuah `<div id="app-container">`).
-  - Setelah DOM siap, panggil fungsi inisialisasi *dashboard* sesuai *role* (seperti `inisialisasiPPL()` atau `inisialisasiAdmin()`), dan tutup animasi *loading*.
+### Kebutuhan Modifikasi:
+- **UI/UX Frontend:** 
+  - Ubah input filter yang ada menjadi dua buah input tipe `date` (misalnya: `Dari Tanggal` dan `Sampai Tanggal`).
+  - Set nilai default untuk kedua input tersebut ke tanggal hari ini (*today*).
+- **Validasi Frontend (Penting):**
+  - Buat validasi yang memastikan tanggal "From" **tidak pernah melebihi** tanggal "To".
+  - Buat validasi batasan rentang: Selisih waktu antara "From" dan "To" **maksimal 31 hari**. Jika melebihi rentang 31 hari, tampilkan notifikasi/pesan peringatan dan hentikan eksekusi pengambilan data. (Catatan: Ini penting untuk menjaga performa server Google Apps Script).
+- **Penyesuaian Backend:**
+  - Update parameter pada fungsi Google Apps Script yang mengambil data laporan (misalnya fungsi `getLaporanLTT`) agar menerima parameter dua rentang tanggal.
+  - Modifikasi logika penyaringan data di backend agar melakukan filter rentang (*between*) dari "From" hingga "To".
 
 ---
 
-## 🚦 Verifikasi Hasil Akhir
-Setelah semua langkah dieksekusi, lakukan pengujian berikut:
-1. **Pengguna Baru (Tanpa Sesi):** Buka link aplikasi. Pastikan form login langsung muncul di bawah 1 detik.
-2. **Pengguna Terautentikasi (Ada Sesi):** Login, lalu *refresh* halaman aplikasi. Pastikan langsung melihat layar *loading* ringan (< 1 detik), diikuti dengan kemunculan dashboard lengkap dalam beberapa detik kemudian.
-3. **Fungsionalitas:** Uji coba klik fitur navigasi, penyimpanan data, dan render chart untuk memastikan tidak ada konflik variabel setelah JS diinjeksikan secara dinamis.
+## 2. Penambahan Kolom dan Tombol Aksi "Edit"
+Saat ini tabel daftar Laporan LTT hanya menampilkan data tanpa interaksi lanjutan. Kita perlu memberikan akses kepada pengguna untuk melakukan perubahan.
+
+### Kebutuhan Modifikasi:
+- **Perubahan Tabel (Frontend):**
+  - Tambahkan satu kolom baru pada tabel di posisi paling kanan dengan nama header "Aksi".
+  - Di dalam kolom tersebut, sediakan sebuah tombol "Edit" pada setiap baris laporan.
+- **Alur Interaksi (Event Handling):**
+  - Ketika tombol "Edit" diklik, sistem harus menangkap ID unik dari baris data terkait (misal: `ID_Laporan`).
+  - Tampilkan modal/form edit yang sudah terisi dengan data *existing* (pre-filled data) sesuai baris yang dipilih. (Bisa memanfaatkan ulang komponen form LTT yang sudah ada, dengan menambahkan penanda status "Mode Edit").
+- **Pemrosesan Data (Backend):**
+  - Pastikan terdapat fungsi backend (Google Apps Script) untuk melakukan *Update* baris pada Spreadsheet berdasarkan ID yang dikirim dari form Edit.
+
+---
+
+## Ringkasan Eksekusi (Untuk Junior Programmer)
+1. Cari file HTML/JS yang menangani UI Laporan LTT, lalu ganti input tanggal tunggal menjadi ganda (From-To) + pasang logic validasi JS-nya.
+2. Cari file `.gs` backend yang merespon pemanggilan data Laporan LTT, lalu sesuaikan agar menerima dan memproses rentang 2 tanggal.
+3. Pada saat *render* tabel data (biasanya menggunakan loop JS atau template HTML), tambahkan tag `<button>Edit</button>` beserta data attribut (misal: `data-id`).
+4. Buat event listener ketika tombol Edit ditekan untuk membuka modal form dan menampilkan data.
+5. Buat atau update *endpoint* backend yang berfungsi untuk menimpa/menyimpan ulang data yang sudah diedit.

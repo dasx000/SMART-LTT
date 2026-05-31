@@ -168,47 +168,81 @@ function getKodeTuyulEltt() {
       const gNum=(r,i)=>{if(i===-1)return 0;const td=r.querySelectorAll('td')[i+1];if(!td)return 0;const el=td.querySelector('.fi-ta-text-item-label');return el?parseFloat(el.innerText.trim().replace(',','.'))||0:0};
       
       const ts=new Date();const idSync='SYNC-'+ts.getTime();
-      const allData=[];let skipCount=0;let totalTarik=0;let tglLapor='';
+      
+      // DUA KERANJANG DATA
+      const allData=[]; 
+      const dataVPS=[]; // Keranjang khusus VPS
+      
+      let skipCount=0;let totalTarik=0;let tglLapor='';
       let countTanamPanen=0;let countBeraOlahSaja=0;
 
       rows.forEach(r=>{
         if(!r.querySelectorAll('td').length)return;
         totalTarik++;
+        
+        const currentKec = gTxt(r,C.k);
+        const currentDesa = gTxt(r,C.d);
+        const currentJenis = gTxt(r,C.j);
+        const currentTgl = gTxt(r,C.wl);
+        
+        // 1. MASUKKAN KE KERANJANG VPS (Sebelum kena filter nihil)
+        if(currentJenis.toLowerCase() === 'ltt reguler') {
+            dataVPS.push({
+                kecamatan: currentKec,
+                desa: currentDesa,
+                jenisLTT: 'LTT Reguler'
+            });
+        }
+
         const t=gNum(r,C.t);const pn=gNum(r,C.pn);
         const b=gNum(r,C.b);const o=gNum(r,C.o);
-        const currentTgl=gTxt(r,C.wl);
         if(!tglLapor&&currentTgl!=='-')tglLapor=currentTgl;
+        
+        // 2. KODE ASLI ANDA (Filter data nihil untuk Excel/Sheet)
         if(t===0&&pn===0&&b===0&&o===0){skipCount++;return;}
+        
         if(t>0||pn>0) countTanamPanen++; else countBeraOlahSaja++;
-        allData.push([idSync+'-'+Math.random().toString(36).substr(2,5),currentTgl,gTxt(r,C.p),gTxt(r,C.k),gTxt(r,C.d),'Padi',gTxt(r,C.j),0,0,b,o,t,pn,gTxt(r,C.kt),gTxt(r,C.s),ts,ts]);
+        
+        // 3. MASUKKAN KE KERANJANG UTAMA (GAS/Excel)
+        allData.push([idSync+'-'+Math.random().toString(36).substr(2,5),currentTgl,gTxt(r,C.p),currentKec,currentDesa,'Padi',currentJenis,0,0,b,o,t,pn,gTxt(r,C.kt),gTxt(r,C.s),ts,ts]);
       });
       
-      let htmlText=\`<div style="text-align:left;font-size:14px;"><p>Sistem <b>ELTT</b> akan menjalankan 2 proses otomatis:</p><p style="color:#2563eb"><b>1️⃣ Sinkronisasi Data (Padi) ke Server</b></p><p style="color:#16a34a"><b>2️⃣ Mengunduh Rekap Excel Lengkap</b></p><hr><p><b>📅 Tanggal Laporan:</b> \${tglLapor}</p><p><b>📊 Total Baris DOM:</b> \${totalTarik} baris</p><hr style="border-color:#e5e7eb"><p style="font-weight:bold;margin-bottom:4px">📦 Data yang akan dikirim (\${allData.length} baris):</p><p style="margin:2px 0;color:#16a34a">✅ Ada Tanam / Panen: <b>\${countTanamPanen} baris</b></p><p style="margin:2px 0;color:#f59e0b">🟡 Hanya Bera / Olah Lahan: <b>\${countBeraOlahSaja} baris</b> <span style="font-size:11px;color:#9ca3af">(tanam & panen = 0)</span></p><p style="margin:2px 0;color:#ef4444">❌ Nihil semua (dilewati): <b>\${skipCount} baris</b></p></div>\`;
+      let htmlText=\`<div style="text-align:left;font-size:14px;"><p>Sistem <b>ELTT</b> akan menjalankan 2 proses otomatis:</p><p style="color:#2563eb"><b>1️⃣ Sinkronisasi Data (Padi) ke Server & WA</b></p><p style="color:#16a34a"><b>2️⃣ Mengunduh Rekap Excel Lengkap</b></p><hr><p><b>📅 Tanggal Laporan:</b> \${tglLapor}</p><p><b>📊 Total Baris DOM:</b> \${totalTarik} baris</p><hr style="border-color:#e5e7eb"><p style="font-weight:bold;margin-bottom:4px">📦 Data yang akan dikirim (\${allData.length} baris):</p><p style="margin:2px 0;color:#16a34a">✅ Ada Tanam / Panen: <b>\${countTanamPanen} baris</b></p><p style="margin:2px 0;color:#f59e0b">🟡 Hanya Bera / Olah Lahan: <b>\${countBeraOlahSaja} baris</b></p><p style="margin:2px 0;color:#ef4444">❌ Laporan Nihil (Dilewati dari Excel): <b>\${skipCount} baris</b></p><p style="margin:2px 0;color:#8b5cf6">🤖 Terdeteksi LTT Reguler (Utk VPS): <b>\${dataVPS.length} desa</b></p></div>\`;
       
       Swal.fire({title:'Konfirmasi Eksekusi ELTT',html:htmlText,icon:'question',showCancelButton:true,confirmButtonText:'Jalankan Proses!',cancelButtonText:'Batal'}).then(async(res)=>{
         if(res.isConfirmed){
-          Swal.fire({title:'Tahap 1: Sinkronisasi...',text:'Mengirim data ke server ELTT, mohon tunggu.',allowOutsideClick:false,didOpen:()=>{Swal.showLoading()}});
-          if(allData.length>0){
+          Swal.fire({title:'Tahap 1: Sinkronisasi...',text:'Mengirim data ke server ELTT & Bot WA, mohon tunggu.',allowOutsideClick:false,didOpen:()=>{Swal.showLoading()}});
+          
+          if(allData.length > 0 || dataVPS.length > 0){
             try{
-              const payload={aksi:'sinkron_padi',data:allData,logData:{idSync:idSync,waktuSinkron:ts,totalTarik:totalTarik,dataBerisi:allData.length,dataNihil:skipCount,tanggalLaporan:tglLapor}};
+              // PAYLOAD GABUNGAN UNTUK GAS
+              const payload = {
+                  aksi: 'sinkron_padi',
+                  data: allData,         // Data bersih untuk di-save ke Sheet
+                  dataVPS: dataVPS,      // Data mentah "LTT Reguler" untuk diteruskan ke VPS
+                  logData: {idSync:idSync, waktuSinkron:ts, totalTarik:totalTarik, dataBerisi:allData.length, dataNihil:skipCount, tanggalLaporan:tglLapor}
+              };
+              
               await fetch(URL_GAS,{method:'POST',mode:'no-cors',body:JSON.stringify(payload)});
+              
               Swal.fire({title:'Tahap 2: Menyiapkan Excel...',text:'Sinkronisasi Sukses! Memproses file unduhan...',allowOutsideClick:false,didOpen:()=>{Swal.showLoading()}});
-              setTimeout(runExcelExporter,1000);
+              // MODIFIKASI: Kirim payload.logData dan dataVPS ke fungsi Exporter
+              setTimeout(() => { runExcelExporter(payload.logData, dataVPS); }, 1000);
             }catch(e){
               Swal.fire('Gagal Sinkronisasi!',e.message,'error');
             }
           }else{
-            Swal.fire({title:'Tahap 2: Menyiapkan Excel...',text:'Tidak ada data untuk disinkron, langsung memproses Excel...',allowOutsideClick:false,didOpen:()=>{Swal.showLoading()}});
-            setTimeout(runExcelExporter,1000);
+            Swal.fire({title:'Tahap 2: Menyiapkan Excel...',text:'Tidak ada data sama sekali, langsung memproses Excel...',allowOutsideClick:false,didOpen:()=>{Swal.showLoading()}});
+            setTimeout(() => { runExcelExporter(null, dataVPS); }, 1000);
           }
         }
       });
     }
 
     // ---------------------------------------------------------
-    // 5. EXPORT EXCEL (KODE ASLI ANDA)
+    // 5. EXPORT EXCEL (DENGAN SHEET 5 KONTROL & DETEKSI MANUAL)
     // ---------------------------------------------------------
-    function runExcelExporter(){
+    function runExcelExporter(metaLog, vpsData){
       const t=document.querySelector('table.fi-ta-table');
       if(!t){Swal.fire('Oops!','Tabel LTT tidak ditemukan.','error');return;}
       const th=Array.from(t.querySelectorAll('thead th'));
@@ -298,7 +332,138 @@ function getKodeTuyulEltt() {
       };
       
       csDinas();
+
+      // ====================================================================
+      // 🔥 NEW: SHEET 5 (DASHBOARD KONTROL WILAYAH & DETEKSI MANUAL)
+      // ====================================================================
+      const csBuktiLog = () => {
+        const ws = wb.addWorksheet("5. Kontrol & Deteksi Manual");
+        ws.columns = [{ width: 6 }, { width: 36 }, { width: 22 }, { width: 5 }];
+        
+        // Header Utama
+        ws.mergeCells('A1:D1');
+        const tc = ws.getCell('A1');
+        tc.value = 'DASHBOARD KONTROL WILAYAH (DETEKSI MANUAL)';
+        tc.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+        tc.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } }; // Navy Blue
+        tc.alignment = { vertical: 'middle', horizontal: 'center' };
+        
+        // 1. FILTER UNIK & SORTING DATA LAPORAN (Kecamatan -> Desa)
+        // Pakai dm (sudah benar, baca td.innerText langsung) bukan vpsData dari startELTT
+        // dm = [tgl,kec,des,pel,jen,tmb,ber,olh,pan,ket,sta] → jen[4], kec[1], des[2]
+        const seen = new Set();
+        const uDesa = [];
+        const sourceData = dm
+          .filter(r => (r[4] || '').toLowerCase().includes('reguler'))
+          .map(r => ({ kecamatan: r[1], desa: r[2], jenisLTT: r[4] }));
+
+        sourceData.forEach(item => {
+            const key = \`\${item.kecamatan.toLowerCase().trim()}_\${item.desa.toLowerCase().trim()}\`;
+            if(!seen.has(key)) {
+                seen.add(key);
+                uDesa.push(item);
+            }
+        });
+
+        // Sorting Alfabetis (Kecamatan -> Desa)
+        uDesa.sort((a, b) => {
+            const kecComp = a.kecamatan.localeCompare(b.kecamatan);
+            if(kecComp !== 0) return kecComp;
+            return a.desa.localeCompare(b.desa);
+        });
+
+        const jlhSudahLapor = uDesa.length;
+        const jlhBelumLapor = 227 - jlhSudahLapor; // Kalkulator Sisa Desa
+
+        // 2. CETAK BLOK MATEMATIKA KALKULATOR DI ATAS
+        ws.getCell('A3').value = '📊 STATUS REAL-TIME KABUPATEN:';
+        ws.getCell('A3').font = { bold: true };
+
+        ws.getCell('A4').value = 'TOTAL DESA MASTER';
+        ws.getCell('B4').value = 227;
+        ws.getCell('B4').font = { bold: true };
+        ws.getCell('B4').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+
+        ws.getCell('A5').value = 'SUDAH LAPOR (UNIK)';
+        ws.getCell('B5').value = jlhSudahLapor;
+        ws.getCell('B5').font = { bold: true, color: { argb: 'FF15803D' } };
+        ws.getCell('B5').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } };
+
+        ws.getCell('A6').value = 'BELUM LAPOR (SISA)';
+        ws.getCell('B6').value = jlhBelumLapor;
+        ws.getCell('B6').font = { bold: true, color: { argb: 'FFB91C1C' } };
+        ws.getCell('B6').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+
+        ['A4','A5','A6'].forEach(cell => ws.getCell(cell).font = { bold: true });
+
+        // Metadata Tambahan di Samping Kanan Kartu
+        ws.getCell('C4').value = '⏱️ Waktu Eksekusi:';
+        ws.getCell('D4').value = new Date().toLocaleString('id-ID') + ' WIB';
+        ws.getCell('C5').value = '📅 Tanggal Laporan:';
+        ws.getCell('D5').value = tf || 'N/A';
+        ['C4','C5'].forEach(cell => ws.getCell(cell).font = { italic: true });
+
+        // 3. CETAK TABEL RINCIAN DESA - DIKELOMPOKKAN PER KECAMATAN
+        ws.addRow([]);
+        ws.mergeCells('A8:D8');
+        const listTitle = ws.getCell('A8');
+        listTitle.value = '📍 TABEL URUT DATA YANG SUDAH MASUK (MEMPERMUDAH CEK MANUAL)';
+        listTitle.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        listTitle.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF059669' } };
+
+        const hrTable = ws.addRow(["NO", "NAMA DESA", "STATUS SINKRON", ""]);
+        hrTable.eachCell(c => {
+          c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+          c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF10B981' } };
+          c.alignment = { vertical: 'middle', horizontal: 'center' };
+        });
+
+        // Kelompokkan uDesa per kecamatan (sudah sorted)
+        const groups = {};
+        uDesa.forEach(item => {
+          if (!groups[item.kecamatan]) groups[item.kecamatan] = [];
+          groups[item.kecamatan].push(item.desa);
+        });
+
+        // Warna rotasi untuk tiap kecamatan
+        const kecClr = ['FF1D4ED8','FF7C3AED','FF0F766E','FFB45309','FF9F1239','FF1E40AF','FF065F46','FF78350F','FF831843','FF14532D','FF92400E','FF1E3A5F','FF4D7C0F','FF6B21A8','FF0E7490'];
+
+        Object.keys(groups).sort().forEach((kec, ki) => {
+          const desaList = groups[kec];
+          const clr = kecClr[ki % kecClr.length];
+
+          // --- BARIS PEMBATAS / HEADER KECAMATAN ---
+          const sepRow = ws.addRow([\`📌 \${kec.toUpperCase()}\`, '', \`\${desaList.length} desa lapor\`, '']);
+          const rn = sepRow.number;
+          ws.mergeCells(\`A\${rn}:B\${rn}\`);
+          sepRow.height = 20;
+          sepRow.eachCell(c => {
+            c.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+            c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: clr } };
+            c.border = { top:{style:'medium'}, bottom:{style:'medium'}, left:{style:'thin'}, right:{style:'thin'} };
+            c.alignment = { vertical: 'middle' };
+          });
+          sepRow.getCell(2).alignment = { vertical: 'middle', indent: 1 };
+          sepRow.getCell(3).font = { bold: true, color: { argb: 'FFFFFFAA' }, italic: true };
+          sepRow.getCell(3).alignment = { vertical: 'middle', horizontal: 'right' };
+
+          // --- BARIS DESA DALAM KECAMATAN INI ---
+          desaList.forEach((desa, i) => {
+            const row = ws.addRow([i + 1, desa, "✔️ Sudah Lapor", ""]);
+            row.eachCell((c, ci) => {
+              c.border = { top:{style:'thin'}, bottom:{style:'thin'}, left:{style:'thin'}, right:{style:'thin'} };
+              c.alignment = { vertical: 'middle' };
+              if (i % 2 === 1) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+              if (ci === 1) c.alignment = { horizontal: 'center', vertical: 'middle' };
+              if (ci === 3) { c.font = { bold: true, color: { argb: 'FF16A34A' } }; c.alignment = { horizontal: 'center', vertical: 'middle' }; }
+            });
+          });
+        });
+      };
       
+      csBuktiLog();
+      // ====================================================================
+
       wb.xlsx.writeBuffer().then(b=>{
         const bl=new Blob([b],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
         const u=URL.createObjectURL(bl);
@@ -306,7 +471,7 @@ function getKodeTuyulEltt() {
         let sf=tf?tf.replace(/ /g,'_'):new Date().toLocaleDateString('id-ID').replace(/\\//g,'-');
         a.download=\`LAPORAN_ELTT_\${sf}_LENGKAP.xlsx\`;a.click();
         URL.revokeObjectURL(u);
-        Swal.fire({title:'Proses ELTT Selesai! 🎉',html:\`<div style="text-align:left;font-size:14px;"><p style="color:#2563eb"><b>☁️ Sinkronisasi Server:</b> Sukses</p><p style="color:#16a34a"><b>📊 File Excel:</b> Berhasil Diunduh</p><hr><p><b>📑 Rekap Semua:</b> \${ds1.length} baris</p><p><b>✅ Rekap Ada Nilai:</b> \${ds2.length} baris</p><p><b>🗄️ Data Mentah:</b> \${dm.length} baris</p></div>\`,icon:'success',confirmButtonText:'Tutup'});
+        Swal.fire({title:'Proses ELTT Selesai! 🎉',html:\`<div style="text-align:left;font-size:14px;"><p style="color:#2563eb"><b>☁️ Sinkronisasi Server:</b> Sukses</p><p style="color:#16a34a"><b>📊 File Excel:</b> Berhasil Diunduh</p><hr><p><b>📑 Rekap Semua:</b> \${ds1.length} baris</p><p><b>✅ Rekap Ada Nilai:</b> \${ds2.length} baris</p><p><b>🗄️ Data Mentah:</b> \${dm.length} baris</p><p><b>📋 Sheet 5 (Kontrol):</b> Aktif Hitung Otomatis</p></div>\`,icon:'success',confirmButtonText:'Tutup'});
       }).catch(e=>Swal.fire('Error!','Gagal membuat Excel: '+e,'error'));
     }
   })();`;

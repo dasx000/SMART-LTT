@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>eLTT CWS Way Kanan</title>
+    <title>SMART LTT CWS Way Kanan</title>
     <?!= include('File_CSS'); ?>
 </head>
 <body>
@@ -10,19 +10,78 @@
         <?!= include('File_HTML_Login'); ?>
     </div>
 
-    <div id="layar-ppl" class="hidden h-screen">
-        <?!= include('File_HTML_PPL'); ?>
-    </div>
+    <div id="layar-ppl" class="hidden h-screen"></div>
+    <div id="layar-bpp" class="hidden h-screen"></div>
+    <div id="layar-admin" class="hidden h-screen"></div>
 
-    <div id="layar-bpp" class="hidden h-screen">
-        <?!= include('File_HTML_BPP'); ?>
-    </div>
+    <script>
+    (function () {
+        var _penggunaAktif = null;
+        try { _penggunaAktif = JSON.parse(localStorage.getItem('user_eLTT')); } catch (e) {}
 
-    <div id="layar-admin" class="hidden h-screen">
-        <?!= include('File_HTML_Admin'); ?>
-    </div>
+        function _terapkanSumberDaya(res) {
+            document.getElementById('layar-ppl').innerHTML   = res.ppl;
+            document.getElementById('layar-bpp').innerHTML   = res.bpp;
+            document.getElementById('layar-admin').innerHTML = res.admin;
 
-    <?!= include('File_Javascript'); ?>
+            var _tmp = document.createElement('div');
+            _tmp.innerHTML = res.js;
+            _tmp.querySelectorAll('script').forEach(function (old) {
+                var ns = document.createElement('script');
+                if (old.src) {
+                    ns.src = old.src;
+                } else {
+                    ns.textContent = old.textContent;
+                }
+                document.head.appendChild(ns);
+            });
+
+            if (_penggunaAktif && typeof prosesBerhasilLogin === 'function') {
+                prosesBerhasilLogin(_penggunaAktif);
+            }
+        }
+
+        google.script.run
+            .withSuccessHandler(_terapkanSumberDaya)
+            .withFailureHandler(function () {
+                localStorage.removeItem('user_eLTT');
+                document.getElementById('viewLoading').classList.add('hidden');
+                document.getElementById('viewLogin').classList.remove('hidden');
+            })
+            .getAppResources(_penggunaAktif ? _penggunaAktif.role : null);
+
+        if (!_penggunaAktif) {
+            document.getElementById('viewLoading').classList.add('hidden');
+            document.getElementById('viewLogin').classList.remove('hidden');
+
+            var _form = document.getElementById('formLogin');
+            if (_form) {
+                _form.onsubmit = null;
+                _form.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    if (typeof handleLogin === 'function') {
+                        handleLogin(e);
+                    } else {
+                        var btn = document.getElementById('btnLogin');
+                        var txt = document.getElementById('loginText');
+                        btn.disabled = true;
+                        txt.textContent = 'Memuat...';
+                        var _cek = setInterval(function () {
+                            if (typeof handleLogin === 'function') {
+                                clearInterval(_cek);
+                                btn.disabled = false;
+                                txt.textContent = 'Masuk Sekarang';
+                                handleLogin(e);
+                            }
+                        }, 100);
+                    }
+                });
+            }
+        } else {
+            document.getElementById('viewLoading').querySelector('p').textContent = 'Memuat dashboard...';
+        }
+    })();
+    </script>
 
 </body>
 </html>

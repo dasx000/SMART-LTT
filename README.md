@@ -1,4 +1,4 @@
-# e-LTT Palawija & Padi
+# SMART LTT Palawija & Padi
 
 Sistem pelaporan LTT (Luas Tambah Tanam) berbasis Google Apps Script untuk komoditas Padi, Jagung, dan Ubi Kayu.
 
