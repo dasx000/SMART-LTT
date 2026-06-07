@@ -542,6 +542,13 @@
       <!-- Filter Tipe Periode -->
       <div class="flex gap-2 bg-gray-100 p-1 rounded-xl mb-4">
         <button
+          id="rekapTipe-Hari"
+          onclick="setRekapTipePeriode('hari')"
+          class="flex-1 py-2 text-xs font-bold rounded-lg transition-all"
+        >
+          Per Hari
+        </button>
+        <button
           id="rekapTipe-Bulan"
           onclick="setRekapTipePeriode('bulan')"
           class="flex-1 py-2 text-xs font-bold rounded-lg transition-all"
@@ -557,8 +564,30 @@
         </button>
       </div>
 
-      <!-- Dropdown Pilihan Periode + Tombol Excel -->
-      <div class="mb-4">
+      <!-- Filter Harian -->
+      <div id="rekapFilterHari" class="mb-4">
+        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Pilih Tanggal</label>
+        <div class="flex items-center gap-2">
+          <input
+            type="date"
+            id="rekapTanggalInput"
+            onchange="muatRekapSaya()"
+            class="flex-1 min-w-0 p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-green-500 font-semibold text-gray-700"
+          />
+          <button
+            type="button"
+            onclick="downloadRekapExcel()"
+            title="Download Excel"
+            class="flex-shrink-0 h-10 px-3 bg-green-600 hover:bg-green-700 active:scale-95 text-white rounded-xl flex items-center gap-1.5 text-xs font-bold transition"
+          >
+            <i class="fa-solid fa-file-excel"></i>
+            <span>Excel</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Filter Bulanan / Triwulan -->
+      <div id="rekapFilterPeriode" class="mb-4 hidden">
         <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Pilih Periode</label>
         <div class="flex items-center gap-2">
           <select
@@ -582,22 +611,9 @@
 
       <!-- Container Tabel Rekap -->
       <div class="overflow-x-auto bg-white rounded-2xl border border-gray-150 shadow-sm">
-        <table class="w-full text-xs text-left border-collapse min-w-[720px]">
-          <thead>
-            <tr class="bg-green-700 text-white font-bold uppercase text-[9px] tracking-wider">
-              <th class="p-2 text-center border border-green-800">No</th>
-              <th class="p-2 border border-green-800">Kampung</th>
-              <th class="p-2 border border-green-800">Komoditas</th>
-              <th class="p-2 text-right border border-green-800">LBS (Ha)</th>
-              <th class="p-2 text-center border border-green-800">Standing Crop</th>
-              <th class="p-2 text-right border border-green-800">Target Tanam</th>
-              <th class="p-2 text-right border border-green-800">Realisasi Tanam</th>
-              <th class="p-2 text-right border border-green-800">Capaian Tanam (%)</th>
-              <th class="p-2 text-center border border-green-800">Bera</th>
-              <th class="p-2 text-right border border-green-800">Target Panen</th>
-              <th class="p-2 text-right border border-green-800">Realisasi Panen</th>
-              <th class="p-2 text-right border border-green-800">Capaian Panen (%)</th>
-            </tr>
+        <table id="rekapTable" class="w-full text-xs text-left border-collapse">
+          <thead id="rekapThead">
+            <!-- Populated dynamically -->
           </thead>
           <tbody id="tabelRekapBody">
             <!-- Loaded dynamically -->

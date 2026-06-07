@@ -168,7 +168,7 @@
       modePelanAktif = 'ppl';
       tampilkanLayar('layar-ppl');
       inisialisasiPPL();
-    } else if (userData.role === 'Admin_Kab') {
+    } else if (userData.role === 'Admin_Kab' || userData.role === 'Dinas') {
       tampilkanLayar('layar-admin');
       inisialisasiAdmin();
     } else {
@@ -626,8 +626,24 @@
   // =========================================================================
   // 4. ADMIN DASHBOARD LOGIC
   // =========================================================================
+  function filterMenuSidebar(role) {
+    document.querySelectorAll('#sidebarAdmin nav [data-roles]').forEach(function (el) {
+      const roles = el.getAttribute('data-roles').split(',');
+      el.style.display = roles.indexOf(role) !== -1 ? '' : 'none';
+    });
+  }
+
   function inisialisasiAdmin() {
     document.getElementById('namaAdmin').innerText = userAktif.nama;
+    const roleLabel = { Admin_Kab: 'Admin Kabupaten' };
+    const elLabel = document.getElementById('labelRoleAdmin');
+    if (userAktif.role === 'Dinas') {
+      elLabel.style.display = 'none';
+    } else {
+      elLabel.style.display = '';
+      elLabel.innerText = roleLabel[userAktif.role] || userAktif.role;
+    }
+    filterMenuSidebar(userAktif.role);
     const d = new Date();
     const today = [
       d.getFullYear(),
@@ -2245,7 +2261,7 @@
     const targetKeys = data.target ? Object.keys(data.target) : [];
     const realKeys = data.realisasi ? Object.keys(data.realisasi) : [];
 
-    const semuaKec = [...new Set([...targetKeys, ...realKeys])].sort();
+const semuaKec = [...new Set([...targetKeys, ...realKeys])].sort();
 
     if (semuaKec.length === 0) {
       tbody.innerHTML = `<tr><td colspan="12" class="p-8 text-center text-gray-400 italic">Tidak ada data rekap LTT untuk periode ini.</td></tr>`;
@@ -4515,10 +4531,10 @@
     document.getElementById('tgtBulanDisplay').textContent =
       NAMA_BULAN[targetBulanAktif];
     document.getElementById('tgtTotalTarget').value = isEdit
-      ? _toKoma(targetData.totalTarget)
+      ? (_toKoma(targetData.totalTarget) || '0')
       : '';
     document.getElementById('tgtTotalTargetPanen').value = isEdit
-      ? _toKoma(targetData.totalTargetPanen)
+      ? (_toKoma(targetData.totalTargetPanen) || '0')
       : '';
 
     // Wilayah: Kabupaten → readonly, Kecamatan/Desa → dropdown
@@ -4604,12 +4620,15 @@
     const desaSection = document.getElementById('sectionDesaFields');
     if (targetTabLevel === 'Desa') {
       desaSection.classList.remove('hidden');
-      document.getElementById('tgtIPEksisting').value = isEdit
-        ? _toKoma(targetData.ipEksisting)
-        : '';
-      document.getElementById('tgtLuasBaku').value = isEdit
-        ? _toKoma(targetData.luasBakuSawah)
-        : '';
+      const tgtIPEksisting = document.getElementById('tgtIPEksisting');
+      if (tgtIPEksisting) {
+        tgtIPEksisting.value = isEdit ? _toKoma(targetData.ipEksisting) : '';
+      }
+      
+      const tgtLuasBaku = document.getElementById('tgtLuasBaku');
+      if (tgtLuasBaku) {
+        tgtLuasBaku.value = isEdit ? _toKoma(targetData.luasBakuSawah) : '';
+      }
     } else {
       desaSection.classList.add('hidden');
     }
@@ -4715,15 +4734,15 @@
             </select>
             <div class="space-y-2">
               <div>
-                <label class="block text-[10px] font-bold text-gray-500 mb-0.5">Luas Tanam (Ha) <span class="text-red-500">*</span></label>
-                <input type="text" inputmode="decimal" value="${_toKoma(luas)}" placeholder="Luas tanam LTT (Ha)" name="jenisLttLuas"
-                    class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm text-right font-bold text-gray-800 outline-none focus:border-green-500"
+                <label class="block text-xs font-black text-gray-700 uppercase mb-1">Luas Tanam (Ha) <span class="text-red-500">*</span></label>
+                <input type="text" inputmode="decimal" value="${_toKoma(luas)}" placeholder="0,00" name="jenisLttLuas"
+                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl text-right font-black text-xl text-gray-900 bg-white outline-none focus:ring-4 focus:ring-green-100 focus:border-green-600 transition"
                     oninput="hitungTotalTargetOtomatis()">
               </div>
               <div>
-                <label class="block text-[10px] font-bold text-gray-500 mb-0.5">Luas Panen (Ha) <span class="text-red-500">*</span></label>
-                <input type="text" inputmode="decimal" value="${_toKoma(luasPanen)}" placeholder="Luas panen LTT (Ha)" name="jenisLttLuasPanen"
-                    class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm text-right font-bold text-gray-800 outline-none focus:border-green-500"
+                <label class="block text-xs font-black text-gray-700 uppercase mb-1">Luas Panen (Ha) <span class="text-red-500">*</span></label>
+                <input type="text" inputmode="decimal" value="${_toKoma(luasPanen)}" placeholder="0,00" name="jenisLttLuasPanen"
+                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl text-right font-black text-xl text-gray-900 bg-white outline-none focus:ring-4 focus:ring-green-100 focus:border-green-600 transition"
                     oninput="hitungTotalTargetOtomatis()">
               </div>
             </div>`;
@@ -5302,15 +5321,15 @@
       desaList.forEach(desaName => {
         const key = desaName.toLowerCase().trim();
         const data = existingTargetsMap[key] || {
-          totalTarget: '',
-          totalTargetPanen: '',
+          totalTarget: undefined,
+          totalTargetPanen: undefined,
           ipEksisting: '',
           luasBakuSawah: '',
           details: []
         };
 
         const card = document.createElement('div');
-        card.className = 'bg-white rounded-2xl p-4 border border-gray-150 shadow-sm space-y-3';
+        card.className = 'bg-white rounded-2xl p-4 border-2 border-green-500 shadow-sm space-y-3';
         card.setAttribute('data-desa', desaName);
 
         const isPadi = komoditas === 'Padi';
@@ -5336,27 +5355,29 @@
           ${detailsHtml}
 
           <div class="space-y-3">
-            <div>
-              <label class="block text-[10px] font-black text-gray-500 uppercase mb-1">Total Target Tanam (Ha)${!isPadi ? ' <span class="text-red-500">*</span>' : ''}</label>
-              <input
-                type="text"
-                inputmode="decimal"
-                class="input-total w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl outline-none text-sm font-black text-right text-gray-800${isPadi ? ' bg-gray-100 cursor-not-allowed' : ' bg-white'}"
-                placeholder="Luas tanam target desa (Ha)"
-                value="${isPadi ? (_toKoma((parseFloat(data.totalTarget) || 0).toFixed(2))) : _toKoma(data.totalTarget)}"
-                ${isPadi ? 'readonly' : 'required'}
-              />
-            </div>
-            <div>
-              <label class="block text-[10px] font-black text-gray-500 uppercase mb-1">Total Target Panen (Ha)${!isPadi ? ' <span class="text-red-500">*</span>' : ''}</label>
-              <input
-                type="text"
-                inputmode="decimal"
-                class="input-total-panen w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl outline-none text-sm font-black text-right text-gray-800${isPadi ? ' bg-gray-100 cursor-not-allowed' : ' bg-white'}"
-                placeholder="Luas panen target desa (Ha)"
-                value="${isPadi ? (_toKoma((parseFloat(data.totalTargetPanen) || 0).toFixed(2))) : _toKoma(data.totalTargetPanen)}"
-                ${isPadi ? 'readonly' : 'required'}
-              />
+            <div class="${isPadi ? 'grid grid-cols-2 gap-2' : 'space-y-3'}">
+              <div>
+                <label class="block text-[10px] font-black text-gray-500 uppercase mb-1">Total Tanam (Ha)${!isPadi ? ' <span class="text-red-500">*</span>' : ''}</label>
+                <input
+                  type="text"
+                  inputmode="decimal"
+                  class="input-total w-full px-3 py-2.5 border-2 border-gray-300 rounded-xl outline-none text-sm font-black text-right text-gray-800${isPadi ? ' bg-gray-100 cursor-not-allowed' : ' bg-white'}"
+                  placeholder="0"
+                  value="${data.totalTarget !== undefined ? (_toKoma(data.totalTarget) || '0') : ''}"
+                  ${isPadi ? 'readonly' : 'required'}
+                />
+              </div>
+              <div>
+                <label class="block text-[10px] font-black text-gray-500 uppercase mb-1">Total Panen (Ha)${!isPadi ? ' <span class="text-red-500">*</span>' : ''}</label>
+                <input
+                  type="text"
+                  inputmode="decimal"
+                  class="input-total-panen w-full px-3 py-2.5 border-2 border-gray-300 rounded-xl outline-none text-sm font-black text-right text-gray-800${isPadi ? ' bg-gray-100 cursor-not-allowed' : ' bg-white'}"
+                  placeholder="0"
+                  value="${data.totalTargetPanen !== undefined ? (_toKoma(data.totalTargetPanen) || '0') : ''}"
+                  ${isPadi ? 'readonly' : 'required'}
+                />
+              </div>
             </div>
             <div>
               <label class="block text-[10px] font-black text-gray-500 uppercase mb-1">Luas Baku (Ha)</label>
@@ -5364,7 +5385,7 @@
                 type="text"
                 inputmode="decimal"
                 class="input-luas-baku w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl outline-none text-sm font-bold text-gray-800 text-right bg-white"
-                placeholder="Luas baku sawah desa (Ha)"
+                placeholder="Luas baku (Ha)"
                 value="${_toKoma(data.luasBakuSawah)}"
               />
             </div>
@@ -5406,30 +5427,30 @@
                   Hapus
                 </button>
               </div>
-              <select class="select-ltt-jenis w-full p-2.5 border-2 border-gray-300 rounded-xl text-xs font-bold text-gray-800 bg-white outline-none focus:border-green-500" required>
+              <select class="select-ltt-jenis w-full p-2.5 border-2 border-gray-300 rounded-xl text-sm font-black text-gray-800 bg-white outline-none focus:border-green-500" required>
                 ${optHtml}
               </select>
               <div class="space-y-2">
                 <div>
-                  <label class="block text-[9px] font-bold text-gray-500 mb-0.5">Luas Tanam (Ha) <span class="text-red-500">*</span></label>
+                  <label class="block text-xs font-black text-gray-700 uppercase mb-1">Luas Tanam (Ha) <span class="text-red-500">*</span></label>
                   <input
                     type="text"
                     inputmode="decimal"
-                    class="input-ltt-luas w-full p-2 border-2 border-gray-300 rounded-xl text-xs font-bold text-gray-850 text-right outline-none focus:border-green-500"
-                    placeholder="Luas tanam LTT (Ha)"
+                    class="input-ltt-luas w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl text-sm font-black text-gray-800 text-right outline-none focus:border-green-500 bg-white"
+                    placeholder="0"
                     required
-                    value="${_toKoma(luasVal)}"
+                    value="${luasVal !== '' ? (_toKoma(luasVal) || '0') : ''}"
                   />
                 </div>
                 <div>
-                  <label class="block text-[9px] font-bold text-gray-500 mb-0.5">Luas Panen (Ha) <span class="text-red-500">*</span></label>
+                  <label class="block text-xs font-black text-gray-700 uppercase mb-1">Luas Panen (Ha) <span class="text-red-500">*</span></label>
                   <input
                     type="text"
                     inputmode="decimal"
-                    class="input-ltt-luas-panen w-full p-2 border-2 border-gray-300 rounded-xl text-xs font-bold text-gray-850 text-right outline-none focus:border-green-500"
-                    placeholder="Luas panen LTT (Ha)"
+                    class="input-ltt-luas-panen w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl text-sm font-black text-gray-800 text-right outline-none focus:border-green-500 bg-white"
+                    placeholder="0"
                     required
-                    value="${_toKoma(luasPanenVal)}"
+                    value="${luasPanenVal !== '' ? (_toKoma(luasPanenVal) || '0') : ''}"
                   />
                 </div>
               </div>
@@ -5458,7 +5479,8 @@
               addLttRow(det.jenisLtt, det.luas, det.luasPanen);
             });
           } else {
-            addLttRow('LTT Reguler');
+            const isExisting = !!existingTargetsMap[key];
+            addLttRow('LTT Reguler', isExisting ? 0 : '', isExisting ? 0 : '');
           }
         }
       });
@@ -5579,25 +5601,78 @@
   // MODUL: REKAP BULANAN SAYA — PPL
   // =========================================================================
 
-  let rekapTipeAktif = 'bulan';
+  let rekapTipeAktif = 'hari';
 
   function setRekapTipePeriode(tipe) {
     rekapTipeAktif = tipe;
-    
-    // Update tab styling
-    const btnBulan = document.getElementById('rekapTipe-Bulan');
+
+    const btnHari     = document.getElementById('rekapTipe-Hari');
+    const btnBulan    = document.getElementById('rekapTipe-Bulan');
     const btnTriwulan = document.getElementById('rekapTipe-Triwulan');
-    
-    if (tipe === 'bulan') {
-      if (btnBulan) btnBulan.className = 'flex-1 py-2 text-xs font-bold rounded-lg bg-green-600 text-white transition-all';
-      if (btnTriwulan) btnTriwulan.className = 'flex-1 py-2 text-xs font-bold rounded-lg text-gray-500 hover:bg-white transition-all';
+    const filterHari  = document.getElementById('rekapFilterHari');
+    const filterPer   = document.getElementById('rekapFilterPeriode');
+
+    const active   = 'flex-1 py-2 text-xs font-bold rounded-lg bg-green-600 text-white transition-all';
+    const inactive = 'flex-1 py-2 text-xs font-bold rounded-lg text-gray-500 hover:bg-white transition-all';
+
+    if (btnHari)     btnHari.className     = tipe === 'hari'     ? active : inactive;
+    if (btnBulan)    btnBulan.className    = tipe === 'bulan'    ? active : inactive;
+    if (btnTriwulan) btnTriwulan.className = tipe === 'triwulan' ? active : inactive;
+
+    if (tipe === 'hari') {
+      if (filterHari) filterHari.classList.remove('hidden');
+      if (filterPer)  filterPer.classList.add('hidden');
+      const tglInput = document.getElementById('rekapTanggalInput');
+      if (tglInput) {
+        const now = new Date();
+        const todayStr    = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+        const firstDayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-01';
+        tglInput.min = firstDayStr;
+        tglInput.max = todayStr;
+        if (!tglInput.value) tglInput.value = todayStr;
+      }
+      _updateRekapThead('hari');
     } else {
-      if (btnBulan) btnBulan.className = 'flex-1 py-2 text-xs font-bold rounded-lg text-gray-500 hover:bg-white transition-all';
-      if (btnTriwulan) btnTriwulan.className = 'flex-1 py-2 text-xs font-bold rounded-lg bg-green-600 text-white transition-all';
+      if (filterHari) filterHari.classList.add('hidden');
+      if (filterPer)  filterPer.classList.remove('hidden');
+      _updateRekapThead('bulanan');
+      populateRekapPeriodeDropdown();
     }
-    
-    populateRekapPeriodeDropdown();
+
     muatRekapSaya();
+  }
+
+  function _updateRekapThead(mode) {
+    const thead = document.getElementById('rekapThead');
+    const table = document.getElementById('rekapTable');
+    if (!thead) return;
+    if (mode === 'hari') {
+      if (table) table.className = 'w-full text-xs text-left border-collapse';
+      thead.innerHTML =
+        '<tr class="bg-green-700 text-white font-bold uppercase text-[9px] tracking-wider">' +
+        '<th class="p-2 text-center border border-green-800">No</th>' +
+        '<th class="p-2 border border-green-800">Kampung</th>' +
+        '<th class="p-2 text-center border border-green-800">Luas Tanam (Ha)</th>' +
+        '<th class="p-2 text-center border border-green-800">Luas Panen (Ha)</th>' +
+        '</tr>';
+    } else {
+      if (table) table.className = 'w-full text-xs text-left border-collapse min-w-[720px]';
+      thead.innerHTML =
+        '<tr class="bg-green-700 text-white font-bold uppercase text-[9px] tracking-wider">' +
+        '<th class="p-2 text-center border border-green-800">No</th>' +
+        '<th class="p-2 border border-green-800">Kampung</th>' +
+        '<th class="p-2 border border-green-800">Komoditas</th>' +
+        '<th class="p-2 text-right border border-green-800">LBS (Ha)</th>' +
+        '<th class="p-2 text-center border border-green-800">Standing Crop</th>' +
+        '<th class="p-2 text-right border border-green-800">Target Tanam</th>' +
+        '<th class="p-2 text-right border border-green-800">Realisasi Tanam</th>' +
+        '<th class="p-2 text-right border border-green-800">Capaian Tanam (%)</th>' +
+        '<th class="p-2 text-center border border-green-800">Bera</th>' +
+        '<th class="p-2 text-right border border-green-800">Target Panen</th>' +
+        '<th class="p-2 text-right border border-green-800">Realisasi Panen</th>' +
+        '<th class="p-2 text-right border border-green-800">Capaian Panen (%)</th>' +
+        '</tr>';
+    }
   }
 
   function populateRekapPeriodeDropdown() {
@@ -5665,7 +5740,7 @@
       subtitle.textContent = userAktif.nama;
     }
     
-    setRekapTipePeriode('bulan');
+    setRekapTipePeriode('hari');
   }
 
   function _tutupRekapDOM() {
@@ -5683,19 +5758,55 @@
   function muatRekapSaya() {
     const tbody = document.getElementById('tabelRekapBody');
     if (!tbody) return;
-    
-    tbody.innerHTML = '<tr><td colspan="12" class="p-8 text-center text-gray-400 font-medium"><i class="fa-solid fa-circle-notch fa-spin text-lg text-green-500 mb-2 block"></i>Memuat rekap data...</td></tr>';
-    
+
     if (typeof userAktif === 'undefined' || !userAktif) return;
-    
     const nip = userAktif.nip;
+
+    if (rekapTipeAktif === 'hari') {
+      const tglInput = document.getElementById('rekapTanggalInput');
+      if (!tglInput || !tglInput.value) return;
+
+      const now2 = new Date();
+      const todayStr2    = now2.getFullYear() + '-' + String(now2.getMonth() + 1).padStart(2, '0') + '-' + String(now2.getDate()).padStart(2, '0');
+      const firstDayStr2 = now2.getFullYear() + '-' + String(now2.getMonth() + 1).padStart(2, '0') + '-01';
+
+      if (tglInput.value > todayStr2) {
+        Swal.fire('Peringatan', 'Tanggal tidak boleh melebihi hari ini (' + todayStr2 + ').', 'warning');
+        tglInput.value = todayStr2;
+        return;
+      }
+      if (tglInput.value < firstDayStr2) {
+        const NAMA_BULAN2 = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+        Swal.fire('Peringatan', 'Tanggal harus berada dalam bulan ' + NAMA_BULAN2[now2.getMonth()] + ' ' + now2.getFullYear() + '.', 'warning');
+        tglInput.value = firstDayStr2;
+        return;
+      }
+
+      tbody.innerHTML = '<tr><td colspan="4" class="p-8 text-center text-gray-400 font-medium"><i class="fa-solid fa-circle-notch fa-spin text-lg text-green-500 mb-2 block"></i>Memuat rekap data...</td></tr>';
+      google.script.run
+        .withSuccessHandler((res) => {
+          if (res.status === 'success') {
+            renderRekapHarianTabel(res, tglInput.value);
+          } else {
+            tbody.innerHTML = '<tr><td colspan="4" class="p-8 text-center text-red-500 font-bold">Gagal memuat rekap: ' + res.message + '</td></tr>';
+          }
+        })
+        .withFailureHandler((err) => {
+          tbody.innerHTML = '<tr><td colspan="4" class="p-8 text-center text-red-500 font-bold">Error: ' + (err.message || 'Terjadi kesalahan sistem.') + '</td></tr>';
+        })
+        .getRekapHarianPPL(nip, tglInput.value);
+      return;
+    }
+
+    tbody.innerHTML = '<tr><td colspan="12" class="p-8 text-center text-gray-400 font-medium"><i class="fa-solid fa-circle-notch fa-spin text-lg text-green-500 mb-2 block"></i>Memuat rekap data...</td></tr>';
+
     const select = document.getElementById('rekapPeriodeSelect');
     if (!select || !select.value) return;
-    
+
     const selectedVal = select.value;
     let bulanList = [];
     let tahun = new Date().getFullYear();
-    
+
     if (selectedVal.indexOf('TW-') === 0) {
       const parts = selectedVal.split('-');
       const twNum = parseInt(parts[1]);
@@ -5709,7 +5820,7 @@
       tahun = parseInt(parts[0]);
       bulanList = [parseInt(parts[1])];
     }
-    
+
     google.script.run
       .withSuccessHandler((res) => {
         if (res.status === 'success') {
@@ -5849,11 +5960,74 @@
     tbody.innerHTML = html;
   }
 
+  function renderRekapHarianTabel(res, tanggal) {
+    const tbody = document.getElementById('tabelRekapBody');
+    if (!tbody) return;
+    lastRekapData = { res, tanggal, tipe: 'hari' };
+
+    const desaList = res.desaList || [];
+    const reports  = res.reports  || [];
+
+    if (desaList.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="p-8 text-center text-gray-400 font-medium">Tidak ada desa binaan yang terdaftar untuk akun Anda.</td></tr>';
+      return;
+    }
+
+    const fmtV = (v) => _numId(parseFloat(v) || 0);
+    const commodities = ['Padi', 'Jagung', 'Ubi Kayu'];
+    let html = '';
+
+    commodities.forEach((kom) => {
+      html += '<tr class="bg-green-50 font-bold">' +
+        '<td colspan="4" class="p-2 text-green-800 uppercase tracking-wider text-xs font-bold border-t-2 border-l-2 border-r-2 border-green-400">Komoditas: ' + kom + '</td>' +
+        '</tr>';
+
+      let sumTanam = 0;
+      let sumPanen = 0;
+
+      desaList.forEach((desaName, idx) => {
+        const key = desaName.toLowerCase().trim();
+        let tanam = 0;
+        let panen = 0;
+        reports.forEach((r) => {
+          if (r.desa.toLowerCase().trim() === key && r.komoditas === kom) {
+            tanam += r.tanam;
+            panen += r.panen;
+          }
+        });
+        sumTanam += tanam;
+        sumPanen += panen;
+
+        html += '<tr class="border-b border-gray-100 hover:bg-gray-50/50 transition">' +
+          '<td class="p-2 text-center text-gray-500 font-medium border-l-2 border-green-400">' + (idx + 1) + '</td>' +
+          '<td class="p-2 font-semibold text-gray-800">' + desaName + '</td>' +
+          '<td class="p-2 text-center font-semibold text-green-700">' + fmtV(tanam) + '</td>' +
+          '<td class="p-2 text-center font-semibold text-blue-700 border-r-2 border-green-400">' + fmtV(panen) + '</td>' +
+          '</tr>';
+      });
+
+      html += '<tr class="bg-green-50/40 font-bold">' +
+        '<td class="p-2 text-center text-green-800 border-b-2 border-l-2 border-green-400">—</td>' +
+        '<td class="p-2 text-green-800 border-b-2 border-green-400">JUMLAH</td>' +
+        '<td class="p-2 text-center text-green-700 border-b-2 border-green-400">' + fmtV(sumTanam) + '</td>' +
+        '<td class="p-2 text-center text-blue-700 border-b-2 border-r-2 border-green-400">' + fmtV(sumPanen) + '</td>' +
+        '</tr>';
+    });
+
+    tbody.innerHTML = html;
+  }
+
   function downloadRekapExcel() {
     if (!lastRekapData) {
       Swal.fire('Info', 'Silakan muat data rekap terlebih dahulu.', 'info');
       return;
     }
+
+    if (lastRekapData.tipe === 'hari') {
+      _downloadRekapHarianExcel();
+      return;
+    }
+
     const doExport = async () => {
       await loadExcelJS();
       const { res } = lastRekapData;
@@ -5989,6 +6163,97 @@
     doExport().catch(err => Swal.fire('Error', err.message || 'Gagal ekspor Excel.', 'error'));
   }
 
+  async function _downloadRekapHarianExcel() {
+    await loadExcelJS();
+    const { res, tanggal } = lastRekapData;
+    const desaList = res.desaList || [];
+    const reports  = res.reports  || [];
+    const nama = userAktif ? userAktif.nama : '';
+
+    const tglFmt = new Date(tanggal + 'T00:00:00').toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' });
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Rekap Harian');
+    ws.columns = [{width:4},{width:28},{width:16},{width:16}];
+
+    const solidFill = (argb) => ({ type:'pattern', pattern:'solid', fgColor:{argb} });
+    const border    = { top:{style:'thin'}, bottom:{style:'thin'}, left:{style:'thin'}, right:{style:'thin'} };
+
+    const r1 = ws.addRow([`REKAP HARIAN LTT – ${nama}`]);
+    ws.mergeCells('A1:D1');
+    r1.getCell(1).value     = `REKAP HARIAN LTT – ${nama}`;
+    r1.getCell(1).font      = { bold:true, size:13, color:{argb:'FFFFFFFF'} };
+    r1.getCell(1).fill      = solidFill('FF166534');
+    r1.getCell(1).alignment = { horizontal:'center', vertical:'middle' };
+    r1.height = 26;
+
+    const r2 = ws.addRow([`Tanggal Laporan: ${tglFmt}`]);
+    ws.mergeCells('A2:D2');
+    r2.getCell(1).font = { italic:true, color:{argb:'FF374151'} };
+    r2.height = 16;
+
+    const now = new Date();
+    const r3 = ws.addRow([`Diunduh pada: ${now.toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'})}, ${now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}`]);
+    ws.mergeCells('A3:D3');
+    r3.getCell(1).font = { italic:true, size:9, color:{argb:'FF6B7280'} };
+    r3.height = 14;
+
+    ws.addRow([]);
+
+    const commodities = ['Padi', 'Jagung', 'Ubi Kayu'];
+    const rnd = v => parseFloat((parseFloat(v) || 0).toFixed(2));
+
+    commodities.forEach(kom => {
+      const gRow = ws.addRow([`Komoditas: ${kom}`, '', '', '']);
+      ws.mergeCells(`A${gRow.number}:D${gRow.number}`);
+      gRow.getCell(1).font      = { bold:true, color:{argb:'FF166534'}, size:9 };
+      gRow.getCell(1).fill      = solidFill('FFF0FDF4');
+      gRow.getCell(1).alignment = { horizontal:'left', vertical:'middle' };
+      gRow.eachCell(c => { c.border = border; });
+
+      const hRow = ws.addRow(['No', 'Kampung', 'Luas Tanam (Ha)', 'Luas Panen (Ha)']);
+      hRow.height = 20;
+      hRow.eachCell(c => {
+        c.font      = { bold:true, color:{argb:'FFFFFFFF'} };
+        c.fill      = solidFill('FF166534');
+        c.alignment = { horizontal:'center', vertical:'middle' };
+        c.border    = border;
+      });
+
+      let sumTanam = 0, sumPanen = 0;
+      desaList.forEach((desaName, idx) => {
+        const key = desaName.toLowerCase().trim();
+        let tanam = 0, panen = 0;
+        reports.forEach(r => {
+          if (r.desa.toLowerCase().trim() === key && r.komoditas === kom) { tanam += r.tanam; panen += r.panen; }
+        });
+        sumTanam += tanam; sumPanen += panen;
+        const dRow = ws.addRow([idx + 1, desaName, rnd(tanam), rnd(panen)]);
+        dRow.eachCell(c => { c.border = border; c.alignment = { vertical:'middle' }; });
+        dRow.getCell(1).alignment = { horizontal:'center', vertical:'middle' };
+        [3,4].forEach(ci => { dRow.getCell(ci).alignment = { horizontal:'right', vertical:'middle' }; dRow.getCell(ci).numFmt = '#,##0.00'; });
+      });
+
+      const jRow = ws.addRow(['—', 'JUMLAH', rnd(sumTanam), rnd(sumPanen)]);
+      jRow.eachCell(c => { c.font = { bold:true }; c.fill = solidFill('FFF0FDF4'); c.border = border; c.alignment = { vertical:'middle' }; });
+      jRow.getCell(1).alignment = { horizontal:'center', vertical:'middle' };
+      [3,4].forEach(ci => { jRow.getCell(ci).alignment = { horizontal:'right', vertical:'middle' }; jRow.getCell(ci).numFmt = '#,##0.00'; });
+
+      ws.addRow([]);
+    });
+
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a   = document.createElement('a');
+    a.href     = url;
+    a.download = `Rekap_Harian_LTT_${tanggal}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   // =========================================================================
   // LAPORAN LTT — CLIENT LOGIC
   // =========================================================================
@@ -6033,11 +6298,9 @@
         _renderTabelLaporan(_laporanLTTData);
         return;
       }
-      const diffTime = Math.abs(new Date(tglSelesai) - new Date(tglMulai));
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // Termasuk hari mulai
-      if (diffDays > 31) {
+      if (tglMulai.substring(0, 7) !== tglSelesai.substring(0, 7)) {
         if (iconRefresh) iconRefresh.classList.remove('fa-spin');
-        Swal.fire('Peringatan', 'Rentang tanggal maksimal adalah 31 hari untuk mencegah overload server.', 'warning');
+        Swal.fire('Peringatan', 'Tanggal mulai dan selesai harus berada dalam bulan yang sama.', 'warning');
         _renderTabelLaporan(_laporanLTTData);
         return;
       }

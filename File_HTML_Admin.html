@@ -36,6 +36,7 @@
       <a
         href="#"
         id="nav-dashboard"
+        data-roles="Admin_Kab,Dinas"
         onclick="
           navigasi('dashboard');
           toggleSidebar(true);
@@ -47,6 +48,7 @@
       <a
         href="#"
         id="nav-manajemen"
+        data-roles="Admin_Kab"
         onclick="
           navigasi('manajemen');
           toggleSidebar(true);
@@ -58,6 +60,7 @@
       <a
         href="#"
         id="nav-target"
+        data-roles="Admin_Kab"
         onclick="
           navigasi('target');
           toggleSidebar(true);
@@ -69,6 +72,7 @@
       <a
         href="#"
         id="nav-laporan-ltt"
+        data-roles="Admin_Kab"
         onclick="
           navigasi('laporan-ltt');
           toggleSidebar(true);
@@ -80,6 +84,7 @@
       <a
         href="#"
         id="nav-logs"
+        data-roles="Admin_Kab"
         onclick="
           navigasi('logs');
           toggleSidebar(true);
@@ -91,6 +96,7 @@
       <a
         href="#"
         id="nav-verifikasi"
+        data-roles="Admin_Kab"
         onclick="
           navigasi('verifikasi');
           toggleSidebar(true);
@@ -127,7 +133,7 @@
           <p class="text-xs sm:text-sm font-bold text-gray-800" id="namaAdmin">
             Memuat...
           </p>
-          <p class="text-[9px] sm:text-[10px] text-gray-500 uppercase">
+          <p class="text-[9px] sm:text-[10px] text-gray-500 uppercase" id="labelRoleAdmin">
             Admin Kabupaten
           </p>
         </div>
@@ -1065,6 +1071,7 @@
               <option value="Admin_Kab">Admin Kabupaten</option>
               <option value="Admin_BPP">BPP (Kecamatan)</option>
               <option value="Penyuluh">PPL (Penyuluh)</option>
+              <option value="Dinas">Dinas</option>
             </select>
           </div>
           <div>
@@ -2010,6 +2017,7 @@
           <option value="Penyuluh">PPL (Penyuluh Lapangan)</option>
           <option value="Admin_BPP">BPP (Admin Kecamatan)</option>
           <option value="Admin_Kab">Admin Kabupaten</option>
+          <option value="Dinas">Dinas</option>
         </select>
       </div>
 
@@ -2179,31 +2187,31 @@
       </div>
 
       <!-- Total Target Tanam & Panen -->
-      <div class="space-y-3">
+      <div class="grid grid-cols-2 gap-2">
         <div>
-          <label class="block text-xs font-black text-gray-700 uppercase mb-1"
-            >Total Target Tanam (Ha) <span class="text-red-600">*</span></label
+          <label class="block text-[10px] font-black text-gray-700 uppercase mb-1"
+            >Total Tanam (Ha) <span class="text-red-600">*</span></label
           >
           <input
             type="text"
             inputmode="decimal"
             id="tgtTotalTarget"
             required
-            placeholder="Luas tanam target (Ha)"
-            class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-4 focus:ring-green-150 focus:border-green-600 outline-none transition text-right font-black text-xl text-gray-900 bg-white"
+            placeholder="0"
+            class="w-full px-3 py-3 border-2 border-gray-300 rounded-xl focus:ring-4 focus:ring-green-150 focus:border-green-600 outline-none transition text-right font-black text-xl text-gray-900 bg-white"
           />
         </div>
         <div>
-          <label class="block text-xs font-black text-gray-700 uppercase mb-1"
-            >Total Target Panen (Ha) <span class="text-red-600">*</span></label
+          <label class="block text-[10px] font-black text-gray-700 uppercase mb-1"
+            >Total Panen (Ha) <span class="text-red-600">*</span></label
           >
           <input
             type="text"
             inputmode="decimal"
             id="tgtTotalTargetPanen"
             required
-            placeholder="Luas panen target (Ha)"
-            class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-4 focus:ring-green-150 focus:border-green-600 outline-none transition text-right font-black text-xl text-gray-900 bg-white"
+            placeholder="0"
+            class="w-full px-3 py-3 border-2 border-gray-300 rounded-xl focus:ring-4 focus:ring-green-150 focus:border-green-600 outline-none transition text-right font-black text-xl text-gray-900 bg-white"
           />
         </div>
       </div>
@@ -2221,7 +2229,7 @@
             type="text"
             inputmode="decimal"
             id="tgtLuasBaku"
-            placeholder="Luas baku sawah (Ha)"
+            placeholder="Luas baku (Ha)"
             class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-4 focus:ring-green-150 focus:border-green-600 outline-none transition text-base font-bold text-gray-900 text-right bg-white"
           />
         </div>

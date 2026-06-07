@@ -39,7 +39,7 @@ var LOGO_SRC_ =
   'https://lh3.googleusercontent.com/d/1eT8hkuReypIqxGP7O8G0zGS5hGjSFrmt';
 
 // Naikkan angka ini setiap kali ada perubahan File_HTML_*.html agar cache lama otomatis invalid
-var CODE_VERSION = 63;
+var CODE_VERSION = 1;
 
 function include(filename) {
   var tmpl = HtmlService.createTemplateFromFile(filename);
@@ -61,7 +61,7 @@ function getAppResources(role) {
 
   var needPpl = !role || role === 'Penyuluh' || role === 'Admin_BPP';
   var needBpp = !role || role === 'Admin_BPP';
-  var needAdmin = !role || role === 'Admin_Kab';
+  var needAdmin = !role || role === 'Admin_Kab' || role === 'Dinas';
 
   function _cachedHtml(key, filename, isTemplate) {
     var vKey = key + '_v' + CODE_VERSION;

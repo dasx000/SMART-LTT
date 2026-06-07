@@ -318,13 +318,12 @@ function getKodeTuyulEltt() {
         ws.mergeCells('A3:A4');ws.mergeCells('B3:B4');ws.mergeCells('C3:D3');ws.mergeCells('E3:F3');ws.mergeCells('G3:H3');ws.mergeCells('I3:J3');ws.mergeCells('K3:L3');
         ['C4','E4','G4','I4','K4'].forEach(c=>ws.getCell(c).value='TAMBAH TANAM (HA)');['D4','F4','H4','J4','L4'].forEach(c=>ws.getCell(c).value='PANEN (HA)');
         for(let r=3;r<=4;r++){ws.getRow(r).eachCell(c=>{c.font={bold:true};c.alignment={vertical:'middle',horizontal:'center',wrapText:true};c.border={top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFD3D3D3'}}});}
-        const kecs=["Banjit","Baradatu","Gunung Labuhan","Kasui","Rebang Tangkas","Blambangan Umpu","Umpu Semenguk","Way Tuba","Bumi Agung","Buay Bahuga","Bahuga","Pakuan Ratu","Negara Batin","Negeri Agung","Negeri Besar"].sort();
-        let rD={};kecs.forEach(k=>rD[k]=[0,0,0,0,0,0,0,0,0,0]);
+        let rD={};
         dm.forEach(r=>{
-          const kr=(r[1]||'').toLowerCase();const jen=(r[4]||'').toLowerCase();const tmb=parseFloat(r[5])||0;const pan=parseFloat(r[8])||0;
-          let mk=kecs.find(k=>kr.includes(k.toLowerCase()));
-          if(mk){if(jen==='ltt reguler'){rD[mk][0]+=tmb;rD[mk][1]+=pan;}else if(jen==='ltt padi gogo'){rD[mk][2]+=tmb;rD[mk][3]+=pan;}}
+          const kec=(r[1]||'').trim();const jen=(r[4]||'').toLowerCase();const tmb=parseFloat(r[5])||0;const pan=parseFloat(r[8])||0;
+          if(kec&&kec!=='N/A'){if(!rD[kec])rD[kec]=[0,0,0,0,0,0,0,0,0,0];if(jen==='ltt reguler'){rD[kec][0]+=tmb;rD[kec][1]+=pan;}else if(jen==='ltt padi gogo'){rD[kec][2]+=tmb;rD[kec][3]+=pan;}}
         });
+        const kecs=Object.keys(rD).sort((a,b)=>a.localeCompare(b,'id'));
         let tot=[0,0,0,0,0,0,0,0,0,0];
         kecs.forEach((k,i)=>{let rv=[i+1,k,...rD[k]];for(let j=0;j<10;j++)tot[j]+=rD[k][j];let rw=ws.addRow(rv);rw.eachCell((c,ci)=>{c.border={top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}};if(ci>2){c.numFmt='#,##0.00';c.alignment={horizontal:'right'};}});});
         let rTot=ws.addRow(['JUMLAH','',...tot]);ws.mergeCells(\`A\${rTot.number}:B\${rTot.number}\`);
