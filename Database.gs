@@ -51,6 +51,7 @@ function prosesLogin(nip, password) {
           role: data[i][4],
           kecamatan: data[i][5],
           desa: data[i][6],
+          whatsapp: data[i][8] || '',
         };
         var cacheEntry = {
           password: data[i][3].toString(),
@@ -1879,6 +1880,7 @@ function getDaftarUser() {
       kecamatan: data[i][5],
       desa: data[i][6],
       status: data[i][7],
+      whatsapp: data[i][8] || '',
     });
   }
   return users;
@@ -1908,7 +1910,7 @@ function simpanDataUser(u) {
         if (data[i][0] == u.id) {
           var oldNip = data[i][2].toString();
           sheet
-            .getRange(i + 1, 1, 1, 8)
+            .getRange(i + 1, 1, 1, 9)
             .setValues([
               [
                 u.id,
@@ -1919,6 +1921,7 @@ function simpanDataUser(u) {
                 u.kecamatan,
                 u.desa,
                 u.status,
+                u.whatsapp || '',
               ],
             ]);
           // Clear cache untuk NIP lama & NIP baru
@@ -1941,6 +1944,7 @@ function simpanDataUser(u) {
         u.kecamatan,
         u.desa,
         u.status,
+        u.whatsapp || '',
       ]);
       return { status: 'success', message: 'User berhasil ditambahkan' };
     }
@@ -1975,10 +1979,50 @@ function hapusDataUser(id, nip) {
 }
 
 // =========================================================================
+// FUNGSI UPDATE WHATSAPP (WIDGET BPP)
+// =========================================================================
+function updateWhatsAppUser(id, whatsapp) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Data_User');
+    var data = sheet.getDataRange().getValues();
+
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][0].toString() !== id.toString()) continue;
+
+      var nip = data[i][2].toString();
+      sheet.getRange(i + 1, 9).setValue(whatsapp.trim());
+
+      var cache = CacheService.getScriptCache();
+      cache.remove('USER_' + nip);
+      
+      var updatedUserData = {
+        id: data[i][0],
+        nama: data[i][1],
+        nip: nip,
+        role: data[i][4],
+        kecamatan: data[i][5],
+        desa: data[i][6],
+        status: data[i][7],
+        whatsapp: whatsapp.trim()
+      };
+      
+      return { status: 'success', data: updatedUserData, message: 'Nomor WhatsApp berhasil diperbarui.' };
+    }
+    return { status: 'error', message: 'User tidak ditemukan.' };
+  } catch (e) {
+    return { status: 'error', message: 'Kesalahan sistem: ' + e.toString() };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// =========================================================================
 // FUNGSI UPDATE PROFIL MANDIRI (PPL & BPP)
 // =========================================================================
 
-function updateProfilUser(id, namaBaru, passwordLama, passwordBaru) {
+function updateProfilUser(id, namaBaru, passwordLama, passwordBaru, whatsappBaru) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
@@ -2012,6 +2056,9 @@ function updateProfilUser(id, namaBaru, passwordLama, passwordBaru) {
 
       sheet.getRange(i + 1, 2).setValue(namaBaru.trim());
       sheet.getRange(i + 1, 4).setValue(passwordFinal);
+      if (whatsappBaru !== undefined) {
+        sheet.getRange(i + 1, 9).setValue(whatsappBaru.trim());
+      }
 
       var cache = CacheService.getScriptCache();
       var cacheKey = 'USER_' + nip;
@@ -2023,6 +2070,7 @@ function updateProfilUser(id, namaBaru, passwordLama, passwordBaru) {
         role: data[i][4],
         kecamatan: data[i][5],
         desa: data[i][6],
+        whatsapp: whatsappBaru !== undefined ? whatsappBaru.trim() : (data[i][8] || ''),
       };
       cache.put(
         cacheKey,
@@ -5054,16 +5102,19 @@ function getRekapBulananPPL(nip, bulanList, tahun) {
               desa: origDesaName,
               komoditas: kom,
               totalTarget: 0,
+              totalTargetPanen: 0,
               luasBakuSawah: 0,
               luasStandingCrop: 0,
             };
 
             if (normKom === 'padi') {
               targetObj.totalTarget = parseFloat(data[i][9]) || 0;
-              targetObj.luasBakuSawah = parseFloat(data[i][11]) || 0;
-              targetObj.luasStandingCrop = parseFloat(data[i][12]) || 0;
+              targetObj.totalTargetPanen = parseFloat(data[i][16]) || 0;
+              targetObj.luasBakuSawah = parseFloat(data[i][18]) || 0;
+              targetObj.luasStandingCrop = parseFloat(data[i][19]) || 0;
             } else {
               targetObj.totalTarget = parseFloat(data[i][3]) || 0;
+              targetObj.totalTargetPanen = parseFloat(data[i][4]) || 0;
             }
 
             resultTargets.push(targetObj);

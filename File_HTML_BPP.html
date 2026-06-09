@@ -8,7 +8,7 @@
 
   <aside
     id="bppSidebar"
-    class="w-64 bg-green-800 text-white flex flex-col shadow-2xl flex-shrink-0 fixed inset-y-0 left-0 z-50 transform -translate-x-full md:relative md:translate-x-0 transition-all duration-300 ease-in-out h-full"
+    class="w-64 bg-green-800 text-white flex flex-col shadow-2xl flex-shrink-0 fixed inset-y-0 left-0 z-[100] transform -translate-x-full md:relative md:translate-x-0 transition-all duration-300 ease-in-out h-full"
   >
     <!-- Sidebar Header -->
     <div
@@ -57,6 +57,12 @@
       class="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl text-green-100 hover:bg-green-700 hover:text-white transition"
     >
       <i class="fa-solid fa-clipboard-check text-lg w-5"></i> Verifikasi Laporan
+    </button>
+    <button
+      onclick="bukaSaran()"
+      class="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl text-green-100 hover:bg-green-700 hover:text-white transition"
+    >
+      <i class="fa-solid fa-comment-dots text-lg w-5"></i> Kirim Saran
     </button>
   </nav>
   <!-- Sidebar Footer -->
@@ -113,14 +119,80 @@
     <!-- Dashboard Header -->
     <div class="flex justify-between items-center mb-5">
       <h2 class="text-base font-bold text-gray-700 uppercase tracking-wide">
-        Dashboard Hari Ini
+        Menu Utama BPP
       </h2>
+    </div>
+
+    <!-- Menu Grid -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
       <button
-        onclick="perbaruhiDashboardBPP(this)"
-        class="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-600 text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-gray-50 transition active:scale-95 shadow-sm"
+        onclick="navigasiBpp('target')"
+        class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 flex flex-col items-center justify-center gap-3 hover:scale-105 active:scale-95 transition-all group"
       >
-        <i class="fa-solid fa-rotate-right"></i> Perbarui
+        <div class="w-14 h-14 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-2xl group-hover:bg-blue-100 transition-colors">
+          <i class="fa-solid fa-bullseye"></i>
+        </div>
+        <span class="text-xs font-bold text-gray-700 text-center">Target<br/>Komoditas</span>
       </button>
+
+      <button
+        onclick="navigasiBpp('manajemen')"
+        class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 flex flex-col items-center justify-center gap-3 hover:scale-105 active:scale-95 transition-all group"
+      >
+        <div class="w-14 h-14 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center text-2xl group-hover:bg-purple-100 transition-colors">
+          <i class="fa-solid fa-users"></i>
+        </div>
+        <span class="text-xs font-bold text-gray-700 text-center">Manajemen<br/>Akun PPL</span>
+      </button>
+
+      <button
+        onclick="navigasiBpp('verifikasi')"
+        class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 flex flex-col items-center justify-center gap-3 hover:scale-105 active:scale-95 transition-all group"
+      >
+        <div class="w-14 h-14 bg-yellow-50 text-yellow-600 rounded-full flex items-center justify-center text-2xl group-hover:bg-yellow-100 transition-colors">
+          <i class="fa-solid fa-clipboard-check"></i>
+        </div>
+        <span class="text-xs font-bold text-gray-700 text-center">Verifikasi<br/>Laporan</span>
+      </button>
+
+      <button
+        onclick="bukaSaran()"
+        class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 flex flex-col items-center justify-center gap-3 hover:scale-105 active:scale-95 transition-all group"
+      >
+        <div class="w-14 h-14 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center text-2xl group-hover:bg-rose-100 transition-colors">
+          <i class="fa-solid fa-comment-dots"></i>
+        </div>
+        <span class="text-xs font-bold text-gray-700 text-center">Kirim<br/>Saran</span>
+      </button>
+    </div>
+
+    <!-- Widget Notifikasi WhatsApp -->
+    <div id="containerWidgetWA_bpp" class="rounded-2xl p-5 shadow-sm border mb-8 flex flex-col md:flex-row items-center justify-between gap-4 transition-all duration-300">
+      <div>
+        <h3 id="titleWidgetWA_bpp" class="text-sm font-bold mb-1">
+          <i id="headerIconWidgetWA_bpp" class="fa-brands fa-whatsapp mr-1"></i> Notifikasi WhatsApp
+        </h3>
+        <p id="descWidgetWA_bpp" class="text-[11px]"></p>
+      </div>
+      <div class="flex flex-col w-full md:w-auto">
+        <div class="flex w-full md:w-auto">
+          <input 
+            type="number" 
+            id="widgetWA_bpp" 
+            placeholder="0852******" 
+            class="flex-1 md:w-48 px-3 py-2 text-sm border rounded-l-xl focus:outline-none bg-white transition-all"
+          />
+          <button 
+            onclick="simpanWidgetWA('bpp')" 
+            class="text-white px-4 py-2 rounded-r-xl transition flex items-center justify-center shadow-sm"
+            title="Simpan No WhatsApp"
+            id="btnWidgetWA_bpp"
+          >
+            <i id="iconWidgetWA_bpp" class="fa-solid fa-paper-plane"></i>
+          </button>
+        </div>
+        <p id="helperWidgetWA_bpp" class="text-[10px] italic mt-1"></p>
+      </div>
     </div>
 
     <!-- Stat Cards -->
@@ -145,7 +217,7 @@
       </div>
 
       <div
-        class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-yellow-500 flex items-center justify-between"
+        class="hidden bg-white rounded-xl p-5 shadow-sm border-l-4 border-yellow-500 flex items-center justify-between"
       >
         <div>
           <p class="text-xs text-gray-500 font-bold uppercase mb-1">
@@ -164,7 +236,7 @@
       </div>
 
       <div
-        class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-green-500 flex items-center justify-between"
+        class="hidden bg-white rounded-xl p-5 shadow-sm border-l-4 border-green-500 flex items-center justify-between"
       >
         <div>
           <p class="text-xs text-gray-500 font-bold uppercase mb-1">
@@ -184,7 +256,7 @@
     </div>
 
     <!-- Daftar PPL Belum Lapor -->
-    <div class="bg-red-50 rounded-xl shadow-sm border border-red-200 p-5 mb-8">
+    <div class="hidden bg-red-50 rounded-xl shadow-sm border border-red-200 p-5 mb-8">
       <div class="flex items-center gap-2 mb-4">
         <i class="fa-solid fa-triangle-exclamation text-red-500 text-xl"></i>
         <h3 class="text-md font-bold text-red-700">
@@ -526,6 +598,18 @@
             type="text"
             id="profilNama"
             required
+            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 transition"
+          />
+        </div>
+
+        <div class="mb-4">
+          <label class="block text-xs font-bold text-gray-600 mb-1">
+            Nomor WhatsApp
+          </label>
+          <input
+            type="number"
+            id="profilWA"
+            placeholder="Contoh: 628123456789"
             class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 transition"
           />
         </div>

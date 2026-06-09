@@ -1,16 +1,9 @@
 BUAT plan.MD  BERISI PLANNING
 
-di menu sidebar, ada menu laporan ltt
-kita akan upgrade menu ini
-disitu baru ada filter 1 tanggal
-tapi kita mau ubah meenjadi 2 tanggal agar bisa from -to
-defaulnya adalah today semua, ingat fromnya jangan melebihi to
-LALU FROM-TONYA BATASIN HANYA BOLEH MAKSIMAL 31 HARI, JANGAN LEBIH KARENA AKAN MEMBENAI Server
-
-
-KEMUDAIN SAAT INI BELUM ADA TOMBOL AKSI, 
-SEKARANG KAMU TAMBAHKAN TOMBOL AKSI EDIT, 
-
+kita nanti akan menyiapkap fitur saran , 
+saran it kita kirimkan ke webhook aplikasi saayaasatulagiyang saya buil mnggunakan nodejs
+tombol saran ada di menu ppl, bagian menu lainnya
+contoh penerapan webhook udah adakan di code kita
 
 JANGAN TERLALU LOW LEVEL ATAU DETAIL
 CUKUP INSTRUKSIKAN SECARA HIGH LEVEL

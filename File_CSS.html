@@ -1,5 +1,25 @@
 <link rel="icon" type="image/webp" href="<?= logoSrc ?>">
-<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  function loadTailwindFallback3() {
+    var warning = document.createElement("div");
+    warning.style.cssText = "position:fixed;top:0;left:0;right:0;background:#ff3b30;color:white;padding:15px;text-align:center;z-index:9999;font-family:sans-serif;font-weight:bold;font-size:14px;box-shadow:0 4px 6px rgba(0,0,0,0.1);";
+    warning.innerHTML = "Peringatan: Gagal memuat desain antarmuka. Jaringan Anda memblokir akses ke CDN. Coba refresh halaman atau gunakan koneksi internet lain.";
+    document.body.prepend(warning);
+  }
+  function loadTailwindFallback2() {
+    var script = document.createElement("script");
+    script.src = "https://unpkg.com/tailwindcss-cdn@3.4.3/tailwindcss.js";
+    script.onerror = loadTailwindFallback3;
+    document.head.appendChild(script);
+  }
+  function loadTailwindFallback() {
+    var script = document.createElement("script");
+    script.src = "https://cdn.jsdelivr.net/npm/tailwindcss-cdn@3.4.3/tailwindcss.js";
+    script.onerror = loadTailwindFallback2;
+    document.head.appendChild(script);
+  }
+</script>
+<script src="https://cdn.tailwindcss.com" onerror="loadTailwindFallback()"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <style>

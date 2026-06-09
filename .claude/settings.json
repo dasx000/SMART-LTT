@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"d:\\\\CODING\\\\LTT\" status)",
+      "Bash(git -C \"d:\\\\CODING\\\\LTT\" diff --stat)",
+      "Bash(git -C \"d:\\\\CODING\\\\LTT\" diff --cached --stat)"
+    ]
+  }
+}

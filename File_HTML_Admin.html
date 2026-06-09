@@ -1106,6 +1106,9 @@
                     Nama & NIP
                   </th>
                   <th class="p-4 text-[10px] font-bold text-gray-400 uppercase">
+                    WhatsApp
+                  </th>
+                  <th class="p-4 text-[10px] font-bold text-gray-400 uppercase">
                     Role
                   </th>
                   <th
@@ -1127,7 +1130,7 @@
               </thead>
               <tbody id="tabelUser">
                 <tr>
-                  <td colspan="6" class="p-12 text-center text-gray-400 italic">
+                  <td colspan="7" class="p-12 text-center text-gray-400 italic">
                     <i
                       class="fa-solid fa-circle-notch fa-spin text-2xl text-green-500 mb-2 block"
                     ></i>
@@ -1964,6 +1967,18 @@
           id="userNama"
           required
           placeholder="Nama Lengkap & Gelar"
+          class="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition"
+        />
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-gray-500 uppercase mb-1"
+          >Nomor WhatsApp</label
+        >
+        <input
+          type="number"
+          id="userWA"
+          placeholder="Contoh: 628123456789"
           class="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition"
         />
       </div>

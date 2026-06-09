@@ -39,7 +39,7 @@ var LOGO_SRC_ =
   'https://lh3.googleusercontent.com/d/1eT8hkuReypIqxGP7O8G0zGS5hGjSFrmt';
 
 // Naikkan angka ini setiap kali ada perubahan File_HTML_*.html agar cache lama otomatis invalid
-var CODE_VERSION = 1;
+var CODE_VERSION = 16;
 
 function include(filename) {
   var tmpl = HtmlService.createTemplateFromFile(filename);
@@ -151,4 +151,54 @@ function testWebhook() {
     muteHttpExceptions: true,
   });
   Logger.log('Respon VPS: ' + response.getContentText());
+}
+
+/**
+ * Mengirimkan saran/masukan pengguna ke server Node.js eksternal via Webhook.
+ * @param {string} pesan Teks saran/masukan dari pengguna.
+ * @param {Object} userInfo Objek berisi data pengguna yang sedang login.
+ * @return {Object} Status keberhasilan pengiriman.
+ */
+function kirimSaranWebhook(pesan, userInfo) {
+  try {
+    if (!pesan || !pesan.trim()) {
+      return { status: 'error', message: 'Teks saran tidak boleh kosong' };
+    }
+    
+    var payload = {
+      timestamp: new Date().toISOString(),
+      saran: pesan.trim(),
+      pengguna: {
+        id: userInfo ? userInfo.id : '',
+        nama: userInfo ? userInfo.nama : 'Unknown',
+        nip: userInfo ? userInfo.nip : 'Unknown',
+        role: userInfo ? userInfo.role : 'Unknown',
+        kecamatan: userInfo ? userInfo.kecamatan : '',
+        desa: userInfo ? userInfo.desa : ''
+      }
+    };
+    
+    var url = 'http://103.245.38.96:3000/webhook/saran';
+    var options = {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    };
+    
+    var response = UrlFetchApp.fetch(url, options);
+    var responseCode = response.getResponseCode();
+    var responseBody = response.getContentText();
+    
+    if (responseCode >= 200 && responseCode < 300) {
+      return { status: 'success', message: 'Saran berhasil terkirim' };
+    } else {
+      return { 
+        status: 'error', 
+        message: 'Gagal mengirim saran ke server webhook (Code: ' + responseCode + ')'
+      };
+    }
+  } catch (err) {
+    return { status: 'error', message: err.toString() };
+  }
 }

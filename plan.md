@@ -1,41 +1,24 @@
-# Rencana Pengembangan: Upgrade Menu Laporan LTT
+# Planning Fitur Saran (Feedback)
 
-Dokumen ini berisi panduan tingkat tinggi (high-level) untuk melakukan upgrade pada fitur "Laporan LTT". Instruksi ini ditujukan agar mudah dieksekusi oleh junior programmer atau asisten AI.
+Fitur ini bertujuan untuk memfasilitasi pengguna (khususnya PPL) agar dapat mengirimkan saran atau masukan terkait aplikasi. Saran ini akan diteruskan secara *real-time* ke server Node.js eksternal menggunakan mekanisme Webhook.
 
-## 1. Modifikasi Filter Tanggal (From - To)
-Saat ini filter di Menu Laporan LTT hanya menggunakan satu input tanggal. Ini harus diubah menjadi rentang tanggal (Start Date & End Date).
+## Alur Kerja (Workflow)
 
-### Kebutuhan Modifikasi:
-- **UI/UX Frontend:** 
-  - Ubah input filter yang ada menjadi dua buah input tipe `date` (misalnya: `Dari Tanggal` dan `Sampai Tanggal`).
-  - Set nilai default untuk kedua input tersebut ke tanggal hari ini (*today*).
-- **Validasi Frontend (Penting):**
-  - Buat validasi yang memastikan tanggal "From" **tidak pernah melebihi** tanggal "To".
-  - Buat validasi batasan rentang: Selisih waktu antara "From" dan "To" **maksimal 31 hari**. Jika melebihi rentang 31 hari, tampilkan notifikasi/pesan peringatan dan hentikan eksekusi pengambilan data. (Catatan: Ini penting untuk menjaga performa server Google Apps Script).
-- **Penyesuaian Backend:**
-  - Update parameter pada fungsi Google Apps Script yang mengambil data laporan (misalnya fungsi `getLaporanLTT`) agar menerima parameter dua rentang tanggal.
-  - Modifikasi logika penyaringan data di backend agar melakukan filter rentang (*between*) dari "From" hingga "To".
+### 1. Frontend (Antarmuka Pengguna)
+- **Penempatan Tombol**: Tambahkan tombol "Kirim Saran" atau sejenisnya pada halaman/dashboard PPL, letakkan di bagian **Menu Lainnya**.
+- **Form Input**: Saat tombol diklik, tampilkan modal atau pop-up sederhana (bisa memanfaatkan *SweetAlert2* yang sudah terintegrasi di sistem) yang memuat *text area* untuk mengetik saran.
+- **Aksi Submit**: Setelah pengguna menekan tombol kirim, ambil teks tersebut beserta identitas *user* yang sedang aktif (seperti NIP atau Nama), lalu panggil fungsi backend Google Apps Script.
 
----
+### 2. Backend (Google Apps Script)
+- **Fungsi Handler**: Buat fungsi baru di backend (misalnya `kirimSaran(teksSaran, infoPengguna)`).
+- **Proses Webhook**: Di dalam fungsi tersebut, gunakan rutin yang serupa dengan contoh `testWebhook()` di `Code.gs`.
+- **Eksekusi**: Lakukan HTTP POST request menggunakan `UrlFetchApp.fetch` ke URL Node.js yang sudah Anda siapkan. Kirimkan data *payload* dengan tipe `application/json`.
+- **Penanganan Error**: Pastikan untuk menyertakan atribut `muteHttpExceptions: true` pada konfigurasi *fetch* agar jika Node.js *down*, aplikasi utama LTT tidak mengalami *crash*, lalu kembalikan status berhasil/gagal ke Frontend.
 
-## 2. Penambahan Kolom dan Tombol Aksi "Edit"
-Saat ini tabel daftar Laporan LTT hanya menampilkan data tanpa interaksi lanjutan. Kita perlu memberikan akses kepada pengguna untuk melakukan perubahan.
+### 3. Respons (Notifikasi)
+- Setelah backend selesai memanggil webhook, berikan notifikasi umpan balik (misalnya "Saran berhasil dikirim, terima kasih!") kepada PPL melalui antarmuka.
 
-### Kebutuhan Modifikasi:
-- **Perubahan Tabel (Frontend):**
-  - Tambahkan satu kolom baru pada tabel di posisi paling kanan dengan nama header "Aksi".
-  - Di dalam kolom tersebut, sediakan sebuah tombol "Edit" pada setiap baris laporan.
-- **Alur Interaksi (Event Handling):**
-  - Ketika tombol "Edit" diklik, sistem harus menangkap ID unik dari baris data terkait (misal: `ID_Laporan`).
-  - Tampilkan modal/form edit yang sudah terisi dengan data *existing* (pre-filled data) sesuai baris yang dipilih. (Bisa memanfaatkan ulang komponen form LTT yang sudah ada, dengan menambahkan penanda status "Mode Edit").
-- **Pemrosesan Data (Backend):**
-  - Pastikan terdapat fungsi backend (Google Apps Script) untuk melakukan *Update* baris pada Spreadsheet berdasarkan ID yang dikirim dari form Edit.
-
----
-
-## Ringkasan Eksekusi (Untuk Junior Programmer)
-1. Cari file HTML/JS yang menangani UI Laporan LTT, lalu ganti input tanggal tunggal menjadi ganda (From-To) + pasang logic validasi JS-nya.
-2. Cari file `.gs` backend yang merespon pemanggilan data Laporan LTT, lalu sesuaikan agar menerima dan memproses rentang 2 tanggal.
-3. Pada saat *render* tabel data (biasanya menggunakan loop JS atau template HTML), tambahkan tag `<button>Edit</button>` beserta data attribut (misal: `data-id`).
-4. Buat event listener ketika tombol Edit ditekan untuk membuka modal form dan menampilkan data.
-5. Buat atau update *endpoint* backend yang berfungsi untuk menimpa/menyimpan ulang data yang sudah diedit.
+## Panduan Eksekusi (Untuk Junior/LLM)
+- Cukup buat satu blok kode UI untuk modal di `File_HTML_PPL`.
+- Sisipkan logika pemanggilan `google.script.run` pada `File_Javascript`.
+- Duplikasi dan modifikasi sedikit struktur dari `testWebhook()` di `Code.gs` untuk menangkap parameter teks saran, lalu sesuaikan URL Webhooknya dengan URL Node.js yang sesungguhnya.
