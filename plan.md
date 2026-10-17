@@ -1,24 +1,31 @@
-# Planning Fitur Saran (Feedback)
+# Rencana Implementasi: Fitur Input/Edit Laporan Akhir Bulan (Role PPL)
 
-Fitur ini bertujuan untuk memfasilitasi pengguna (khususnya PPL) agar dapat mengirimkan saran atau masukan terkait aplikasi. Saran ini akan diteruskan secara *real-time* ke server Node.js eksternal menggunakan mekanisme Webhook.
+## Deskripsi Singkat
+Fitur ini memungkinkan PPL untuk melakukan input data susulan atau perbaikan data (Padi, Jagung, Ubi Kayu) di akhir bulan. Menu ini hanya muncul pada periode akhir bulan dan memungkinkan user memilih tanggal spesifik dalam bulan tersebut. Selain itu, pilihan cakupan desa diperluas menjadi tingkat kecamatan.
 
-## Alur Kerja (Workflow)
+---
 
-### 1. Frontend (Antarmuka Pengguna)
-- **Penempatan Tombol**: Tambahkan tombol "Kirim Saran" atau sejenisnya pada halaman/dashboard PPL, letakkan di bagian **Menu Lainnya**.
-- **Form Input**: Saat tombol diklik, tampilkan modal atau pop-up sederhana (bisa memanfaatkan *SweetAlert2* yang sudah terintegrasi di sistem) yang memuat *text area* untuk mengetik saran.
-- **Aksi Submit**: Setelah pengguna menekan tombol kirim, ambil teks tersebut beserta identitas *user* yang sedang aktif (seperti NIP atau Nama), lalu panggil fungsi backend Google Apps Script.
+## 1. Penyesuaian Tampilan (UI/Frontend)
+- **Menu Kondisional:** Tambahkan logika pada layar PPL untuk menampilkan menu baru (misal: "Evaluasi/Perbaikan Data Akhir Bulan"). Atur agar menu ini hanya terlihat pada periode akhir bulan (tanggal 25 ke atas dibulan berjalan).
+- **Halaman Fitur Akhir Bulan:** Buat halaman baru yang terdiri dari:
+  - **Form Input Data:** Form untuk memasukkan data baru (Padi, Jagung, Ubi Kayu) dengan tambahan input pemilih tanggal (`Date Picker`). hanay bisa pilih tanggal di bulan berjalan
+  - **Daftar Laporan:** Tabel atau list yang menampilkan riwayat isian data di bulan tersebut.
+- **Fitur Edit:** Tambahkan tombol/aksi "Edit" pada setiap baris di daftar laporan untuk memfasilitasi perbaikan data.
 
-### 2. Backend (Google Apps Script)
-- **Fungsi Handler**: Buat fungsi baru di backend (misalnya `kirimSaran(teksSaran, infoPengguna)`).
-- **Proses Webhook**: Di dalam fungsi tersebut, gunakan rutin yang serupa dengan contoh `testWebhook()` di `Code.gs`.
-- **Eksekusi**: Lakukan HTTP POST request menggunakan `UrlFetchApp.fetch` ke URL Node.js yang sudah Anda siapkan. Kirimkan data *payload* dengan tipe `application/json`.
-- **Penanganan Error**: Pastikan untuk menyertakan atribut `muteHttpExceptions: true` pada konfigurasi *fetch* agar jika Node.js *down*, aplikasi utama LTT tidak mengalami *crash*, lalu kembalikan status berhasil/gagal ke Frontend.
+## 2. Penyesuaian Logika Form & Dropdown
+- **Input Tanggal:** Pastikan user dapat mengatur tanggal secara bebas (custom date) melalui form, dengan batasan hanya untuk tanggal di bulan yang sedang berjalan.
+- **Dropdown Desa:** Ubah sumber data (query) untuk dropdown pilihan Desa pada form laporan.
+  - **Sebelumnya:** Hanya menampilkan desa sesuai WKPP user.
+  - **Perubahan:** Tampilkan **seluruh desa** yang berada di dalam lingkup **Kecamatan** user PPL tersebut.
 
-### 3. Respons (Notifikasi)
-- Setelah backend selesai memanggil webhook, berikan notifikasi umpan balik (misalnya "Saran berhasil dikirim, terima kasih!") kepada PPL melalui antarmuka.
+## 3. Penyesuaian Backend & Database (API)
+- **API List Desa:** Buat atau modifikasi endpoint yang mengembalikan daftar Desa berdasarkan parameter Kecamatan (dari profil user), bukan parameter WKPP.
+- **API Create Laporan:** Sesuaikan endpoint penyimpanan laporan agar menerima dan memproses data `tanggal` yang dikirim dari form (bukan selalu menggunakan tanggal *current system date*).
+- **API Update Laporan:** Siapkan endpoint khusus (atau gunakan yang sudah ada) untuk menyimpan perubahan data (Padi, Jagung, Ubi Kayu) ketika user melakukan "Edit".
+- **API List Laporan:** Sediakan endpoint untuk mengambil rekap/daftar laporan spesifik pada bulan tersebut untuk ditampilkan di tabel riwayat.
 
-## Panduan Eksekusi (Untuk Junior/LLM)
-- Cukup buat satu blok kode UI untuk modal di `File_HTML_PPL`.
-- Sisipkan logika pemanggilan `google.script.run` pada `File_Javascript`.
-- Duplikasi dan modifikasi sedikit struktur dari `testWebhook()` di `Code.gs` untuk menangkap parameter teks saran, lalu sesuaikan URL Webhooknya dengan URL Node.js yang sesungguhnya.
+## 4. Skenario Pengujian Utama (QA/Testing)
+1. **Visibilitas Menu:** Ubah tanggal sistem ke tengah bulan (menu harus hilang) dan ke akhir bulan (menu harus muncul).
+2. **Cakupan Desa:** Buka form input, pastikan dropdown Desa menampilkan seluruh desa di kecamatan user, bukan sekadar desa WKPP-nya.
+3. **Input Mundur:** Coba input laporan untuk tanggal beberapa hari ke belakang (di bulan yang sama) dan pastikan tersimpan dengan tanggal yang benar.
+4. **Edit Data:** Lakukan perubahan angka pada data Padi, Jagung, dan Ubi Kayu yang sudah ada, simpan, dan pastikan data di tabel/database terbarui.

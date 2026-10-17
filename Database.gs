@@ -40,33 +40,39 @@ function prosesLogin(nip, password) {
 
   for (var i = 1; i < data.length; i++) {
     if (data[i][2].toString() === nip.toString()) {
-      if (
-        data[i][3].toString() === password.toString() &&
-        data[i][7] === 'Aktif'
-      ) {
-        var userData = {
-          id: data[i][0],
-          nama: data[i][1],
-          nip: data[i][2].toString(),
-          role: data[i][4],
-          kecamatan: data[i][5],
-          desa: data[i][6],
-          whatsapp: data[i][8] || '',
-        };
-        var cacheEntry = {
-          password: data[i][3].toString(),
-          userData: userData,
-        };
-        cache.put(cacheKey, JSON.stringify(cacheEntry), 21600);
-        return {
-          status: 'success',
-          data: userData,
-          url: ScriptApp.getService().getUrl(),
-        };
+      var dbPassword = data[i][3].toString();
+      var dbStatus = data[i][7];
+
+      if (dbPassword === password.toString()) {
+        if (dbStatus === 'Aktif') {
+          var userData = {
+            id: data[i][0],
+            nama: data[i][1],
+            nip: data[i][2].toString(),
+            role: data[i][4],
+            kecamatan: data[i][5],
+            desa: data[i][6],
+            whatsapp: data[i][8] || '',
+          };
+          var cacheEntry = {
+            password: dbPassword,
+            userData: userData,
+          };
+          cache.put(cacheKey, JSON.stringify(cacheEntry), 21600);
+          return {
+            status: 'success',
+            data: userData,
+            url: ScriptApp.getService().getUrl(),
+          };
+        } else {
+          return { status: 'error', message: 'Akun Anda nonaktif, silakan hubungi admin.' };
+        }
+      } else {
+        return { status: 'error', message: 'Password salah.' };
       }
     }
   }
-  return { status: 'error', message: 'NIP tidak terdaftar atau akun nonaktif' };
+  return { status: 'error', message: 'NIP tidak terdaftar.' };
 }
 
 // =========================================================================
@@ -409,7 +415,7 @@ function terimaSinkronPadi(dataArray, logData) {
       'Komoditas', 'Jenis_LTT', 'Target_Tanam_Bln_Ini', 'Target_Panen_Bln_Ini',
       'Luas_Lahan_Bera', 'Realisasi_Olah_Lahan', 'Realisasi_Luas_Tanam',
       'Realisasi_Luas_Panen', 'Keterangan', 'Status_Verifikasi',
-      'Waktu_Verifikasi_BPP', 'Waktu_Verifikasi_Kab',
+      'Waktu_Verifikasi_BPP', 'Waktu_Verifikasi_Kab', 'Metode_Penanaman'
     ];
 
     // Tentukan sheet tujuan dari logData.tanggalLaporan (satu nilai sudah cukup, tak perlu scan semua baris)
@@ -453,7 +459,7 @@ function terimaSinkronPadi(dataArray, logData) {
     // 2. Ambil semua data yang ada di Sheet saat ini
     var lastRow = sheet.getLastRow();
     if (lastRow > 1) {
-      var allData = sheet.getRange(2, 1, lastRow - 1, 17).getValues();
+      var allData = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
 
       // 3. Filter: Buang data lama yang tanggalnya cocok dengan data baru
       var dataTetap = allData.filter(function (row) {
@@ -462,13 +468,27 @@ function terimaSinkronPadi(dataArray, logData) {
           ? Utilities.formatDate(t, 'Asia/Jakarta', 'yyyy-MM-dd')
           : '';
         return !uniqueDatesToReplace.includes(tglSheet);
+      }).map(function(row) {
+        // Normalisasi panjang baris agar sesuai dengan header baru
+        var targetLength = PADI_HEADER.length;
+        while(row.length < targetLength) {
+           row.push("");
+        }
+        return row;
       });
 
       // 4. Gabungkan data yang tetap dengan data yang baru ditarik
       var finalData = dataTetap.concat(dataArray);
 
       // 5. Bersihkan isi sheet (kecuali header) dan tulis ulang semuanya
-      sheet.getRange(2, 1, sheet.getLastRow(), 17).clearContent();
+      sheet.getRange(2, 1, sheet.getLastRow(), sheet.getLastColumn()).clearContent();
+      
+      // Pastikan header di-update ke versi terbaru jika perlu
+      var currentHeader = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+      if (currentHeader.length < PADI_HEADER.length || currentHeader[PADI_HEADER.length - 1] !== 'Metode_Penanaman') {
+        sheet.getRange(1, 1, 1, PADI_HEADER.length).setValues([PADI_HEADER]);
+      }
+
       if (finalData.length > 0) {
         sheet
           .getRange(2, 1, finalData.length, finalData[0].length)
@@ -657,13 +677,183 @@ function getAllLTTRows_(bulan0, tahun) {
   var rows =
     shLTT && shLTT.getLastRow() > 1
       ? shLTT.getDataRange().getValues()
-      : [new Array(17).fill('')];
+      : [new Array(18).fill('')];
   var sp = ss.getSheetByName(namaPadi);
   if (sp && sp.getLastRow() > 1) {
     var pr = sp.getDataRange().getValues();
     for (var i = 1; i < pr.length; i++) rows.push(pr[i]);
   }
   return rows;
+}
+
+// =========================================================================
+// FUNGSI DASHBOARD LTT PM AAS
+// =========================================================================
+// =========================================================================
+// FUNGSI SIMPAN TARGET LTT PM AAS KABUPATEN
+// =========================================================================
+function simpanTargetPmAasKabupaten(tahun, bulan, targetTanam) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var sheetName = 'Target_PmAas_Kabupaten';
+    var sheet = ss.getSheetByName(sheetName);
+    
+    if (!sheet) {
+      sheet = ss.insertSheet(sheetName);
+      sheet.appendRow(['Tahun', 'Bulan', 'Target_Tanam_Ha']);
+      sheet.getRange('A1:C1').setFontWeight('bold').setBackground('#d0e0ff');
+      sheet.setFrozenRows(1);
+    }
+    
+    var data = sheet.getDataRange().getValues();
+    var foundIndex = -1;
+    
+    for (var i = 1; i < data.length; i++) {
+      if (parseInt(data[i][0]) === parseInt(tahun) && parseInt(data[i][1]) === parseInt(bulan)) {
+        foundIndex = i + 1; // baris di spreadsheet (1-indexed)
+        break;
+      }
+    }
+    
+    if (foundIndex !== -1) {
+      sheet.getRange(foundIndex, 3).setValue(parseFloat(targetTanam) || 0);
+    } else {
+      sheet.appendRow([parseInt(tahun), parseInt(bulan), parseFloat(targetTanam) || 0]);
+    }
+    
+    // Invalidate cache
+    var cache = CacheService.getScriptCache();
+    cache.remove('DASH_PMAAS_' + tahun + '_' + (bulan - 1));
+    
+    return { status: 'success', message: 'Target berhasil disimpan' };
+  } catch (e) {
+    return { status: 'error', message: e.toString() };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function getDashboardPmAas(params) {
+  var now = new Date();
+  var bulanFilter = params && params.bulan ? params.bulan - 1 : now.getMonth();
+  var tahunFilter = params && params.tahun ? params.tahun : now.getFullYear();
+
+  // Optimasi cache
+  var cache = CacheService.getScriptCache();
+  var cacheKey = 'DASH_PMAAS_V2_' + tahunFilter + '_' + bulanFilter;
+  var cached = cache.get(cacheKey);
+  if (cached && !(params && params.forceRefresh)) return JSON.parse(cached);
+
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  
+  // Tentukan nama sheet Padi berdasarkan bulan dan tahun
+  var isPast = (tahunFilter < now.getFullYear()) || (tahunFilter === now.getFullYear() && bulanFilter < now.getMonth());
+  var namaPadi = 'Data_LTT_Padi';
+  
+  if (isPast) {
+    var sfx = tahunFilter + '_' + Utilities.formatDate(new Date(tahunFilter, bulanFilter, 1), 'Asia/Jakarta', 'MM');
+    namaPadi = 'Data_LTT_Padi_' + sfx;
+  }
+  
+  var sp = ss.getSheetByName(namaPadi);
+  if (!sp) return { error: "Data untuk bulan ini tidak ditemukan", totalTanam: 0, totalPanen: 0, rincian: [] };
+
+  var data = sp.getDataRange().getValues();
+  if (data.length <= 1) return { totalTanam: 0, totalPanen: 0, rincian: [] };
+
+  // Data dari baris 2 (indeks 1)
+  // Index:
+  // 11 = Luas Tanam, 12 = Luas Panen, 17 = Metode_Penanaman
+  
+  var totalTanam = 0;
+  var totalPanen = 0;
+  var metodeMap = {};
+  var kecMap = {};
+
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var kecamatan = (row[3] || '').toString().trim();
+    var metode = (row[17] && row[17].toString().trim() !== '') ? row[17].toString().trim() : '';
+    
+    // Filter: Hanya proses jika string mengandung 'PM AAS' (case-insensitive)
+    if (metode === '' || metode.toUpperCase().indexOf('PM AAS') === -1) {
+      continue;
+    }
+
+    var tanam = parseFloat(row[11]) || 0;
+    var panen = parseFloat(row[12]) || 0;
+    
+    totalTanam += tanam;
+    totalPanen += panen;
+
+    if (!metodeMap[metode]) {
+      metodeMap[metode] = { tanam: 0, panen: 0 };
+    }
+    metodeMap[metode].tanam += tanam;
+    metodeMap[metode].panen += panen;
+
+    if (kecamatan) {
+      if (!kecMap[kecamatan]) kecMap[kecamatan] = { tanam: 0, panen: 0 };
+      kecMap[kecamatan].tanam += tanam;
+      kecMap[kecamatan].panen += panen;
+    }
+  }
+
+  var rincian = [];
+  for (var key in metodeMap) {
+    rincian.push({
+      metode: key,
+      tanam: Math.round(metodeMap[key].tanam * 100) / 100,
+      panen: Math.round(metodeMap[key].panen * 100) / 100
+    });
+  }
+
+  // Sort rincian by luas tanam descending
+  rincian.sort(function(a, b) {
+    return b.tanam - a.tanam;
+  });
+
+  // Tarik Target PM AAS dari sheet
+  var targetTanam = 0;
+  var shTarget = ss.getSheetByName('Target_PmAas_Kabupaten');
+  if (shTarget && shTarget.getLastRow() > 1) {
+    var dt = shTarget.getDataRange().getValues();
+    for (var i = 1; i < dt.length; i++) {
+      if (parseInt(dt[i][0]) === parseInt(tahunFilter) && parseInt(dt[i][1]) === parseInt(bulanFilter + 1)) {
+        targetTanam = parseFloat(dt[i][2]) || 0;
+        break;
+      }
+    }
+  }
+
+  var rekapKecamatan = [];
+  for (var k in kecMap) {
+    rekapKecamatan.push({
+      kecamatan: k,
+      tanam: Math.round(kecMap[k].tanam * 100) / 100,
+      panen: Math.round(kecMap[k].panen * 100) / 100
+    });
+  }
+  rekapKecamatan.sort(function(a, b) {
+    return a.kecamatan.localeCompare(b.kecamatan);
+  });
+
+  var result = {
+    totalTanam: Math.round(totalTanam * 100) / 100,
+    totalPanen: Math.round(totalPanen * 100) / 100,
+    targetTanam: targetTanam,
+    persentaseCapaian: targetTanam > 0 ? (totalTanam / targetTanam) * 100 : 0,
+    rincian: rincian,
+    rekapKecamatan: rekapKecamatan
+  };
+
+  try {
+    cache.put(cacheKey, JSON.stringify(result), 1800); // cache 30 mins
+  } catch (e) {}
+
+  return result;
 }
 
 function getDashboardKab(params) {
@@ -774,7 +964,12 @@ function getDashboardKab(params) {
 
   // === FALLBACK PADI: jika Ringkasan_Harian belum punya data Padi bulan ini ===
   if (!padiAda) {
-    var shPadi = ss.getSheetByName('Data_LTT_Padi');
+    var namaSheetPadi = 'Data_LTT_Padi';
+    if (bulanFilter !== now.getMonth() || tahunFilter !== now.getFullYear()) {
+      var sfx = tahunFilter + '_' + ((bulanFilter + 1) < 10 ? '0' + (bulanFilter + 1) : String(bulanFilter + 1));
+      namaSheetPadi = 'Data_LTT_Padi_' + sfx;
+    }
+    var shPadi = ss.getSheetByName(namaSheetPadi);
     if (shPadi && shPadi.getLastRow() > 1) {
       var padiRows = shPadi.getDataRange().getValues();
       for (var ri = 1; ri < padiRows.length; ri++) {
@@ -1120,27 +1315,57 @@ function editLaporanBPP(
   keterangan,
   luasBera,
   olahLahan,
+  metodePenanaman
 ) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    var sheetNames = ['Data_LTT', 'Data_LTT_Padi'];
-    for (var s = 0; s < sheetNames.length; s++) {
-      var sheet = ss.getSheetByName(sheetNames[s]);
+    var sheets = ss.getSheets();
+    for (var s = 0; s < sheets.length; s++) {
+      var sheetName = sheets[s].getName();
+      if (sheetName !== 'Data_LTT' && sheetName.indexOf('Data_LTT_') !== 0) continue;
+      var sheet = sheets[s];
       if (!sheet) continue;
       var data = sheet.getDataRange().getValues();
       for (var i = 1; i < data.length; i++) {
         if (data[i][0].toString() === id.toString()) {
+          var oldTanam = parseFloat(data[i][11]) || 0;
+          var oldPanen = parseFloat(data[i][12]) || 0;
+          var oldKomoditas = (data[i][5] || '').toString().trim() || (sheetName.indexOf('Padi') >= 0 ? 'Padi' : 'Padi');
+          var oldJenisLtt = (data[i][6] || '').toString().trim();
+          var rawTgl = data[i][1];
+          var tglObj = parseTanggalEPusluh_(rawTgl);
+
           if (luasBera !== undefined && luasBera !== null) {
             sheet.getRange(i + 1, 10).setValue(parseFloat(luasBera) || 0);
           }
           if (olahLahan !== undefined && olahLahan !== null) {
             sheet.getRange(i + 1, 11).setValue(parseFloat(olahLahan) || 0);
           }
-          sheet.getRange(i + 1, 12).setValue(parseFloat(luasTanam) || 0);
-          sheet.getRange(i + 1, 13).setValue(parseFloat(luasPanen) || 0);
-          sheet.getRange(i + 1, 14).setValue(keterangan || '');
+          var newTanam = parseFloat(luasTanam) || 0;
+          var newPanen = parseFloat(luasPanen) || 0;
+          sheet.getRange(i + 1, 12).setValue(newTanam);
+          sheet.getRange(i + 1, 13).setValue(newPanen);
+          if (keterangan !== undefined) {
+            sheet.getRange(i + 1, 14).setValue(keterangan || '');
+          }
+          if (metodePenanaman !== undefined) {
+            sheet.getRange(i + 1, 18).setValue(metodePenanaman || '');
+          }
+
+          if (tglObj) {
+            var tglStr = Utilities.formatDate(tglObj, 'Asia/Jakarta', 'yyyy-MM-dd');
+            upsertRingkasan_(
+              ss,
+              tglStr,
+              oldKomoditas,
+              oldJenisLtt,
+              newTanam - oldTanam,
+              newPanen - oldPanen
+            );
+          }
+
           clearAllAppCaches();
           return { status: 'success' };
         }
@@ -1284,8 +1509,7 @@ function parseTanggalEPusluh_(val) {
     Mei: 4,
     Jun: 5,
     Jul: 6,
-    Agu: 7,
-    Ags: 7,
+    Agt: 7,
     Sep: 8,
     Okt: 9,
     Nov: 10,
@@ -1305,15 +1529,21 @@ function parseTanggalEPusluh_(val) {
 // Kembalikan daftar tanggal unik (terbaru dulu) yang ada datanya di Data_LTT_Padi
 function getTanggalTersediaRekap() {
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  var sheet = ss.getSheetByName('Data_LTT_Padi');
-  if (!sheet || sheet.getLastRow() <= 1) return [];
-  var data = sheet.getDataRange().getValues();
+  var sheets = ss.getSheets();
   var dateSet = {};
-  for (var i = 1; i < data.length; i++) {
-    var d = parseTanggalEPusluh_(data[i][1]);
+  for (var s = 0; s < sheets.length; s++) {
+    var sheetName = sheets[s].getName();
+    if (sheetName === 'Data_LTT_Padi' || sheetName.indexOf('Data_LTT_Padi_') === 0) {
+      if (sheets[s].getLastRow() > 1) {
+        var data = sheets[s].getDataRange().getValues();
+        for (var i = 1; i < data.length; i++) {
+          var d = parseTanggalEPusluh_(data[i][1]);
     if (!d) continue;
-    var tgl = Utilities.formatDate(d, 'Asia/Jakarta', 'yyyy-MM-dd');
-    dateSet[tgl] = (dateSet[tgl] || 0) + 1;
+          var tgl = Utilities.formatDate(d, 'Asia/Jakarta', 'yyyy-MM-dd');
+          dateSet[tgl] = (dateSet[tgl] || 0) + 1;
+        }
+      }
+    }
   }
   return Object.keys(dateSet)
     .sort()
@@ -1392,10 +1622,13 @@ function getRekapPadiLengkap(tglMulai, tglAkhir, jenisLTT) {
   var kecJenisMap = {};
   var jenisSet = {};
 
-  var sheet = ss.getSheetByName('Data_LTT_Padi');
-  if (sheet && sheet.getLastRow() > 1) {
-    var data = sheet.getDataRange().getValues();
-    for (var i = 1; i < data.length; i++) {
+  var sheets = ss.getSheets();
+  for (var s = 0; s < sheets.length; s++) {
+    var sheetName = sheets[s].getName();
+    if (sheetName === 'Data_LTT_Padi' || sheetName.indexOf('Data_LTT_Padi_') === 0) {
+      if (sheets[s].getLastRow() > 1) {
+        var data = sheets[s].getDataRange().getValues();
+        for (var i = 1; i < data.length; i++) {
       var d = parseTanggalEPusluh_(data[i][1]);
       if (!d) continue;
       var tgl = Utilities.formatDate(d, 'Asia/Jakarta', 'yyyy-MM-dd');
@@ -1441,6 +1674,8 @@ function getRekapPadiLengkap(tglMulai, tglAkhir, jenisLTT) {
         kecJenisMap[key] = { kec: kec, jenis: jenis, tanam: 0, panen: 0 };
       kecJenisMap[key].tanam += tanam;
       kecJenisMap[key].panen += panen;
+        }
+      }
     }
   }
 
@@ -2648,10 +2883,13 @@ function getRekapPalawijaLengkap(tglMulai, tglAkhir, komoditas) {
     harianTotalPanen = 0;
   var kecMap = {};
 
-  var sheet = ss.getSheetByName('Data_LTT');
-  if (sheet && sheet.getLastRow() > 1) {
-    var data = sheet.getDataRange().getValues();
-    for (var i = 1; i < data.length; i++) {
+  var sheets = ss.getSheets();
+  for (var s = 0; s < sheets.length; s++) {
+    var sheetName = sheets[s].getName();
+    if (sheetName === 'Data_LTT' || (sheetName.indexOf('Data_LTT_') === 0 && sheetName.indexOf('Data_LTT_Padi') === -1)) {
+      if (sheets[s].getLastRow() > 1) {
+        var data = sheets[s].getDataRange().getValues();
+        for (var i = 1; i < data.length; i++) {
       var tglDate = new Date(data[i][1]);
       if (isNaN(tglDate)) continue;
       var tgl = Utilities.formatDate(tglDate, 'Asia/Jakarta', 'yyyy-MM-dd');
@@ -2677,6 +2915,8 @@ function getRekapPalawijaLengkap(tglMulai, tglAkhir, komoditas) {
       if (!kecMap[kec]) kecMap[kec] = { tanam: 0, panen: 0 };
       kecMap[kec].tanam += tanam;
       kecMap[kec].panen += panen;
+        }
+      }
     }
   }
 
@@ -4883,6 +5123,11 @@ function getLaporanLTT(params) {
         var desa = (row[4] || '').toString().trim();
         if (filterDesa && desa.toLowerCase() !== filterDesa) continue;
 
+        // Filter metode
+        var filterMetode = params && params.metode ? params.metode.toString().trim().toLowerCase() : null;
+        var metode_penanaman = (row[17] || '').toString().trim();
+        if (filterMetode && metode_penanaman.toLowerCase() !== filterMetode) continue;
+
         var jenisLTT =
           kom.toLowerCase() === 'padi' ? (row[6] || '').toString() : '';
 
@@ -4905,6 +5150,7 @@ function getLaporanLTT(params) {
           luas_panen: parseFloat(row[12]) || 0,
           keterangan: (row[13] || '').toString(),
           status: (row[14] || 'Menunggu').toString(),
+          metode_penanaman: (row[17] || '').toString(),
         });
       }
     }
@@ -4958,22 +5204,38 @@ function getLaporanLTT(params) {
 function getKecamatanLaporan() {
   try {
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    var kecSet = {};
 
-    function scan(namaSheet) {
-      var sh = ss.getSheetByName(namaSheet);
-      if (!sh || sh.getLastRow() <= 1) return;
-      var rows = sh.getDataRange().getValues();
-      for (var i = 1; i < rows.length; i++) {
-        var kec = (rows[i][3] || '').toString().trim();
-        if (kec) kecSet[kec] = true;
+    var sheetGeo = ss.getSheetByName('Data_Geografi');
+    var listKecamatan = [];
+    if (sheetGeo) {
+      var geoData = sheetGeo.getDataRange().getValues();
+      var kecSet = new Set();
+      for (var g = 1; g < geoData.length; g++) {
+        if (geoData[g][1]) kecSet.add(geoData[g][1].toString());
       }
+      listKecamatan = Array.from(kecSet).sort();
+    }
+    if (listKecamatan.length === 0) {
+      listKecamatan = [
+        'Bahuga',
+        'Banjit',
+        'Baradatu',
+        'Blambangan Umpu',
+        'Buay Bahuga',
+        'Bumi Agung',
+        'Gunung Labuhan',
+        'Kasui',
+        'Negara Batin',
+        'Negeri Agung',
+        'Negeri Besar',
+        'Pakuan Ratu',
+        'Rebang Tangkas',
+        'Umpu Semenguk',
+        'Way Tuba',
+      ].sort();
     }
 
-    scan('Data_LTT');
-    scan('Data_LTT_Padi');
-
-    return Object.keys(kecSet).sort();
+    return listKecamatan;
   } catch (e) {
     return [];
   }

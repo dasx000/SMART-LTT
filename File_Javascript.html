@@ -7,9 +7,13 @@
   let chartCapaianKab = null;
   let chartDonut = null;
   let chartTren = null;
+  let chartPmAasTanam = null;
+  let _lttPmAasLoaded = false;
+  let _currentTargetPmAas = '';
   let komoditasCapaianAktif = 'Padi';
   let timerLogin = null;
   let lastDashData = null;
+  let lastPmAasData = null;
   let lastRekapData = null;
   let lastRekapLTTData = null;
   let allUserData = [];
@@ -265,7 +269,8 @@
 
   function jalankanLogikaWaktu() {
     const jam = new Date().getHours();
-    if (jam >= 14) {
+    if (jam >= 24) {
+      // Diubah sementara untuk debugging (sebelumnya 14)
       document
         .getElementById('statusWaktu')
         .classList.replace('border-green-500', 'border-red-500');
@@ -566,98 +571,77 @@
         : '-',
     };
 
-    const dataOptimis = {
-      id: idLaporanSedangDiedit || 'TEMP-' + Date.now(),
-      desa: formData.desa,
-      tanam: formData.luas_tanam,
-      panen: formData.luas_panen,
-      status: 'Menunggu',
-      jam: new Date().toLocaleTimeString('id-ID', {
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
-      keterangan: formData.keterangan,
-    };
-
-    if (!cacheLaporanPPL[komoditas])
-      cacheLaporanPPL[komoditas] = { data: [], ts: Date.now() };
-
-    // Simpan history lama jika terjadi error (hanya saat edit)
-    let oldDataList = JSON.parse(
-      JSON.stringify(cacheLaporanPPL[komoditas].data),
-    );
-
-    if (idLaporanSedangDiedit) {
-      // Edit
-      const idx = cacheLaporanPPL[komoditas].data.findIndex(
-        (x) => x.id === idLaporanSedangDiedit,
-      );
-      if (idx !== -1) {
-        cacheLaporanPPL[komoditas].data[idx] = Object.assign(
-          cacheLaporanPPL[komoditas].data[idx],
-          dataOptimis,
-        );
-        cacheLaporanPPL[komoditas].data[idx].id =
-          'TEMP-EDIT-' + idLaporanSedangDiedit; // temporary id for loading state
-      }
-    } else {
-      // Create
-      cacheLaporanPPL[komoditas].data.unshift(dataOptimis);
+    const btnSubmit = document.getElementById('btnSubmit');
+    const originalBtnContent = btnSubmit ? btnSubmit.innerHTML : '';
+    
+    if (btnSubmit) {
+      btnSubmit.disabled = true;
+      btnSubmit.classList.add('opacity-70', 'cursor-not-allowed');
+      btnSubmit.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> <span id="submitText">Mengirim...</span>';
     }
-    renderListLaporan(komoditas, cacheLaporanPPL[komoditas].data);
-
-    document.getElementById('formInputan').classList.add('hidden');
-    document.getElementById('formInputan').reset();
-    document.getElementById('areaRingkasanPPL').classList.remove('hidden');
-    Swal.fire({
-      icon: 'success',
-      title: 'Tersimpan!',
-      timer: 1500,
-      showConfirmButton: false,
-    });
 
     if (idLaporanSedangDiedit) {
       google.script.run
         .withSuccessHandler(function (res) {
+          if (btnSubmit) {
+            btnSubmit.disabled = false;
+            btnSubmit.classList.remove('opacity-70', 'cursor-not-allowed');
+            btnSubmit.innerHTML = originalBtnContent;
+          }
           if (res.status === 'success') {
+            document.getElementById('formInputan').classList.add('hidden');
+            document.getElementById('formInputan').reset();
+            document.getElementById('areaRingkasanPPL').classList.remove('hidden');
+            Swal.fire({
+              icon: 'success',
+              title: 'Tersimpan!',
+              timer: 1500,
+              showConfirmButton: false,
+            });
             muatRingkasanPPL(komoditas);
           } else {
-            cacheLaporanPPL[komoditas].data = oldDataList;
-            renderListLaporan(komoditas, cacheLaporanPPL[komoditas].data);
             Swal.fire('Gagal!', res.message || 'Data gagal diubah.', 'error');
           }
         })
-        .withFailureHandler(function () {
-          cacheLaporanPPL[komoditas].data = oldDataList;
-          renderListLaporan(komoditas, cacheLaporanPPL[komoditas].data);
-          Swal.fire('Gagal!', 'Koneksi terputus.', 'error');
+        .withFailureHandler(function (err) {
+          if (btnSubmit) {
+            btnSubmit.disabled = false;
+            btnSubmit.classList.remove('opacity-70', 'cursor-not-allowed');
+            btnSubmit.innerHTML = originalBtnContent;
+          }
+          Swal.fire('Gagal!', 'Koneksi terputus: ' + (err ? err.message : ''), 'error');
         })
         .editLaporan(idLaporanSedangDiedit, formData);
     } else {
       google.script.run
         .withSuccessHandler(function (res) {
+          if (btnSubmit) {
+            btnSubmit.disabled = false;
+            btnSubmit.classList.remove('opacity-70', 'cursor-not-allowed');
+            btnSubmit.innerHTML = originalBtnContent;
+          }
           if (res.status === 'success') {
+            document.getElementById('formInputan').classList.add('hidden');
+            document.getElementById('formInputan').reset();
+            document.getElementById('areaRingkasanPPL').classList.remove('hidden');
+            Swal.fire({
+              icon: 'success',
+              title: 'Tersimpan!',
+              timer: 1500,
+              showConfirmButton: false,
+            });
             muatRingkasanPPL(komoditas);
           } else {
-            cacheLaporanPPL[komoditas].data = cacheLaporanPPL[
-              komoditas
-            ].data.filter((l) => l.id !== dataOptimis.id);
-            Swal.fire(
-              'Gagal!',
-              res.message || 'Data gagal disimpan ke server.',
-              'error',
-            );
+            Swal.fire('Gagal!', res.message || 'Data gagal disimpan ke server.', 'error');
           }
         })
-        .withFailureHandler(function () {
-          cacheLaporanPPL[komoditas].data = cacheLaporanPPL[
-            komoditas
-          ].data.filter((l) => l.id !== dataOptimis.id);
-          Swal.fire(
-            'Gagal!',
-            'Koneksi terputus, data gagal disimpan ke server.',
-            'error',
-          );
+        .withFailureHandler(function (err) {
+          if (btnSubmit) {
+            btnSubmit.disabled = false;
+            btnSubmit.classList.remove('opacity-70', 'cursor-not-allowed');
+            btnSubmit.innerHTML = originalBtnContent;
+          }
+          Swal.fire('Gagal!', 'Koneksi terputus: ' + (err ? err.message : ''), 'error');
         })
         .submitLaporan(formData);
     }
@@ -701,31 +685,23 @@
   }
 
   function generateOpsiFilter() {
-    const sel = document.getElementById('filterBulanDashboard');
-    if (!sel) return;
-    const namaBulan = [
-      'Januari',
-      'Februari',
-      'Maret',
-      'April',
-      'Mei',
-      'Juni',
-      'Juli',
-      'Agustus',
-      'September',
-      'Oktober',
-      'November',
-      'Desember',
-    ];
-    const now = new Date();
-    sel.innerHTML = '';
-    for (let i = 0; i <= 2; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const opt = document.createElement('option');
-      opt.value = `${d.getFullYear()}-${d.getMonth() + 1}`;
-      opt.text = `${namaBulan[d.getMonth()]} ${d.getFullYear()}`;
-      sel.appendChild(opt);
-    }
+    ['filterBulanDashboard', 'filterBulanPmAas'].forEach((id) => {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      const namaBulan = [
+        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+      ];
+      const now = new Date();
+      sel.innerHTML = '';
+      for (let i = 0; i <= 4; i++) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const opt = document.createElement('option');
+        opt.value = `${d.getFullYear()}-${d.getMonth() + 1}`;
+        opt.text = `${namaBulan[d.getMonth()]} ${d.getFullYear()}`;
+        sel.appendChild(opt);
+      }
+    });
   }
 
   function navigasi(section) {
@@ -737,6 +713,7 @@
       'sectionTarget',
       'sectionDetailTarget',
       'sectionLaporanLTT',
+      'sectionLttPmAas'
     ].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.classList.add('hidden');
@@ -781,6 +758,15 @@
         .getElementById('nav-laporan-ltt')
         .classList.add('bg-green-700', 'text-white', 'font-bold');
       if (!_laporanLTTLoaded) muatLaporanLTT();
+    } else if (section === 'lttPmAas') {
+      document.getElementById('sectionLttPmAas').classList.remove('hidden');
+      document
+        .getElementById('nav-lttPmAas')
+        .classList.add('bg-green-700', 'text-white', 'font-bold');
+      if (!_lttPmAasLoaded) {
+        muatPmAas();
+        _lttPmAasLoaded = true;
+      }
     } else {
       document.getElementById('sectionDashboard').classList.remove('hidden');
       document
@@ -841,6 +827,23 @@
             dash.countMenunggu;
         renderChart(dash);
         renderCapaianKabupaten();
+
+        // Ambil data PM-AAS untuk dashboard utama
+        google.script.run
+          .withSuccessHandler(function (resPmAas) {
+            lastPmAasData = resPmAas;
+            if (document.getElementById('tanamPmAasMain'))
+              document.getElementById('tanamPmAasMain').innerText =
+                formatAngkaLTT(resPmAas.totalTanam) + ' Ha';
+            if (document.getElementById('panenPmAasMain'))
+              document.getElementById('panenPmAasMain').innerText =
+                formatAngkaLTT(resPmAas.totalPanen) + ' Ha';
+                
+            if (komoditasCapaianAktif === 'PM-AAS') {
+              renderCapaianKabupaten();
+            }
+          })
+          .getDashboardPmAas({ bulan: params.bulan, tahun: params.tahun, forceRefresh: params.forceRefresh });
       })
       .withFailureHandler(function (err) {
         if (btnIcon) btnIcon.classList.remove('fa-spin');
@@ -930,8 +933,8 @@
     komoditasCapaianAktif = komoditas;
 
     // Update button styles
-    ['Padi', 'Jagung', 'Ubi Kayu'].forEach((k) => {
-      const btnId = k === 'Ubi Kayu' ? 'btnCap-UbiKayu' : 'btnCap-' + k;
+    ['Padi', 'Jagung', 'Ubi Kayu', 'PM-AAS'].forEach((k) => {
+      const btnId = k === 'Ubi Kayu' ? 'btnCap-UbiKayu' : (k === 'PM-AAS' ? 'btnCap-PmAas' : 'btnCap-' + k);
       const btn = document.getElementById(btnId);
       if (btn) {
         if (k === komoditas) {
@@ -948,27 +951,33 @@
   }
 
   function renderCapaianKabupaten() {
-    if (!dataTarget || !lastDashData) return;
-
     let totalTarget = 0;
-    if (
-      dataTarget.targetKabupaten &&
-      dataTarget.targetKabupaten[komoditasCapaianAktif] !== undefined
-    ) {
-      totalTarget = Number(
-        dataTarget.targetKabupaten[komoditasCapaianAktif] || 0,
-      );
-    }
-
     let totalRealisasi = 0;
-    if (
-      lastDashData &&
-      lastDashData.komposisiTanam &&
-      lastDashData.komposisiTanam[komoditasCapaianAktif] !== undefined
-    ) {
-      totalRealisasi = Number(
-        lastDashData.komposisiTanam[komoditasCapaianAktif] || 0,
-      );
+
+    if (komoditasCapaianAktif === 'PM-AAS') {
+      if (lastPmAasData) {
+        totalTarget = Number(lastPmAasData.targetTanam || 0);
+        totalRealisasi = Number(lastPmAasData.totalTanam || 0);
+      }
+    } else {
+      if (!dataTarget || !lastDashData) return;
+      if (
+        dataTarget.targetKabupaten &&
+        dataTarget.targetKabupaten[komoditasCapaianAktif] !== undefined
+      ) {
+        totalTarget = Number(
+          dataTarget.targetKabupaten[komoditasCapaianAktif] || 0,
+        );
+      }
+      if (
+        lastDashData &&
+        lastDashData.komposisiTanam &&
+        lastDashData.komposisiTanam[komoditasCapaianAktif] !== undefined
+      ) {
+        totalRealisasi = Number(
+          lastDashData.komposisiTanam[komoditasCapaianAktif] || 0,
+        );
+      }
     }
 
     const pct =
@@ -2199,6 +2208,22 @@
     window.history.pushState({ overlay: 'modalEditLaporanBPP' }, '');
   }
 
+  window.bukaEditLaporanBPPById = function(id) {
+    const r = _bppLaporanLTTData.find((item) => item.id === id);
+    if (!r) return;
+    document.getElementById('editLaporanId').value = r.id;
+    document.getElementById('editLaporanInfo').textContent =
+      `${r.desa} — ${r.pelapor} (${r.komoditas}, ${_formatTglLaporan(r.timestamp)})`;
+    document.getElementById('editLaporanTanam').value = _toKoma(r.luas_tanam);
+    document.getElementById('editLaporanPanen').value = _toKoma(r.luas_panen);
+    document.getElementById('editLaporanKeterangan').value =
+      (r.keterangan === '-' || !r.keterangan) ? '' : r.keterangan;
+    const modal = document.getElementById('modalEditLaporanBPP');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    window.history.pushState({ overlay: 'modalEditLaporanBPP' }, '');
+  };
+
   function tutupEditLaporanBPP() {
     const modal = document.getElementById('modalEditLaporanBPP');
     modal.classList.add('hidden');
@@ -2232,6 +2257,10 @@
           tutupEditLaporanBPP();
           cacheRekap = {};
           muatUlangBPP();
+          // Reload data tabel Laporan LTT BPP (jika sudah diinisiasi)
+          if (typeof muatLaporanLTTBPP === 'function') {
+            muatLaporanLTTBPP(true);
+          }
           Swal.fire({
             icon: 'success',
             title: 'Tersimpan!',
@@ -4318,6 +4347,7 @@
     const bppSecTarget = document.getElementById('bppSectionTarget');
     const bppSecManajemen = document.getElementById('bppSectionManajemenPPL');
     const bppSecVerifikasi = document.getElementById('bppSectionVerifikasi');
+    const bppSecLaporanLTT = document.getElementById('bppSectionLaporanLTT');
     if (bppSecTarget && !bppSecTarget.classList.contains('hidden')) {
       navigasiBpp('dashboard');
       return;
@@ -4327,6 +4357,10 @@
       return;
     }
     if (bppSecVerifikasi && !bppSecVerifikasi.classList.contains('hidden')) {
+      navigasiBpp('dashboard');
+      return;
+    }
+    if (bppSecLaporanLTT && !bppSecLaporanLTT.classList.contains('hidden')) {
       navigasiBpp('dashboard');
       return;
     }
@@ -6091,7 +6125,6 @@
 
     const btnHari = document.getElementById('rekapTipe-Hari');
     const btnBulan = document.getElementById('rekapTipe-Bulan');
-    const btnTriwulan = document.getElementById('rekapTipe-Triwulan');
     const filterHari = document.getElementById('rekapFilterHari');
     const filterPer = document.getElementById('rekapFilterPeriode');
 
@@ -6102,8 +6135,6 @@
 
     if (btnHari) btnHari.className = tipe === 'hari' ? active : inactive;
     if (btnBulan) btnBulan.className = tipe === 'bulan' ? active : inactive;
-    if (btnTriwulan)
-      btnTriwulan.className = tipe === 'triwulan' ? active : inactive;
 
     if (tipe === 'hari') {
       if (filterHari) filterHari.classList.remove('hidden');
@@ -6196,39 +6227,16 @@
       'Desember',
     ];
 
-    if (rekapTipeAktif === 'bulan') {
-      // 3 bulan terakhir termasuk bulan ini
-      for (let i = 0; i < 3; i++) {
-        let mIdx = currentMonth0 - i;
-        let yr = currentYear;
-        if (mIdx < 0) {
-          mIdx += 12;
-          yr -= 1;
-        }
-        const val = yr + '-' + (mIdx + 1);
-        const text = NAMA_BULAN[mIdx] + ' ' + yr;
-        const opt = document.createElement('option');
-        opt.value = val;
-        opt.textContent = text;
-        select.appendChild(opt);
+    // 5 bulan terakhir termasuk bulan ini
+    for (let i = 0; i < 5; i++) {
+      let mIdx = currentMonth0 - i;
+      let yr = currentYear;
+      if (mIdx < 0) {
+        mIdx += 12;
+        yr -= 1;
       }
-    } else {
-      // Per triwulan: hanya triwulan yang sedang berjalan
-      let twNum = 1;
-      let twLabel = 'Triwulan I';
-      if (currentMonth0 >= 3 && currentMonth0 <= 5) {
-        twNum = 2;
-        twLabel = 'Triwulan II';
-      } else if (currentMonth0 >= 6 && currentMonth0 <= 8) {
-        twNum = 3;
-        twLabel = 'Triwulan III';
-      } else if (currentMonth0 >= 9 && currentMonth0 <= 11) {
-        twNum = 4;
-        twLabel = 'Triwulan IV';
-      }
-
-      const val = 'TW-' + twNum + '-' + currentYear;
-      const text = twLabel + ' ' + currentYear;
+      const val = yr + '-' + (mIdx + 1);
+      const text = NAMA_BULAN[mIdx] + ' ' + yr;
       const opt = document.createElement('option');
       opt.value = val;
       opt.textContent = text;
@@ -6352,23 +6360,9 @@
     const select = document.getElementById('rekapPeriodeSelect');
     if (!select || !select.value) return;
 
-    const selectedVal = select.value;
-    let bulanList = [];
-    let tahun = new Date().getFullYear();
-
-    if (selectedVal.indexOf('TW-') === 0) {
-      const parts = selectedVal.split('-');
-      const twNum = parseInt(parts[1]);
-      tahun = parseInt(parts[2]);
-      if (twNum === 1) bulanList = [1, 2, 3];
-      else if (twNum === 2) bulanList = [4, 5, 6];
-      else if (twNum === 3) bulanList = [7, 8, 9];
-      else if (twNum === 4) bulanList = [10, 11, 12];
-    } else {
-      const parts = selectedVal.split('-');
-      tahun = parseInt(parts[0]);
-      bulanList = [parseInt(parts[1])];
-    }
+    const parts = select.value.split('-');
+    const tahun = parseInt(parts[0]);
+    const bulanList = [parseInt(parts[1])];
 
     google.script.run
       .withSuccessHandler((res) => {
@@ -6678,6 +6672,7 @@
           : '';
 
       const wb = new ExcelJS.Workbook();
+      wb.calcProperties = { fullCalcOnLoad: true };
       const ws = wb.addWorksheet('Rekap LTT');
       ws.columns = [
         { width: 4 },
@@ -6779,17 +6774,26 @@
 
         // Bulatkan max 2 desimal, hapus trailing zero di JS sebelum ditulis ke sel
         const rnd = (v) => parseFloat((parseFloat(v) || 0).toFixed(2));
+        const capaian = (tgt, real) =>
+          tgt === 0 ? '' : Math.round((real / tgt) * 10000) / 100;
+
+        let groupTgtTanam = 0,
+          groupRealTanam = 0,
+          groupTgtPanen = 0,
+          groupRealPanen = 0;
 
         desaList.forEach((desaName, idx) => {
           const key = desaName.toLowerCase().trim();
           let lbs = 0,
             tgtTanam = 0,
+            tgtPanen = 0,
             realTanam = 0,
             realPanen = 0;
           targets.forEach((t) => {
             if (t.desa.toLowerCase().trim() === key && t.komoditas === kom) {
               if (t.luasBakuSawah > 0) lbs = t.luasBakuSawah;
               if (t.totalTarget > 0) tgtTanam += t.totalTarget;
+              if (t.totalTargetPanen > 0) tgtPanen += t.totalTargetPanen;
             }
           });
           reports.forEach((r) => {
@@ -6798,6 +6802,11 @@
               realPanen += r.panen;
             }
           });
+
+          groupTgtTanam += tgtTanam;
+          groupRealTanam += realTanam;
+          groupTgtPanen += tgtPanen;
+          groupRealPanen += realPanen;
 
           const dRow = ws.addRow([
             idx + 1,
@@ -6809,18 +6818,18 @@
             rnd(realTanam),
             0,
             '',
-            0,
+            rnd(tgtPanen),
             rnd(realPanen),
             0,
           ]);
           const rn = dRow.number;
           dRow.getCell(8).value = {
             formula: `IF(F${rn}=0,"",ROUND(G${rn}/F${rn}*100,2))`,
-            result: 0,
+            result: capaian(rnd(tgtTanam), rnd(realTanam)),
           };
           dRow.getCell(12).value = {
             formula: `IF(J${rn}=0,"",ROUND(K${rn}/J${rn}*100,2))`,
-            result: 0,
+            result: capaian(rnd(tgtPanen), rnd(realPanen)),
           };
           dRow.eachCell((c) => {
             c.border = border;
@@ -6861,27 +6870,27 @@
         };
         sRow.getCell(6).value = {
           formula: `SUM(F${groupStart}:F${groupEnd})`,
-          result: 0,
+          result: rnd(groupTgtTanam),
         };
         sRow.getCell(7).value = {
           formula: `SUM(G${groupStart}:G${groupEnd})`,
-          result: 0,
+          result: rnd(groupRealTanam),
         };
         sRow.getCell(8).value = {
           formula: `IF(F${sr}=0,"",ROUND(G${sr}/F${sr}*100,2))`,
-          result: 0,
+          result: capaian(rnd(groupTgtTanam), rnd(groupRealTanam)),
         };
         sRow.getCell(10).value = {
           formula: `SUM(J${groupStart}:J${groupEnd})`,
-          result: 0,
+          result: rnd(groupTgtPanen),
         };
         sRow.getCell(11).value = {
           formula: `SUM(K${groupStart}:K${groupEnd})`,
-          result: 0,
+          result: rnd(groupRealPanen),
         };
         sRow.getCell(12).value = {
           formula: `IF(J${sr}=0,"",ROUND(K${sr}/J${sr}*100,2))`,
-          result: 0,
+          result: capaian(rnd(groupTgtPanen), rnd(groupRealPanen)),
         };
         sRow.eachCell((c) => {
           c.font = { bold: true };
@@ -7141,9 +7150,11 @@
     const desa = (
       document.getElementById('filterDesaLaporan').value || ''
     ).trim();
+    const metode = document.getElementById('filterMetodeLaporan') ? document.getElementById('filterMetodeLaporan').value : '';
     params.komoditas = kom || 'Padi';
     if (kec) params.kecamatan = kec;
     if (desa) params.desa = desa;
+    if (metode) params.metode = metode;
 
     // Juga muat dropdown kecamatan kalau belum diisi
     _muatDropdownKecLaporan();
@@ -7247,6 +7258,9 @@
       document.getElementById('filterTglSelesaiLaporan').value = todayStr;
     }
     document.getElementById('filterKomLaporan').value = '';
+    if (document.getElementById('filterMetodeLaporan')) {
+      document.getElementById('filterMetodeLaporan').value = '';
+    }
     document.getElementById('filterKecLaporan').value = '';
     const selDesa = document.getElementById('filterDesaLaporan');
     selDesa.innerHTML = '<option value="">— Pilih Kecamatan dulu —</option>';
@@ -7316,7 +7330,8 @@
           r.pelapor.toLowerCase().includes(q) ||
           r.kecamatan.toLowerCase().includes(q) ||
           r.desa.toLowerCase().includes(q) ||
-          (r.jenis_ltt || '').toLowerCase().includes(q),
+          (r.jenis_ltt || '').toLowerCase().includes(q) ||
+          (r.metode_penanaman || '').toLowerCase().includes(q),
       );
     }
 
@@ -7433,6 +7448,7 @@
                     <td class="p-3 border-r border-gray-100 text-gray-600">${r.desa || '-'}</td>
                     <td class="p-3 border-r border-gray-100"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border ${komClass}">${r.komoditas || '-'}</span></td>
                     <td class="p-3 border-r border-gray-100 text-gray-500">${r.jenis_ltt || '<span class="text-gray-300">—</span>'}</td>
+                    <td class="p-3 border-r border-gray-100 text-gray-500">${r.metode_penanaman || '<span class="text-gray-300">—</span>'}</td>
                     <td class="p-3 border-r border-gray-100 text-right text-gray-600">${_fmtHa(r.luas_bera)}</td>
                     <td class="p-3 border-r border-gray-100 text-right text-gray-600">${_fmtHa(r.olah_lahan)}</td>
                     <td class="p-3 border-r border-gray-100 text-right font-bold text-blue-700">${_fmtHa(r.luas_tanam)}</td>
@@ -7659,6 +7675,7 @@
     document.getElementById('editLaporanAdminPanen').value = _toKoma(
       r.luas_panen,
     );
+    document.getElementById('editLaporanAdminMetode').value = r.metode_penanaman || '';
     const modal = document.getElementById('modalEditLaporanAdmin');
     modal.classList.remove('hidden');
     modal.classList.add('flex');
@@ -7685,6 +7702,7 @@
     const olah = document.getElementById('editLaporanAdminOlah').value;
     const tanam = document.getElementById('editLaporanAdminTanam').value;
     const panen = document.getElementById('editLaporanAdminPanen').value;
+    const metode = document.getElementById('editLaporanAdminMetode').value;
     const btn = document.getElementById('btnSimpanEditLaporanAdmin');
     const ikon = document.getElementById('ikonSimpanEditLaporanAdmin');
     const teks = document.getElementById('teksSimpanEditLaporanAdmin');
@@ -7700,6 +7718,8 @@
         if (teks) teks.textContent = 'Simpan';
         if (res.status === 'success') {
           tutupEditLaporanAdmin();
+          cacheRekap = {};
+          _laporanLTTLoaded = false;
           Swal.fire({
             icon: 'success',
             title: 'Tersimpan!',
@@ -7724,6 +7744,7 @@
         undefined,
         _parseDesimal(bera),
         _parseDesimal(olah),
+        metode
       );
   };
 
@@ -7765,19 +7786,22 @@
     const secTarget = document.getElementById('bppSectionTarget');
     const secManajemen = document.getElementById('bppSectionManajemenPPL');
     const secVerifikasi = document.getElementById('bppSectionVerifikasi');
+    const secLaporanLTT = document.getElementById('bppSectionLaporanLTT');
 
     const btnDashboard = document.getElementById('btnNavDashboard');
     const btnTarget = document.getElementById('btnNavTarget');
     const btnManajemen = document.getElementById('btnNavManajemen');
     const btnVerifikasi = document.getElementById('btnNavVerifikasi');
+    const btnLaporanLTT = document.getElementById('btnNavLaporanLttBpp');
 
-    if (!secDashboard || !secTarget || !secManajemen || !secVerifikasi) return;
+    if (!secDashboard || !secTarget || !secManajemen || !secVerifikasi || !secLaporanLTT) return;
 
     // Reset visibility
     secDashboard.classList.add('hidden');
     secTarget.classList.add('hidden');
     secManajemen.classList.add('hidden');
     secVerifikasi.classList.add('hidden');
+    secLaporanLTT.classList.add('hidden');
 
     // Reset button active states
     const activeClasses = ['bg-green-900', 'text-white'];
@@ -7787,7 +7811,7 @@
       'hover:text-white',
     ];
 
-    [btnDashboard, btnTarget, btnManajemen, btnVerifikasi].forEach((btn) => {
+    [btnDashboard, btnTarget, btnManajemen, btnVerifikasi, btnLaporanLTT].forEach((btn) => {
       if (btn) {
         btn.classList.remove(...activeClasses);
         btn.classList.add(...inactiveClasses);
@@ -7836,8 +7860,480 @@
       if (daftarPPLLokal.length === 0) {
         muatDaftarPPL();
       }
+    } else if (target === 'laporan-ltt') {
+      secLaporanLTT.classList.remove('hidden');
+      if (btnLaporanLTT) {
+        btnLaporanLTT.classList.add(...activeClasses);
+        btnLaporanLTT.classList.remove(...inactiveClasses);
+      }
+      window.history.pushState({ overlay: 'bppSectionLaporanLTT' }, '');
+      // Muat data jika pertama kali
+      if (
+        document.getElementById('bppTbodyLaporanLTT').children.length === 1 &&
+        document.getElementById('bppTbodyLaporanLTT').innerText.includes('Memuat data laporan')
+      ) {
+        muatLaporanLTTBPP(false);
+      }
     }
 
-    window.tutupBppSidebar();
+    tutupBppSidebar();
   };
+
+  function bukaModalTargetPmAas() {
+    const sel = document.getElementById('filterBulanPmAas');
+    if (!sel || !sel.value) return;
+    const parts = sel.value.split('-');
+    const tahun = parseInt(parts[0]);
+    const bulan = parseInt(parts[1]);
+    const textBulan = sel.options[sel.selectedIndex].text;
+
+    Swal.fire({
+      title: 'Set Target PM AAS',
+      text: `Masukkan target luas tanam (Ha) untuk ${textBulan}:`,
+      input: 'number',
+      inputValue: _currentTargetPmAas || '',
+      inputAttributes: { min: 0, step: 'any' },
+      showCancelButton: true,
+      confirmButtonText: 'Simpan',
+      cancelButtonText: 'Batal',
+      showLoaderOnConfirm: true,
+      preConfirm: (target) => {
+        if (!target) {
+          Swal.showValidationMessage('Target tidak boleh kosong');
+          return;
+        }
+        return new Promise((resolve, reject) => {
+          google.script.run
+            .withSuccessHandler((res) => {
+              if (res.status === 'success') resolve();
+              else reject(res.message);
+            })
+            .withFailureHandler((err) => reject(err))
+            .simpanTargetPmAasKabupaten(tahun, bulan, target);
+        }).catch((err) => {
+          Swal.showValidationMessage(`Request gagal: ${err}`);
+        });
+      },
+      allowOutsideClick: () => !Swal.isLoading()
+    }).then((result) => {
+      if (result.isConfirmed) {
+        Swal.fire('Tersimpan!', 'Target PM AAS berhasil diperbarui.', 'success');
+        muatPmAas();
+      }
+    });
+  }
+
+  function muatPmAas() {
+    const sel = document.getElementById('filterBulanPmAas');
+    if (!sel || !sel.value) return;
+    const parts = sel.value.split('-');
+    const tahun = parseInt(parts[0]);
+    const bulan = parseInt(parts[1]);
+
+    const tbody = document.getElementById('tabelPmAas');
+    tbody.innerHTML = '<tr><td colspan="3" class="p-8 text-center text-gray-400"><i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Memuat data...</td></tr>';
+    document.getElementById('totalTanamPmAas').innerHTML = '0 <span class="text-xs font-normal text-gray-500">Ha</span>';
+    document.getElementById('totalPanenPmAas').innerHTML = '0 <span class="text-xs font-normal text-gray-500">Ha</span>';
+    document.getElementById('capaianTargetPmAas').innerText = '0 Ha';
+    document.getElementById('capaianRealisasiPmAas').innerText = '0 Ha';
+    document.getElementById('capaianSisaPmAas').innerHTML = '<i class="fa-solid fa-circle-info"></i> Sisa Target: 0 Ha';
+    
+    const labelBulan = sel.options[sel.selectedIndex].text;
+    const labelEl = document.getElementById('labelBulanPmAasKecamatan');
+    if (labelEl) labelEl.innerText = 'Periode: ' + labelBulan;
+
+    google.script.run
+      .withSuccessHandler((res) => {
+        if (res.error) {
+          tbody.innerHTML = `<tr><td colspan="3" class="p-8 text-center text-red-500">${res.error}</td></tr>`;
+          if (chartPmAasTanam) chartPmAasTanam.destroy();
+          return;
+        }
+
+        document.getElementById('totalTanamPmAas').innerHTML = `${formatAngkaLTT(res.totalTanam)} <span class="text-xs font-normal text-gray-500">Ha</span>`;
+        document.getElementById('totalPanenPmAas').innerHTML = `${formatAngkaLTT(res.totalPanen)} <span class="text-xs font-normal text-gray-500">Ha</span>`;
+        
+        document.getElementById('capaianTargetPmAas').innerText = `${formatAngkaLTT(res.targetTanam)} Ha`;
+        document.getElementById('capaianRealisasiPmAas').innerText = `${formatAngkaLTT(res.totalTanam)} Ha`;
+        const sisa = Math.max(0, res.targetTanam - res.totalTanam);
+        document.getElementById('capaianSisaPmAas').innerHTML = `<i class="fa-solid fa-circle-info"></i> Sisa Target: ${formatAngkaLTT(sisa)} Ha`;
+
+        _currentTargetPmAas = res.targetTanam || '';
+
+        let html = '';
+        if (res.rincian.length === 0) {
+          html = '<tr><td colspan="3" class="p-8 text-center text-gray-400">Tidak ada data PM AAS untuk bulan ini</td></tr>';
+        } else {
+          res.rincian.forEach((row) => {
+            html += `<tr class="border-b hover:bg-gray-50">
+              <td class="p-3 font-medium text-gray-800">${row.metode}</td>
+              <td class="p-3 text-right font-bold text-green-600">${formatAngkaLTT(row.tanam)}</td>
+              <td class="p-3 text-right font-bold text-yellow-600">${formatAngkaLTT(row.panen)}</td>
+            </tr>`;
+          });
+        }
+        tbody.innerHTML = html;
+
+        // Render Tabel Kecamatan
+        const tbodyKec = document.getElementById('tabelPmAasKecamatan');
+        if (tbodyKec) {
+          let htmlKec = '';
+          if (!res.rekapKecamatan || res.rekapKecamatan.length === 0) {
+            htmlKec = '<tr><td colspan="4" class="p-8 text-center text-gray-400">Tidak ada data PM AAS untuk bulan ini</td></tr>';
+          } else {
+            let totalTanamKec = 0;
+            let totalPanenKec = 0;
+            res.rekapKecamatan.forEach((row, index) => {
+              totalTanamKec += row.tanam;
+              totalPanenKec += row.panen;
+              const rowBg = index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50';
+              htmlKec += `<tr class="${rowBg} hover:bg-green-50/30 transition duration-150 border-b border-gray-100 text-xs">
+                <td class="p-3 border-r border-gray-200 text-center text-gray-500 font-medium">${index + 1}</td>
+                <td class="p-3 border-r border-gray-200 font-semibold text-gray-800">${row.kecamatan}</td>
+                <td class="p-2 border-r border-gray-200 text-right tabular-nums font-bold text-gray-900 bg-green-50/10">${formatAngkaLTT(row.tanam)}</td>
+                <td class="p-2 text-right tabular-nums font-bold text-gray-900 bg-green-50/10">${formatAngkaLTT(row.panen)}</td>
+              </tr>`;
+            });
+            htmlKec += `<tr class="bg-yellow-50 text-yellow-900 font-bold border-t border-gray-300 text-xs">
+                <td colspan="2" class="p-3 border-r border-gray-200 text-center uppercase tracking-wider">Jumlah</td>
+                <td class="p-2 border-r border-gray-200 text-right tabular-nums">${formatAngkaLTT(totalTanamKec)}</td>
+                <td class="p-2 text-right tabular-nums">${formatAngkaLTT(totalPanenKec)}</td>
+            </tr>`;
+          }
+          tbodyKec.innerHTML = htmlKec;
+        }
+        
+        renderChartPmAas(res.persentaseCapaian);
+      })
+      .withFailureHandler((err) => {
+        tbody.innerHTML = `<tr><td colspan="3" class="p-8 text-center text-red-500">Gagal memuat data: ${err}</td></tr>`;
+      })
+      .getDashboardPmAas({ bulan: bulan, tahun: tahun, forceRefresh: false });
+  }
+
+  function renderChartPmAas(persentase) {
+    if (chartPmAasTanam) {
+      chartPmAasTanam.destroy();
+    }
+    
+    const options = {
+      series: [Math.min(persentase, 100).toFixed(1)],
+      chart: { type: 'radialBar', height: 350 },
+      plotOptions: {
+        radialBar: {
+          hollow: { size: '65%' },
+          track: { background: '#f3f4f6', strokeWidth: '100%', margin: 0 },
+          dataLabels: {
+            show: true,
+            name: { offsetY: -10, show: true, color: '#9ca3af', fontSize: '11px' },
+            value: {
+              formatter: function(val) { return val + "%"; },
+              color: '#1f2937',
+              fontSize: '24px',
+              fontWeight: 700,
+              show: true,
+            }
+          }
+        }
+      },
+      labels: ['Target Tercapai'],
+      colors: ['#16a34a']
+    };
+    chartPmAasTanam = new ApexCharts(document.querySelector("#chartPmAasTanam"), options);
+    chartPmAasTanam.render();
+  }
+  // === LAPORAN LTT BPP STATE ===
+  let _bppLaporanLTTData = [];
+  let _bppLaporanLTTFiltered = [];
+  let _bppLaporanLTTLoaded = false;
+  let _bppLaporanLTTPage = 1;
+  let _bppLaporanLTTPageSize = 10;
+  let _bppLaporanLTTSort = { field: 'timestamp', dir: 'desc' };
+  let _bppLaporanLTTReqId = 0;
+
+  function muatLaporanLTTBPP(force = false) {
+    const iconRefresh = document.getElementById('bppIconRefreshLaporan');
+    if (iconRefresh) iconRefresh.classList.add('fa-spin');
+
+    document.getElementById('bppTbodyLaporanLTT').innerHTML =
+      '<tr><td colspan="14" class="p-12 text-center text-gray-400 italic"><i class="fa-solid fa-circle-notch fa-spin text-2xl text-green-500 mb-3 block"></i>Memuat data laporan...</td></tr>';
+
+    const tglMulaiEl = document.getElementById('bppFilterTglMulaiLaporan');
+    const tglSelesaiEl = document.getElementById('bppFilterTglSelesaiLaporan');
+    const now = new Date();
+    const todayStr =
+      now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+
+    if (tglMulaiEl && !tglMulaiEl.value) tglMulaiEl.value = todayStr;
+    if (tglSelesaiEl && !tglSelesaiEl.value) tglSelesaiEl.value = todayStr;
+
+    const tglMulai = tglMulaiEl ? tglMulaiEl.value : '';
+    const tglSelesai = tglSelesaiEl ? tglSelesaiEl.value : '';
+
+    if (tglMulai && tglSelesai) {
+      if (tglMulai > tglSelesai) {
+        if (iconRefresh) iconRefresh.classList.remove('fa-spin');
+        Swal.fire('Error', 'Tanggal mulai tidak boleh melebihi tanggal selesai.', 'error');
+        _bppRenderTabelLaporan(_bppLaporanLTTData);
+        return;
+      }
+      if (tglMulai.substring(0, 7) !== tglSelesai.substring(0, 7)) {
+        if (iconRefresh) iconRefresh.classList.remove('fa-spin');
+        Swal.fire('Peringatan', 'Tanggal mulai dan selesai harus berada dalam bulan yang sama.', 'warning');
+        _bppRenderTabelLaporan(_bppLaporanLTTData);
+        return;
+      }
+    }
+
+    const params = {};
+    if (tglMulai) params.tanggalMulai = tglMulai;
+    if (tglSelesai) params.tanggalSelesai = tglSelesai;
+    const kom = document.getElementById('bppFilterKomLaporan').value;
+    const desa = (document.getElementById('bppFilterDesaLaporan').value || '').trim();
+    params.komoditas = kom || 'Padi';
+    
+    // Paksa kecamatan dari userBppAktif
+    if (userAktif && userAktif.kecamatan) {
+        params.kecamatan = userAktif.kecamatan;
+    } else {
+        // Fallback jika aneh
+        if (iconRefresh) iconRefresh.classList.remove('fa-spin');
+        Swal.fire('Error', 'Sesi tidak valid. Silakan login kembali.', 'error');
+        return;
+    }
+
+    if (desa) params.desa = desa;
+
+    _bppMuatDropdownDesaLaporan(params.kecamatan);
+
+    const myReqId = ++_bppLaporanLTTReqId;
+
+    google.script.run
+      .withSuccessHandler(function (res) {
+        if (myReqId !== _bppLaporanLTTReqId) return;
+        if (iconRefresh) iconRefresh.classList.remove('fa-spin');
+        if (res.status !== 'success') {
+          document.getElementById('bppTbodyLaporanLTT').innerHTML =
+            '<tr><td colspan="14" class="p-10 text-center text-red-400"><i class="fa-solid fa-triangle-exclamation mr-2"></i>' +
+            (res.message || 'Gagal memuat data') +
+            '</td></tr>';
+          return;
+        }
+        _bppLaporanLTTData = res.data || [];
+        _bppLaporanLTTLoaded = true;
+        _bppLaporanLTTPage = 1;
+        _bppUpdateStat();
+        _bppApplySearchAndRender();
+      })
+      .withFailureHandler(function (err) {
+        if (myReqId !== _bppLaporanLTTReqId) return;
+        if (iconRefresh) iconRefresh.classList.remove('fa-spin');
+        document.getElementById('bppTbodyLaporanLTT').innerHTML =
+          '<tr><td colspan="14" class="p-10 text-center text-red-400"><i class="fa-solid fa-triangle-exclamation mr-2"></i>Error: ' +
+          (err.message || err) +
+          '</td></tr>';
+      })
+      .getLaporanLTT(params);
+  }
+
+  let _bppDesaLaporanLoadedKec = '';
+  function _bppMuatDropdownDesaLaporan(kec) {
+    if (_bppDesaLaporanLoadedKec === kec) return;
+    const selDesa = document.getElementById('bppFilterDesaLaporan');
+    selDesa.disabled = true;
+    selDesa.innerHTML = '<option value="">Memuat desa...</option>';
+    google.script.run
+      .withSuccessHandler(function (list) {
+        _bppDesaLaporanLoadedKec = kec;
+        selDesa.innerHTML = '<option value="">Semua Desa</option>';
+        (list || []).forEach((d) => {
+          selDesa.innerHTML += `<option value="${d}">${d}</option>`;
+        });
+        selDesa.disabled = false;
+      })
+      .withFailureHandler(function () {
+        selDesa.innerHTML = '<option value="">Semua Desa</option>';
+        selDesa.disabled = false;
+      })
+      .getDesaLaporan(kec);
+  }
+
+  function terapkanFilterLaporanBPP() {
+    _bppLaporanLTTLoaded = false;
+    muatLaporanLTTBPP(true);
+  }
+
+  function resetFilterLaporanBPP() {
+    const now = new Date();
+    const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    if (document.getElementById('bppFilterTglMulaiLaporan')) {
+      document.getElementById('bppFilterTglMulaiLaporan').value = todayStr;
+    }
+    if (document.getElementById('bppFilterTglSelesaiLaporan')) {
+      document.getElementById('bppFilterTglSelesaiLaporan').value = todayStr;
+    }
+    document.getElementById('bppFilterKomLaporan').value = '';
+    document.getElementById('bppFilterDesaLaporan').value = '';
+    document.getElementById('bppSearchLaporan').value = '';
+    _bppLaporanLTTLoaded = false;
+    muatLaporanLTTBPP();
+  }
+
+  function bppOnSearchLaporan() {
+    _bppLaporanLTTPage = 1;
+    _bppApplySearchAndRender();
+  }
+
+  function bppSetPageSizeLaporan() {
+    const val = parseInt(document.getElementById('bppPageSizeLaporan').value);
+    _bppLaporanLTTPageSize = isNaN(val) ? 10 : val;
+    _bppLaporanLTTPage = 1;
+    _bppRenderTabelLaporan(_bppLaporanLTTFiltered);
+  }
+
+  function bppSortLaporan(field) {
+    if (_bppLaporanLTTSort.field === field) {
+      _bppLaporanLTTSort.dir = _bppLaporanLTTSort.dir === 'asc' ? 'desc' : 'asc';
+    } else {
+      _bppLaporanLTTSort.field = field;
+      _bppLaporanLTTSort.dir = 'asc';
+    }
+    ['timestamp', 'pelapor', 'desa', 'luas_tanam', 'luas_panen', 'luas_bera', 'olah_lahan'].forEach((f) => {
+      const icon = document.getElementById('bppSortIcon-' + f);
+      if (!icon) return;
+      if (f === _bppLaporanLTTSort.field) {
+        icon.className = 'fa-solid ml-1 ' + (_bppLaporanLTTSort.dir === 'asc' ? 'fa-sort-up text-green-600' : 'fa-sort-down text-green-600');
+      } else {
+        icon.className = 'fa-solid fa-sort text-gray-300 ml-1';
+      }
+    });
+    _bppLaporanLTTPage = 1;
+    _bppApplySearchAndRender();
+  }
+
+  function _bppApplySearchAndRender() {
+    const q = (document.getElementById('bppSearchLaporan').value || '').toLowerCase().trim();
+    if (!q) {
+      _bppLaporanLTTFiltered = [..._bppLaporanLTTData];
+    } else {
+      _bppLaporanLTTFiltered = _bppLaporanLTTData.filter(
+        (r) =>
+          r.pelapor.toLowerCase().includes(q) ||
+          r.desa.toLowerCase().includes(q) ||
+          (r.jenis_ltt || '').toLowerCase().includes(q) ||
+          (r.metode_penanaman || '').toLowerCase().includes(q),
+      );
+    }
+    const { field, dir } = _bppLaporanLTTSort;
+    _bppLaporanLTTFiltered.sort((a, b) => {
+      let va = a[field];
+      let vb = b[field];
+      if (typeof va === 'number' && typeof vb === 'number') {
+        return dir === 'asc' ? va - vb : vb - va;
+      }
+      va = String(va || '').toLowerCase();
+      vb = String(vb || '').toLowerCase();
+      const cmp = va.localeCompare(vb, 'id');
+      return dir === 'asc' ? cmp : -cmp;
+    });
+    const elCari = document.getElementById('bppStatHasilCari');
+    if (elCari) elCari.innerText = _bppLaporanLTTFiltered.length.toLocaleString('id-ID');
+    _bppRenderTabelLaporan(_bppLaporanLTTFiltered);
+  }
+
+  function _bppUpdateStat() {
+    const totalData = _bppLaporanLTTData.length;
+    const totalTanam = _bppLaporanLTTData.reduce((s, r) => s + (parseFloat(r.luas_tanam) || 0), 0);
+    const totalPanen = _bppLaporanLTTData.reduce((s, r) => s + (parseFloat(r.luas_panen) || 0), 0);
+    const elTotal = document.getElementById('bppStatTotalLaporan');
+    const elTanam = document.getElementById('bppStatTotalTanam');
+    const elPanen = document.getElementById('bppStatTotalPanen');
+    const elCari = document.getElementById('bppStatHasilCari');
+    if (elTotal) elTotal.innerText = totalData.toLocaleString('id-ID');
+    if (elTanam) elTanam.innerText = _numId(totalTanam) + ' Ha';
+    if (elPanen) elPanen.innerText = _numId(totalPanen) + ' Ha';
+    if (elCari) elCari.innerText = totalData.toLocaleString('id-ID');
+  }
+
+  function _bppRenderTabelLaporan(data) {
+    const tbody = document.getElementById('bppTbodyLaporanLTT');
+    if (!tbody) return;
+    const total = data.length;
+    const pageSize = _bppLaporanLTTPageSize;
+    const totalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 1;
+    if (_bppLaporanLTTPage > totalPages) _bppLaporanLTTPage = 1;
+    const page = _bppLaporanLTTPage;
+    const start = pageSize > 0 ? (page - 1) * pageSize : 0;
+    const end = pageSize > 0 ? Math.min(start + pageSize, total) : total;
+    const sliced = data.slice(start, end);
+    if (sliced.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="14" class="p-10 text-center text-gray-400 italic"><i class="fa-solid fa-inbox text-3xl text-gray-300 mb-3 block"></i>Tidak ada data yang sesuai.</td></tr>';
+    } else {
+      const komColor = { Padi: 'bg-blue-50 text-blue-700 border-blue-100', Jagung: 'bg-yellow-50 text-yellow-700 border-yellow-100', 'Ubi Kayu': 'bg-orange-50 text-orange-700 border-orange-100' };
+      tbody.innerHTML = sliced.map((r, idx) => {
+        const no = start + idx + 1;
+        const komClass = komColor[r.komoditas] || 'bg-gray-50 text-gray-600 border-gray-100';
+        const rowBg = idx % 2 === 0 ? '' : 'bg-gray-50/50';
+        return `<tr class="hover:bg-green-50/30 transition-colors ${rowBg}">
+                  <td class="p-3 text-center text-gray-400 border-r border-gray-100">${no}</td>
+                  <td class="p-3 border-r border-gray-100 text-gray-700 font-medium">${_formatTglLaporan(r.timestamp)}</td>
+                  <td class="p-3 border-r border-gray-100 font-bold text-gray-800">${r.pelapor || '-'}</td>
+                  <td class="p-3 border-r border-gray-100 text-gray-600">${r.desa || '-'}</td>
+                  <td class="p-3 border-r border-gray-100"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border ${komClass}">${r.komoditas || '-'}</span></td>
+                  <td class="p-3 border-r border-gray-100 text-gray-500">${r.jenis_ltt || '<span class="text-gray-300">—</span>'}</td>
+                  <td class="p-3 border-r border-gray-100 text-gray-500">${r.metode_penanaman || '<span class="text-gray-300">—</span>'}</td>
+                  <td class="p-3 border-r border-gray-100 text-right text-gray-600">${_fmtHa(r.luas_bera)}</td>
+                  <td class="p-3 border-r border-gray-100 text-right text-gray-600">${_fmtHa(r.olah_lahan)}</td>
+                  <td class="p-3 border-r border-gray-100 text-right font-bold text-blue-700">${_fmtHa(r.luas_tanam)}</td>
+                  <td class="p-3 border-r border-gray-100 text-right font-bold text-yellow-700">${_fmtHa(r.luas_panen)}</td>
+                  <td class="p-3 border-r border-gray-100 text-gray-500 max-w-[150px] truncate" title="${r.keterangan}">${r.keterangan || '-'}</td>
+                  <td class="p-3 border-r border-gray-100 text-gray-700 text-[11px]">${r.status || '-'}</td>
+                  <td class="p-3 text-center">
+                    <button onclick="bukaEditLaporanBPPById('${r.id}')" title="Edit Laporan" class="w-7 h-7 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition shadow-sm flex items-center justify-center mx-auto">
+                      <i class="fa-solid fa-pen-to-square text-xs"></i>
+                    </button>
+                  </td>
+                </tr>`;
+      }).join('');
+    }
+    const infoEl = document.getElementById('bppInfoPaginasiLaporan');
+    if (infoEl) {
+      if (pageSize > 0 && total > 0) infoEl.innerText = `Menampilkan ${start + 1}–${end} dari ${total.toLocaleString('id-ID')} data`;
+      else infoEl.innerText = `Menampilkan ${total.toLocaleString('id-ID')} data`;
+    }
+    const btnContainer = document.getElementById('bppBtnPaginasiLaporan');
+    if (btnContainer && pageSize > 0) {
+      btnContainer.innerHTML = '';
+      const MathMax = Math.max, MathMin = Math.min, MathFloor = Math.floor;
+      const MAX_BTN = 7;
+      let startPage = MathMax(1, page - MathFloor(MAX_BTN / 2));
+      let endPage = MathMin(totalPages, startPage + MAX_BTN - 1);
+      if (endPage - startPage < MAX_BTN - 1) startPage = MathMax(1, endPage - MAX_BTN + 1);
+      const mkBtn = (label, pageNum, active, disabled) => {
+        const cls = active ? 'px-3 py-1.5 rounded-lg text-xs font-bold bg-green-600 text-white shadow-sm' : disabled ? 'px-3 py-1.5 rounded-lg text-xs font-bold text-gray-300 cursor-not-allowed' : 'px-3 py-1.5 rounded-lg text-xs font-bold text-gray-600 hover:bg-green-50 border border-gray-200 transition';
+        return `<button class="${cls}" ${disabled ? 'disabled' : ''} onclick="_bppGoPageLaporan(${pageNum})">${label}</button>`;
+      };
+      btnContainer.innerHTML += mkBtn('‹ Prev', page - 1, false, page <= 1);
+      for (let p = startPage; p <= endPage; p++) btnContainer.innerHTML += mkBtn(p, p, p === page, false);
+      btnContainer.innerHTML += mkBtn('Next ›', page + 1, false, page >= totalPages);
+    } else if (btnContainer) {
+      btnContainer.innerHTML = '';
+    }
+  }
+
+  function _bppGoPageLaporan(p) {
+    const totalPages = _bppLaporanLTTPageSize > 0 ? Math.ceil(_bppLaporanLTTFiltered.length / _bppLaporanLTTPageSize) : 1;
+    if (p < 1 || p > totalPages) return;
+    _bppLaporanLTTPage = p;
+    _bppRenderTabelLaporan(_bppLaporanLTTFiltered);
+  }
+
+  function unduhExcelLaporanBPP() {
+    if (_bppLaporanLTTFiltered.length === 0) {
+      Swal.fire('Info', 'Tidak ada data laporan untuk diunduh.', 'info');
+      return;
+    }
+    exportToExcel(_bppLaporanLTTFiltered, 'Laporan_LTT_BPP.xlsx');
+  }
+
 </script>

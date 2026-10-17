@@ -39,7 +39,7 @@ var LOGO_SRC_ =
   'https://lh3.googleusercontent.com/d/1eT8hkuReypIqxGP7O8G0zGS5hGjSFrmt';
 
 // Naikkan angka ini setiap kali ada perubahan File_HTML_*.html agar cache lama otomatis invalid
-var CODE_VERSION = 16;
+var CODE_VERSION = 1;
 
 function include(filename) {
   var tmpl = HtmlService.createTemplateFromFile(filename);
@@ -164,7 +164,7 @@ function kirimSaranWebhook(pesan, userInfo) {
     if (!pesan || !pesan.trim()) {
       return { status: 'error', message: 'Teks saran tidak boleh kosong' };
     }
-    
+
     var payload = {
       timestamp: new Date().toISOString(),
       saran: pesan.trim(),
@@ -174,28 +174,29 @@ function kirimSaranWebhook(pesan, userInfo) {
         nip: userInfo ? userInfo.nip : 'Unknown',
         role: userInfo ? userInfo.role : 'Unknown',
         kecamatan: userInfo ? userInfo.kecamatan : '',
-        desa: userInfo ? userInfo.desa : ''
-      }
+        desa: userInfo ? userInfo.desa : '',
+      },
     };
-    
+
     var url = 'http://103.245.38.96:3000/webhook/saran';
     var options = {
       method: 'post',
       contentType: 'application/json',
       payload: JSON.stringify(payload),
-      muteHttpExceptions: true
+      muteHttpExceptions: true,
     };
-    
+
     var response = UrlFetchApp.fetch(url, options);
     var responseCode = response.getResponseCode();
     var responseBody = response.getContentText();
-    
+
     if (responseCode >= 200 && responseCode < 300) {
       return { status: 'success', message: 'Saran berhasil terkirim' };
     } else {
-      return { 
-        status: 'error', 
-        message: 'Gagal mengirim saran ke server webhook (Code: ' + responseCode + ')'
+      return {
+        status: 'error',
+        message:
+          'Gagal mengirim saran ke server webhook (Code: ' + responseCode + ')',
       };
     }
   } catch (err) {

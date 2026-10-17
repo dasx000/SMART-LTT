@@ -1,11 +1,17 @@
 BUAT plan.MD  BERISI PLANNING
 
-kita nanti akan menyiapkap fitur saran , 
-saran it kita kirimkan ke webhook aplikasi saayaasatulagiyang saya buil mnggunakan nodejs
-tombol saran ada di menu ppl, bagian menu lainnya
-contoh penerapan webhook udah adakan di code kita
+jadi kita akan membuat fitur dimana ketika di tanggal tertentu (akhir bulan) 
+muncul sebuah menu baru di layar ppl
+menu ini akan menampilkan form input dan juga ada daftar isian di bulan tersebut yang bisa kita edit, ubikayu dan jagung,padi,
+tujuannya untuk perbaikan data atau inputan baru tapi user bisa pilih tanggal
+dropdown desa pada inpoutan laporan tampilkan desa di semua kecamatan user, bukan berdasarkan wkpp, 
 
 JANGAN TERLALU LOW LEVEL ATAU DETAIL
 CUKUP INSTRUKSIKAN SECARA HIGH LEVEL
 NANTI PLANINGNYA AKAN DI EKSEKUSI OLEH JUNIOR PROGRAMMER ATAU LLM LEBIH MURAH
+
+
+
+di menu ini , dibagian filter tanggal buat aja validasi di front end ,
+user tidak boleh pilih lintas bulan, jadi hanay ijinkan from-to nya dibulan yang sama
 

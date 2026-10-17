@@ -47,6 +47,30 @@
       </a>
       <a
         href="#"
+        id="nav-lttPmAas"
+        data-roles="Admin_Kab,Dinas"
+        onclick="
+          navigasi('lttPmAas');
+          toggleSidebar(true);
+        "
+        class="nav-item flex items-center px-4 py-3 text-green-200 hover:bg-green-700 hover:text-white rounded-lg transition"
+      >
+        <i class="fa-solid fa-seedling w-6"></i> LTT PM AAS
+      </a>
+      <a
+        href="#"
+        id="nav-laporan-ltt"
+        data-roles="Admin_Kab"
+        onclick="
+          navigasi('laporan-ltt');
+          toggleSidebar(true);
+        "
+        class="nav-item flex items-center px-4 py-3 text-green-200 hover:bg-green-700 hover:text-white rounded-lg transition"
+      >
+        <i class="fa-solid fa-file-lines w-6"></i> Laporan LTT
+      </a>
+      <a
+        href="#"
         id="nav-manajemen"
         data-roles="Admin_Kab"
         onclick="
@@ -69,18 +93,7 @@
       >
         <i class="fa-solid fa-bullseye w-6"></i> Target Komoditas
       </a>
-      <a
-        href="#"
-        id="nav-laporan-ltt"
-        data-roles="Admin_Kab"
-        onclick="
-          navigasi('laporan-ltt');
-          toggleSidebar(true);
-        "
-        class="nav-item flex items-center px-4 py-3 text-green-200 hover:bg-green-700 hover:text-white rounded-lg transition"
-      >
-        <i class="fa-solid fa-file-lines w-6"></i> Laporan LTT
-      </a>
+
       <a
         href="#"
         id="nav-logs"
@@ -152,28 +165,28 @@
         <div
           class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 border-b pb-3 gap-3"
         >
-          <div class="flex gap-2 flex-wrap" id="tabContainer">
+          <div class="flex gap-2 overflow-x-auto pb-1 items-center w-full" id="tabContainer" style="scrollbar-width: none;">
             <button
               onclick="setTab(this, null)"
-              class="tab-btn px-5 py-2 text-sm font-bold bg-green-600 text-white rounded-t-lg transition-all"
+              class="tab-btn shrink-0 px-4 py-2 text-sm font-bold bg-green-600 text-white rounded-lg transition-all"
             >
               Ringkasan
             </button>
             <button
               onclick="setTab(this, 'rekap-padi')"
-              class="tab-btn px-5 py-2 text-sm font-bold text-gray-500 hover:text-green-600 transition-all"
+              class="tab-btn shrink-0 px-4 py-2 text-sm font-bold text-gray-500 hover:text-green-600 rounded-lg transition-all"
             >
               Padi
             </button>
             <button
               onclick="setTab(this, 'jagung')"
-              class="tab-btn px-5 py-2 text-sm font-bold text-gray-500 hover:text-green-600 transition-all"
+              class="tab-btn shrink-0 px-4 py-2 text-sm font-bold text-gray-500 hover:text-green-600 rounded-lg transition-all"
             >
               Jagung
             </button>
             <button
               onclick="setTab(this, 'ubi-kayu')"
-              class="tab-btn px-5 py-2 text-sm font-bold text-gray-500 hover:text-green-600 transition-all"
+              class="tab-btn shrink-0 px-4 py-2 text-sm font-bold text-gray-500 hover:text-green-600 rounded-lg transition-all"
             >
               Ubi Kayu
             </button>
@@ -200,13 +213,13 @@
         <div id="panelDashboard">
           <!-- KPI Cards (6 Cards Breakdown) -->
           <div
-            class="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6 mb-6 sm:mb-8"
+            class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8"
           >
-            <!-- TANAM SECTION -->
+            <!-- PADI SECTION -->
             <div
               class="bg-white p-3 sm:p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden"
             >
-              <div class="absolute top-0 right-0 p-2 opacity-10">
+              <div class="absolute top-0 right-0 p-2 opacity-10 hidden sm:block">
                 <i class="fa-solid fa-wheat-awn text-4xl text-blue-600"></i>
               </div>
               <div
@@ -231,55 +244,7 @@
             <div
               class="bg-white p-3 sm:p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden"
             >
-              <div class="absolute top-0 right-0 p-2 opacity-10">
-                <i class="fa-solid fa-leaf text-4xl text-blue-600"></i>
-              </div>
-              <div
-                class="w-8 h-8 sm:w-10 sm:h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-base sm:text-lg mr-2 sm:mr-3 flex-shrink-0"
-              >
-                <i class="fa-solid fa-seedling"></i>
-              </div>
-              <div>
-                <p class="text-xs text-gray-400 font-bold uppercase">
-                  TANAM JAGUNG
-                </p>
-                <h3
-                  class="text-base sm:text-xl font-bold text-gray-800"
-                  id="tanamJagung"
-                >
-                  -
-                </h3>
-              </div>
-            </div>
-            <div
-              class="bg-white p-3 sm:p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden"
-            >
-              <div class="absolute top-0 right-0 p-2 opacity-10">
-                <i class="fa-solid fa-carrot text-4xl text-blue-600"></i>
-              </div>
-              <div
-                class="w-8 h-8 sm:w-10 sm:h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-base sm:text-lg mr-2 sm:mr-3 flex-shrink-0"
-              >
-                <i class="fa-solid fa-seedling"></i>
-              </div>
-              <div>
-                <p class="text-xs text-gray-400 font-bold uppercase">
-                  TANAM UBI KAYU
-                </p>
-                <h3
-                  class="text-base sm:text-xl font-bold text-gray-800"
-                  id="tanamUbi"
-                >
-                  -
-                </h3>
-              </div>
-            </div>
-
-            <!-- PANEN SECTION -->
-            <div
-              class="bg-white p-3 sm:p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden"
-            >
-              <div class="absolute top-0 right-0 p-2 opacity-10">
+              <div class="absolute top-0 right-0 p-2 opacity-10 hidden sm:block">
                 <i
                   class="fa-solid fa-wheat-awn-circle-exclamation text-4xl text-yellow-600"
                 ></i>
@@ -303,10 +268,35 @@
                 </h3>
               </div>
             </div>
+
+            <!-- JAGUNG SECTION -->
             <div
               class="bg-white p-3 sm:p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden"
             >
-              <div class="absolute top-0 right-0 p-2 opacity-10">
+              <div class="absolute top-0 right-0 p-2 opacity-10 hidden sm:block">
+                <i class="fa-solid fa-leaf text-4xl text-blue-600"></i>
+              </div>
+              <div
+                class="w-8 h-8 sm:w-10 sm:h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-base sm:text-lg mr-2 sm:mr-3 flex-shrink-0"
+              >
+                <i class="fa-solid fa-seedling"></i>
+              </div>
+              <div>
+                <p class="text-xs text-gray-400 font-bold uppercase">
+                  TANAM JAGUNG
+                </p>
+                <h3
+                  class="text-base sm:text-xl font-bold text-gray-800"
+                  id="tanamJagung"
+                >
+                  -
+                </h3>
+              </div>
+            </div>
+            <div
+              class="bg-white p-3 sm:p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden"
+            >
+              <div class="absolute top-0 right-0 p-2 opacity-10 hidden sm:block">
                 <i class="fa-solid fa-leaf text-4xl text-yellow-600"></i>
               </div>
               <div
@@ -326,10 +316,35 @@
                 </h3>
               </div>
             </div>
+
+            <!-- UBI KAYU SECTION -->
             <div
               class="bg-white p-3 sm:p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden"
             >
-              <div class="absolute top-0 right-0 p-2 opacity-10">
+              <div class="absolute top-0 right-0 p-2 opacity-10 hidden sm:block">
+                <i class="fa-solid fa-carrot text-4xl text-blue-600"></i>
+              </div>
+              <div
+                class="w-8 h-8 sm:w-10 sm:h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-base sm:text-lg mr-2 sm:mr-3 flex-shrink-0"
+              >
+                <i class="fa-solid fa-seedling"></i>
+              </div>
+              <div>
+                <p class="text-xs text-gray-400 font-bold uppercase">
+                  TANAM UBI KAYU
+                </p>
+                <h3
+                  class="text-base sm:text-xl font-bold text-gray-800"
+                  id="tanamUbi"
+                >
+                  -
+                </h3>
+              </div>
+            </div>
+            <div
+              class="bg-white p-3 sm:p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden"
+            >
+              <div class="absolute top-0 right-0 p-2 opacity-10 hidden sm:block">
                 <i class="fa-solid fa-carrot text-4xl text-yellow-600"></i>
               </div>
               <div
@@ -349,14 +364,62 @@
                 </h3>
               </div>
             </div>
+
+            <!-- PM-AAS SECTION -->
+            <div
+              class="bg-white p-3 sm:p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden"
+            >
+              <div class="absolute top-0 right-0 p-2 opacity-10 hidden sm:block">
+                <i class="fa-solid fa-seedling text-4xl text-blue-600"></i>
+              </div>
+              <div
+                class="w-8 h-8 sm:w-10 sm:h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-base sm:text-lg mr-2 sm:mr-3 flex-shrink-0"
+              >
+                <i class="fa-solid fa-seedling"></i>
+              </div>
+              <div>
+                <p class="text-xs text-gray-400 font-bold uppercase">
+                  TANAM PM-AAS
+                </p>
+                <h3
+                  class="text-base sm:text-xl font-bold text-gray-800"
+                  id="tanamPmAasMain"
+                >
+                  -
+                </h3>
+              </div>
+            </div>
+            <div
+              class="bg-white p-3 sm:p-5 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden"
+            >
+              <div class="absolute top-0 right-0 p-2 opacity-10 hidden sm:block">
+                <i class="fa-solid fa-wheat-awn text-4xl text-yellow-600"></i>
+              </div>
+              <div
+                class="w-8 h-8 sm:w-10 sm:h-10 bg-yellow-50 text-yellow-600 rounded-lg flex items-center justify-center text-base sm:text-lg mr-2 sm:mr-3 flex-shrink-0"
+              >
+                <i class="fa-solid fa-wheat-awn"></i>
+              </div>
+              <div>
+                <p class="text-xs text-gray-400 font-bold uppercase">
+                  PANEN PM-AAS
+                </p>
+                <h3
+                  class="text-base sm:text-xl font-bold text-gray-800"
+                  id="panenPmAasMain"
+                >
+                  -
+                </h3>
+              </div>
+            </div>
           </div>
 
           <!-- Charts -->
           <div
-            class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8"
+            class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8"
           >
             <div
-              class="md:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col relative overflow-hidden"
+              class="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col relative overflow-hidden"
             >
               <!-- Background accent -->
               <div class="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 rounded-full bg-green-50 opacity-50 blur-2xl"></div>
@@ -368,10 +431,11 @@
                   </h3>
                   <p class="text-[10px] text-gray-400 mt-0.5">Total akumulasi luas tanam bulan ini</p>
                 </div>
-                <div class="flex bg-gray-50 p-1 rounded-lg border border-gray-100 shadow-inner">
+                <div class="flex flex-wrap sm:flex-nowrap bg-gray-50 p-1 rounded-lg border border-gray-100 shadow-inner overflow-x-auto" style="scrollbar-width: none;">
                   <button id="btnCap-Padi" onclick="gantiKomoditasCapaian('Padi')" class="px-4 py-1.5 text-xs font-bold rounded-md bg-green-600 text-white shadow-sm transition-all duration-300">Padi</button>
                   <button id="btnCap-Jagung" onclick="gantiKomoditasCapaian('Jagung')" class="px-4 py-1.5 text-xs font-bold rounded-md text-gray-500 hover:text-green-600 transition-all duration-300">Jagung</button>
                   <button id="btnCap-UbiKayu" onclick="gantiKomoditasCapaian('Ubi Kayu')" class="px-4 py-1.5 text-xs font-bold rounded-md text-gray-500 hover:text-green-600 transition-all duration-300">Ubi Kayu</button>
+                  <button id="btnCap-PmAas" onclick="gantiKomoditasCapaian('PM-AAS')" class="px-4 py-1.5 text-xs font-bold rounded-md text-gray-500 hover:text-green-600 transition-all duration-300">PM-AAS</button>
                 </div>
               </div>
               
@@ -410,7 +474,7 @@
               </div>
             </div>
             <div
-              class="md:col-span-1 bg-white p-6 rounded-xl shadow-sm border border-gray-100"
+              class="lg:col-span-1 bg-white p-6 rounded-xl shadow-sm border border-gray-100"
             >
               <h3 class="text-sm font-bold text-gray-800 mb-4">
                 Komposisi Komoditas (Bulan Ini)
@@ -856,6 +920,161 @@
       </div>
     </div>
     <!-- end sectionDashboard -->
+
+    <!-- ===== SECTION: LTT PM AAS ===== -->
+    <div id="sectionLttPmAas" class="hidden">
+      <div class="p-4 sm:p-6 lg:p-8">
+        
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 border-b pb-3 gap-3">
+          <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+            <i class="fa-solid fa-seedling text-green-600"></i> Dashboard LTT PM AAS (Padi)
+          </h2>
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-calendar-days text-green-600 text-sm"></i>
+            <select
+              id="filterBulanPmAas"
+              onchange="muatPmAas()"
+              class="text-xs font-bold text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-1.5 outline-none focus:border-green-500 cursor-pointer shadow-sm"
+            ></select>
+            <button
+              onclick="muatPmAas()"
+              title="Refresh Data"
+              class="bg-blue-50 text-blue-600 border border-blue-200 p-2 rounded-lg text-xs font-bold hover:bg-blue-600 hover:text-white transition shadow-sm flex items-center justify-center"
+            >
+              <i class="fa-solid fa-rotate-right"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+          <!-- Total Tanam -->
+          <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center justify-between">
+            <div>
+              <p class="text-xs font-bold text-gray-400 uppercase">Total Tanam </p>
+              <p id="totalTanamPmAas" class="text-2xl font-black text-gray-800 mt-1">0 <span class="text-xs font-normal text-gray-500">Ha</span></p>
+            </div>
+            <div class="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600">
+              <i class="fa-solid fa-seedling text-lg"></i>
+            </div>
+          </div>
+          <!-- Total Panen -->
+          <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center justify-between">
+            <div>
+              <p class="text-xs font-bold text-gray-400 uppercase">Total Panen</p>
+              <p id="totalPanenPmAas" class="text-2xl font-black text-gray-800 mt-1">0 <span class="text-xs font-normal text-gray-500">Ha</span></p>
+            </div>
+            <div class="w-10 h-10 rounded-full bg-yellow-50 flex items-center justify-center text-yellow-600">
+              <i class="fa-solid fa-wheat-awn text-lg"></i>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+          <!-- Chart -->
+          <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col">
+            <div class="flex items-center justify-between mb-4 border-b pb-2">
+              <h3 class="text-sm font-bold text-gray-700">Capaian Target Kabupaten</h3>
+              <button onclick="bukaModalTargetPmAas()" class="text-xs px-3 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-600 hover:text-white font-bold transition shadow-sm">
+                <i class="fa-solid fa-bullseye mr-1"></i> Set Target
+              </button>
+            </div>
+            <div class="flex-1 flex flex-col sm:flex-row items-center justify-center gap-6 mt-2">
+               <!-- Radial Chart -->
+               <div id="chartPmAasTanam" class="w-full sm:w-1/2 flex justify-center items-center h-48"></div>
+               
+               <!-- Detail Text -->
+               <div class="w-full sm:w-1/2 flex flex-col gap-3">
+                  <div class="flex items-center justify-between p-3 bg-blue-50/50 rounded-xl border border-blue-100/50">
+                      <div class="flex items-center gap-2">
+                         <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center"><i class="fa-solid fa-bullseye"></i></div>
+                         <div>
+                           <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wide">Target Tanam</p>
+                           <p class="text-sm font-bold text-gray-800" id="capaianTargetPmAas">0 Ha</p>
+                         </div>
+                      </div>
+                  </div>
+                  
+                  <div class="flex items-center justify-between p-3 bg-green-50/50 rounded-xl border border-green-100/50">
+                      <div class="flex items-center gap-2">
+                         <div class="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center"><i class="fa-solid fa-seedling"></i></div>
+                         <div>
+                           <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wide">Realisasi Tanam</p>
+                           <p class="text-sm font-bold text-gray-800" id="capaianRealisasiPmAas">0 Ha</p>
+                         </div>
+                      </div>
+                  </div>
+
+                  <div class="mt-1 text-center sm:text-left">
+                      <span id="capaianSisaPmAas" class="inline-flex items-center gap-1.5 px-3 py-1 bg-yellow-50 text-yellow-700 text-[11px] font-bold rounded-full border border-yellow-200">
+                        <i class="fa-solid fa-circle-info"></i> Sisa Target: 0 Ha
+                      </span>
+                  </div>
+               </div>
+            </div>
+          </div>
+          <!-- Tabel Rincian -->
+          <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            <h3 class="text-sm font-bold text-gray-700 mb-4 border-b pb-2">Rincian Per Metode Penanaman</h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm text-left text-gray-600">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b">
+                  <tr>
+                    <th class="p-3">Metode Penanaman</th>
+                    <th class="p-3 text-right">Luas Tanam (Ha)</th>
+                    <th class="p-3 text-right">Luas Panen (Ha)</th>
+                  </tr>
+                </thead>
+                <tbody id="tabelPmAas">
+                  <tr>
+                    <td colspan="3" class="p-8 text-center text-gray-400">
+                      <i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Memuat data...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabel Rekapitulasi PM-AAS per Kecamatan -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
+          <div class="flex flex-wrap items-center justify-between gap-4 mb-5">
+            <div>
+              <h3 class="text-sm font-bold text-gray-800">
+                Rekapitulasi Luas Tambah Tanam (LTT) PM AAS
+              </h3>
+              <p class="text-xs text-gray-400 mt-0.5" id="labelBulanPmAasKecamatan">
+                Periode: -
+              </p>
+            </div>
+          </div>
+          <div class="w-full overflow-x-auto border border-gray-200 rounded-lg">
+            <table class="w-full text-left border-collapse text-xs whitespace-nowrap">
+              <thead>
+                <tr class="bg-gray-50 text-gray-700 uppercase tracking-wider text-center border-b border-gray-200">
+                  <th rowspan="2" class="p-3 border-r border-gray-200 font-bold align-middle w-12">No</th>
+                  <th rowspan="2" class="p-3 border-r border-gray-200 font-bold align-middle text-left">Kecamatan</th>
+                  <th colspan="2" class="p-2 font-bold bg-green-50/50">PM AAS (PADI)</th>
+                </tr>
+                <tr class="bg-gray-50 text-gray-600 uppercase tracking-wider text-center border-b border-gray-200 text-[10px]">
+                  <th class="p-2 border-r border-gray-200 font-bold bg-green-50/20">Tanam (Ha)</th>
+                  <th class="p-2 font-bold bg-green-50/20">Panen (Ha)</th>
+                </tr>
+              </thead>
+              <tbody id="tabelPmAasKecamatan">
+                <tr>
+                  <td colspan="4" class="p-8 text-center text-gray-400">
+                    <i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Memuat data...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <!-- ===== END SECTION: LTT PM AAS ===== -->
 
     <!-- ===== SECTION: VERIFIKASI KABUPATEN ===== -->
     <div id="sectionVerifikasi" class="hidden">
@@ -1590,7 +1809,7 @@
         <div
           class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6"
         >
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
             <!-- Tanggal Mulai -->
             <div>
               <label
@@ -1628,6 +1847,21 @@
                 <option value="">Padi</option>
                 <option value="Jagung">Jagung</option>
                 <option value="Ubi Kayu">Ubi Kayu</option>
+              </select>
+            </div>
+            <!-- Metode Pertanaman -->
+            <div>
+              <label
+                class="block text-[10px] font-bold text-gray-400 uppercase mb-1"
+                >Metode Penanaman</label
+              >
+              <select
+                id="filterMetodeLaporan"
+                class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-300 bg-white"
+              >
+                <option value="">Semua Metode</option>
+                <option value="Regular">Regular</option>
+                <option value="PM AAS">PM AAS</option>
               </select>
             </div>
             <!-- Kecamatan -->
@@ -1762,7 +1996,7 @@
               type="text"
               id="searchLaporan"
               oninput="onSearchLaporan()"
-              placeholder="Cari penyuluh, kecamatan, desa, jenis LTT..."
+              placeholder="Cari penyuluh, kecamatan, desa, jenis LTT, metode..."
               class="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-300"
             />
           </div>
@@ -1850,6 +2084,9 @@
                   </th>
                   <th class="p-3 border-r border-gray-100 font-bold">
                     Jenis LTT
+                  </th>
+                  <th class="p-3 border-r border-gray-100 font-bold">
+                    Metode Penanaman
                   </th>
                   <th
                     class="p-3 border-r border-gray-100 font-bold text-right"
@@ -2294,6 +2531,13 @@
       </div>
       <form id="formEditLaporanAdmin" onsubmit="submitEditLaporanAdmin(event)">
         <input type="hidden" id="editLaporanAdminId" />
+        <div class="mb-4">
+          <label class="block text-xs font-bold text-gray-600 mb-1">Metode Penanaman</label>
+          <select id="editLaporanAdminMetode" class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 transition bg-white">
+            <option value="">Reguler</option>
+            <option value="PM AAS">PM AAS</option>
+          </select>
+        </div>
         <div class="grid grid-cols-2 gap-3 mb-4">
           <div>
             <label class="block text-xs font-bold text-gray-600 mb-1">Lahan Bera (Ha)</label>
