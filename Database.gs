@@ -5626,3 +5626,206 @@ function getRekapHarianPPL(nip, tanggal) {
     return { status: 'error', message: e.toString() };
   }
 }
+
+// =========================================================================
+// PRODUKTIVITAS (ton/ha) — input Koordinator BPP, rekap Admin Kab
+// =========================================================================
+var PRODUKTIVITAS_SHEET = 'Data_Produktivitas';
+var PRODUKTIVITAS_HEADER = [
+  'ID', 'Tahun', 'Bulan', 'Kecamatan', 'Komoditas',
+  'Produktivitas_Ton_Ha', 'NIP_Penginput', 'Nama_Penginput',
+  'Waktu_Input', 'Waktu_Update',
+];
+var PRODUKTIVITAS_KOMODITAS = ['Padi', 'Jagung', 'Ubi Kayu'];
+
+function getSheetProduktivitas_(ss) {
+  var sh = ss.getSheetByName(PRODUKTIVITAS_SHEET);
+  if (!sh) {
+    sh = ss.insertSheet(PRODUKTIVITAS_SHEET);
+    sh.appendRow(PRODUKTIVITAS_HEADER);
+    sh.getRange(1, 1, 1, PRODUKTIVITAS_HEADER.length).setFontWeight('bold');
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+
+// Terima angka dengan koma atau titik sebagai desimal. Kembalikan NaN jika tidak valid.
+function parseNilaiProduktivitas_(val) {
+  if (val === null || val === undefined || val === '') return 0;
+  var n = parseFloat(String(val).replace(',', '.'));
+  return isNaN(n) ? NaN : n;
+}
+
+// Simpan 3 komoditas sekaligus untuk satu kecamatan, satu bulan. Upsert per Tahun+Bulan+Kecamatan+Komoditas.
+// params: { role, nip, nama, kecamatan, tahun, bulan, nilai: { 'Padi': '5,5', 'Jagung': '', 'Ubi Kayu': '0' } }
+function simpanProduktivitas(params) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    if (!params || params.role !== 'Admin_BPP') {
+      return { status: 'error', message: 'Hanya Koordinator BPP yang dapat menyimpan produktivitas.' };
+    }
+    var tahun = parseInt(params.tahun, 10);
+    var bulan = parseInt(params.bulan, 10);
+    if (isNaN(tahun) || isNaN(bulan) || bulan < 1 || bulan > 12) {
+      return { status: 'error', message: 'Tahun atau bulan tidak valid.' };
+    }
+    var kecamatan = (params.kecamatan || '').toString().trim();
+    if (!kecamatan) {
+      return { status: 'error', message: 'Kecamatan tidak diketahui.' };
+    }
+
+    var nilai = {};
+    for (var k = 0; k < PRODUKTIVITAS_KOMODITAS.length; k++) {
+      var kom = PRODUKTIVITAS_KOMODITAS[k];
+      var v = parseNilaiProduktivitas_((params.nilai || {})[kom]);
+      if (isNaN(v) || v < 0) {
+        return { status: 'error', message: 'Nilai ' + kom + ' harus angka 0 atau lebih.' };
+      }
+      nilai[kom] = v;
+    }
+
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var sh = getSheetProduktivitas_(ss);
+    var data = sh.getDataRange().getValues();
+
+    // Peta: Tahun|Bulan|Kecamatan|Komoditas -> nomor baris (1-indexed)
+    var rowMap = {};
+    for (var i = 1; i < data.length; i++) {
+      var key = [parseInt(data[i][1], 10), parseInt(data[i][2], 10), String(data[i][3]).trim(), String(data[i][4]).trim()].join('|');
+      rowMap[key] = i + 1;
+    }
+
+    var now = new Date();
+    var nip = (params.nip || '').toString();
+    var nama = (params.nama || '').toString();
+    // ID = ID terbesar + 1 (aman walau ada baris yang sudah dihapus)
+    var nextId = 1;
+    for (var x = 1; x < data.length; x++) {
+      var idLama = parseInt(data[x][0], 10);
+      if (!isNaN(idLama) && idLama >= nextId) nextId = idLama + 1;
+    }
+
+    // Nilai 0 tidak disimpan (saat dibaca, baris yang tidak ada = 0).
+    // Jika sebelumnya ada nilai lalu diubah jadi 0, barisnya dihapus.
+    var barisDihapus = [];
+    for (var j = 0; j < PRODUKTIVITAS_KOMODITAS.length; j++) {
+      var komoditas = PRODUKTIVITAS_KOMODITAS[j];
+      var rKey = [tahun, bulan, kecamatan, komoditas].join('|');
+      var rowNum = rowMap[rKey];
+      if (nilai[komoditas] === 0) {
+        if (rowNum) barisDihapus.push(rowNum);
+      } else if (rowNum) {
+        sh.getRange(rowNum, 6).setValue(nilai[komoditas]);
+        sh.getRange(rowNum, 7, 1, 4).setValues([[nip, nama, data[rowNum - 1][8] || now, now]]);
+      } else {
+        sh.appendRow([nextId++, tahun, bulan, kecamatan, komoditas, nilai[komoditas], nip, nama, now, now]);
+      }
+    }
+    // Hapus dari bawah ke atas agar nomor baris tidak bergeser
+    barisDihapus.sort(function (a, b) { return b - a; }).forEach(function (r) {
+      sh.deleteRow(r);
+    });
+
+    return { status: 'success' };
+  } catch (e) {
+    return { status: 'error', message: e.toString() };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// Data 12 bulan untuk satu kecamatan pada satu tahun. Bulan tanpa data = 0.
+// params: { tahun, kecamatan }
+function getProduktivitasKecamatan(params) {
+  var tahun = parseInt(params && params.tahun, 10) || new Date().getFullYear();
+  var kecamatan = ((params && params.kecamatan) || '').toString().trim();
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sh = getSheetProduktivitas_(ss);
+  var data = sh.getDataRange().getValues();
+
+  var bulanArr = [];
+  for (var b = 1; b <= 12; b++) {
+    bulanArr.push({ bulan: b, Padi: 0, Jagung: 0, 'Ubi Kayu': 0, waktuUpdate: '' });
+  }
+  for (var i = 1; i < data.length; i++) {
+    if (parseInt(data[i][1], 10) !== tahun) continue;
+    if (String(data[i][3]).trim() !== kecamatan) continue;
+    var bln = parseInt(data[i][2], 10);
+    var kom = String(data[i][4]).trim();
+    if (bln < 1 || bln > 12 || PRODUKTIVITAS_KOMODITAS.indexOf(kom) === -1) continue;
+    bulanArr[bln - 1][kom] = parseFloat(data[i][5]) || 0;
+    var wu = data[i][9];
+    if (wu) bulanArr[bln - 1].waktuUpdate = wu instanceof Date
+      ? Utilities.formatDate(wu, 'Asia/Jakarta', 'dd/MM/yyyy HH:mm')
+      : String(wu);
+  }
+  return { tahun: tahun, kecamatan: kecamatan, bulan: bulanArr };
+}
+
+// Rekap semua kecamatan untuk satu tahun + bulan, plus rata-rata kabupaten.
+// Rata-rata hanya dari kecamatan yang nilainya > 0 (kecamatan 0 tidak ikut pembagi).
+// params: { tahun, bulan }
+function getProduktivitasKabupaten(params) {
+  var now = new Date();
+  var tahun = parseInt(params && params.tahun, 10) || now.getFullYear();
+  var bulan = parseInt(params && params.bulan, 10) || (now.getMonth() + 1);
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sh = getSheetProduktivitas_(ss);
+  var data = sh.getDataRange().getValues();
+
+  var daftarKec = getKecamatanLaporan();
+  var perKec = {};
+  daftarKec.forEach(function (kec) {
+    perKec[kec] = { kecamatan: kec, Padi: 0, Jagung: 0, 'Ubi Kayu': 0 };
+  });
+
+  for (var i = 1; i < data.length; i++) {
+    if (parseInt(data[i][1], 10) !== tahun || parseInt(data[i][2], 10) !== bulan) continue;
+    var kec = String(data[i][3]).trim();
+    var kom = String(data[i][4]).trim();
+    if (!perKec[kec] || PRODUKTIVITAS_KOMODITAS.indexOf(kom) === -1) continue;
+    perKec[kec][kom] = parseFloat(data[i][5]) || 0;
+  }
+
+  var rows = daftarKec.map(function (kec) { return perKec[kec]; });
+
+  var rataRata = {};
+  PRODUKTIVITAS_KOMODITAS.forEach(function (kom) {
+    var sum = 0;
+    var jumlah = 0;
+    rows.forEach(function (r) {
+      if (r[kom] > 0) {
+        sum += r[kom];
+        jumlah++;
+      }
+    });
+    rataRata[kom] = {
+      nilai: jumlah > 0 ? Math.round((sum / jumlah) * 100) / 100 : 0,
+      jumlahKec: jumlah,
+    };
+  });
+
+  return { tahun: tahun, bulan: bulan, rows: rows, rataRata: rataRata };
+}
+
+// Data mentah untuk export Excel (diolah di sisi client), dibatasi rentang tahun.
+// params: { tahunDari, tahunSampai }. rows: [tahun, bulan, kecamatan, komoditas, nilai]
+function getProduktivitasSemua(params) {
+  var tahunDari = parseInt(params && params.tahunDari, 10) || 0;
+  var tahunSampai = parseInt(params && params.tahunSampai, 10) || 9999;
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sh = getSheetProduktivitas_(ss);
+  var data = sh.getDataRange().getValues();
+  var rows = [];
+  for (var i = 1; i < data.length; i++) {
+    var tahun = parseInt(data[i][1], 10);
+    var bulan = parseInt(data[i][2], 10);
+    var kom = String(data[i][4]).trim();
+    if (isNaN(tahun) || isNaN(bulan) || bulan < 1 || bulan > 12) continue;
+    if (tahun < tahunDari || tahun > tahunSampai) continue;
+    if (PRODUKTIVITAS_KOMODITAS.indexOf(kom) === -1) continue;
+    rows.push([tahun, bulan, String(data[i][3]).trim(), kom, parseFloat(data[i][5]) || 0]);
+  }
+  return { kecamatan: getKecamatanLaporan(), rows: rows };
+}

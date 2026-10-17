@@ -71,6 +71,18 @@
       </a>
       <a
         href="#"
+        id="nav-produktivitas"
+        data-roles="Admin_Kab"
+        onclick="
+          navigasi('produktivitas');
+          toggleSidebar(true);
+        "
+        class="nav-item flex items-center px-4 py-3 text-green-200 hover:bg-green-700 hover:text-white rounded-lg transition"
+      >
+        <i class="fa-solid fa-scale-balanced w-6"></i> Produktivitas
+      </a>
+      <a
+        href="#"
         id="nav-manajemen"
         data-roles="Admin_Kab"
         onclick="
@@ -1774,6 +1786,52 @@
       </div>
     </div>
     <!-- end sectionDetailTarget -->
+
+    <!-- ===== SECTION: PRODUKTIVITAS (hanya lihat) ===== -->
+    <div id="sectionProduktivitas" class="hidden">
+      <div class="p-4 sm:p-6 lg:p-8">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 border-b pb-3 gap-3">
+          <div>
+            <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+              <i class="fa-solid fa-scale-balanced text-green-600"></i> Produktivitas per Kecamatan
+            </h2>
+            <p class="text-xs text-gray-500">Satuan ton/ha. Kecamatan tanpa data tampil 0.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <select id="prodFilterTahunKab" onchange="muatProduktivitasKab()"
+              class="text-xs font-bold text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-1.5 outline-none cursor-pointer shadow-sm"></select>
+            <select id="prodFilterBulanKab" onchange="muatProduktivitasKab()"
+              class="text-xs font-bold text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-1.5 outline-none cursor-pointer shadow-sm">
+              <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
+              <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
+              <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
+              <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
+            </select>
+            <button onclick="unduhExcelProduktivitas()"
+              class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm">
+              <i class="fa-solid fa-file-excel"></i> Unduh Excel
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto bg-white rounded-xl shadow-sm border border-gray-100">
+          <table class="w-full text-sm text-left">
+            <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+              <tr>
+                <th class="p-3">Kecamatan</th>
+                <th class="p-3 text-right">Padi</th>
+                <th class="p-3 text-right">Jagung</th>
+                <th class="p-3 text-right">Ubi Kayu</th>
+              </tr>
+            </thead>
+            <tbody id="prodTbodyKab" class="divide-y divide-gray-100">
+              <tr><td colspan="4" class="p-6 text-center text-gray-400">Memuat...</td></tr>
+            </tbody>
+            <tfoot id="prodTfootKab" class="bg-green-50 font-bold text-gray-800"></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
 
     <!-- ===== SECTION: LAPORAN LTT ===== -->
     <div id="sectionLaporanLTT" class="hidden">

@@ -4,59 +4,65 @@
 
 ---
 
-## Input Produktivitas (ton/ha)
-
-### A1. Ringkasan
+## 1. Ringkasan
 - Input **produktivitas** komoditas **Padi, Jagung, Ubi Kayu**, satuan **ton/ha** (satuan di-hardcode, tidak bisa diubah user).
 - Diisi **sebulan sekali** oleh **Koordinator BPP (role `Admin_BPP`)**, untuk **kecamatannya sendiri**.
-- Jendela input: **tanggal 25 s.d. tanggal terakhir bulan berjalan**. Di luar itu menu tetap bisa dibuka untuk melihat tabel, tapi form terkunci.
-- Hanya bisa input untuk **bulan berjalan** (tidak bisa mundur/maju bulan).
-- Komoditas yang **tidak ada panen** di bulan itu boleh dikosongkan, dengan menandai "Tidak ada panen".
+- **Tidak ada kunci waktu**: input dan edit bisa dilakukan kapan saja.
+- Bulan yang tidak diisi bernilai **0** (default). Nilai 0 juga berarti tidak ada panen.
+- Koordinator BPP bisa **mengedit nilai di semua bulan** (bulan lalu, bulan berjalan, maupun bulan depan) lewat tombol Edit di tabel.
+- Admin Kabupaten **hanya melihat**, tidak bisa mengedit.
 
-### A2. Penyimpanan (backend, `Database.gs`)
+## 2. Penyimpanan (backend, `Database.gs`)
 - Buat sheet baru `Data_Produktivitas` (dibuat otomatis bila belum ada, ikuti pola `insertSheet` yang sudah ada).
-- Kolom yang disarankan: `ID, Tahun, Bulan, Kecamatan, Komoditas, Produktivitas_Ton_Ha, Tidak_Ada_Panen, NIP_Penginput, Nama_Penginput, Waktu_Input, Waktu_Update`.
-- Kunci unik: **Tahun + Bulan + Kecamatan + Komoditas**. Kalau sudah ada, simpan sebagai **update** (upsert), bukan baris baru.
+- Kolom: `ID, Tahun, Bulan, Kecamatan, Komoditas, Produktivitas_Ton_Ha, NIP_Penginput, Nama_Penginput, Waktu_Input, Waktu_Update`.
+- Kunci unik: **Tahun + Bulan + Kecamatan + Komoditas**. Jika sudah ada, simpan sebagai **update** (upsert), bukan baris baru.
+- Bulan yang belum punya baris di sheet dianggap **0** saat ditampilkan (tidak perlu membuat baris kosong).
 - Fungsi backend yang dibutuhkan:
-  1. **Simpan produktivitas**: terima data 3 komoditas sekaligus. Validasi di server: role harus `Admin_BPP`, tanggal hari ini harus 25–akhir bulan, bulan/tahun harus bulan berjalan, nilai harus angka > 0 kecuali ditandai tidak ada panen. Pakai `LockService` dan hapus cache terkait setelah simpan.
-  2. **Ambil riwayat per kecamatan per tahun**: untuk tabel di sisi BPP.
-  3. **Ambil rekap kabupaten per tahun (+ opsional bulan)**: untuk tampilan Admin Kab.
+  1. **Simpan produktivitas** (dipakai untuk input bulan berjalan maupun edit bulan lain): terima tahun, bulan, dan nilai 3 komoditas sekaligus.
+     - Role harus `Admin_BPP`, kecamatan diambil dari data user login (bukan dari input).
+     - Nilai harus angka ≥ 0. Kosong dianggap 0.
+     - Bulan harus 1–12. Tidak ada batasan tanggal atau bulan (masa lalu & masa depan boleh).
+     - Pakai `LockService` dan hapus cache terkait setelah simpan.
+  2. **Ambil data per kecamatan per tahun**: kembalikan 12 bulan lengkap, bulan tanpa data diisi 0. Untuk tabel BPP.
+  3. **Ambil rekap kabupaten per tahun + bulan**: semua kecamatan, kecamatan tanpa data diisi 0. Untuk tampilan Admin Kab.
 - Timezone tetap `Asia/Jakarta`.
 
-### A3. Tampilan Koordinator BPP (`File_HTML_PPL.html` + `File_Javascript.html`)
+## 3. Tampilan Koordinator BPP (`File_HTML_PPL.html` + `File_Javascript.html`)
 - Tambah tombol **"Produktivitas"** di section **"Menu Lainnya"**, letakkan **paling awal** (sebelum tombol "Target Bulanan").
 - Tombol **hanya tampil** untuk role `Admin_BPP`, sembunyikan untuk `Penyuluh`.
-- Saat jendela input tertutup (tanggal < 25), tampilkan ikon gembok di tombol (contoh pola: `ikonGembokTarget`). Menu tetap bisa dibuka untuk melihat tabel.
 - Isi panel (overlay full-screen, contoh pola: `targetArea`):
   1. **Header**: judul, nama kecamatan, bulan berjalan.
-  2. **Form input**: satu baris per komoditas (Padi, Jagung, Ubi Kayu), input angka desimal + label "ton/ha" + checkbox "Tidak ada panen bulan ini" yang menonaktifkan input-nya. Tombol Simpan. Jika data bulan ini sudah ada, isi form dengan nilai tersebut (mode edit).
-  3. **Info jendela**: teks seperti "Input dibuka 25–31 Oktober 2026" atau "Input ditutup, dibuka kembali tgl 25".
-  4. **Tabel hasil input** di bawah form: kolom Bulan | Padi | Jagung | Ubi Kayu | Waktu Input. Yang tidak ada panen tampil "–" atau label "Tidak panen".
+  2. **Form input bulan berjalan**: satu baris per komoditas (Padi, Jagung, Ubi Kayu), input angka desimal + label "ton/ha", default 0. Tombol Simpan. Jika data bulan ini sudah ada, isi form dengan nilai tersebut. Form selalu aktif (tidak dikunci).
+  3. **Tabel hasil input** di bawah form: kolom Bulan | Padi | Jagung | Ubi Kayu | Waktu Update | Aksi.
+     - Selalu tampil **12 bulan** untuk tahun terpilih, bulan tanpa data tampil **0**.
+  4. **Tombol Edit** di setiap baris bulan (termasuk bulan depan): membuka modal berisi 3 input komoditas (terisi nilai saat ini), lalu simpan memakai fungsi simpan yang sama.
   5. **Filter tahun** (dropdown) di atas tabel, default tahun berjalan.
-- Validasi juga di front end (rentang tanggal, angka wajib), tapi validasi server tetap menjadi acuan.
+- Validasi juga di front end (angka ≥ 0), tapi validasi server tetap menjadi acuan.
+- **Separator desimal**: user boleh mengetik koma atau titik (misal `5,5` atau `5.5`).
+  - Pakai `<input type="text" inputmode="decimal">`, jangan `type="number"` (di sebagian browser HP koma ditolak).
+  - Sebelum kirim ke server, ubah dengan helper yang sudah ada `_parseDesimal()` di `File_Javascript.html`.
+  - Saat menampilkan nilai di form/tabel, pakai `_toKoma()` agar tampil dengan koma.
+  - Di server, tetap amankan dengan `parseFloat(String(val).replace(',', '.'))`.
 
-### A4. Tampilan Admin Kabupaten (`File_HTML_Admin.html` + `File_Javascript.html`)
+## 4. Tampilan Admin Kabupaten (`File_HTML_Admin.html` + `File_Javascript.html`)
 - Tambah item sidebar baru **"Produktivitas"** (ikuti pola item sidebar yang sudah ada).
-- Isi halaman:
-  1. **Filter**: Tahun (default tahun berjalan), Bulan (default bulan berjalan), Komoditas (opsional: tab Padi/Jagung/Ubi Kayu seperti di dashboard capaian).
-  2. **Kartu ringkasan**: rata-rata kabupaten per komoditas, serta jumlah kecamatan yang sudah input dari 15.
-  3. **Tabel 15 kecamatan**: Kecamatan | Padi | Jagung | Ubi Kayu | Status (Sudah input / Belum / Tidak panen). Daftar kecamatan diambil dari `getKecamatanLaporan()` agar selalu 15 baris, termasuk yang belum input.
-  4. **Baris rata-rata kabupaten** di bawah tabel.
-  5. (Opsional) Tampilan tahunan: tabel kecamatan × bulan untuk satu komoditas, untuk melihat tren.
-- Admin Kab hanya **melihat**. Edit oleh Admin Kab opsional (lihat saran di bawah).
+- Isi halaman (hanya lihat, tanpa tombol edit):
+  1. **Filter**: Tahun (default tahun berjalan), Bulan (default bulan berjalan).
+  2. **Tabel 15 kecamatan**: Kecamatan | Padi | Jagung | Ubi Kayu (ton/ha). Daftar kecamatan diambil dari `getKecamatanLaporan()` agar selalu 15 baris; kecamatan tanpa data tampil **0**.
+  3. **Baris "Rata-rata Kabupaten"** di bagian bawah tabel (dicetak tebal), dihitung **per komoditas**:
+     - Rata-rata = jumlah nilai ÷ jumlah kecamatan yang nilainya **> 0**. Kecamatan bernilai 0 **tidak ikut dihitung** (tidak masuk pembagi).
+     - Jika semua kecamatan bernilai 0 untuk komoditas itu, tampilkan **0**.
+     - Tampilkan juga jumlah kecamatan yang dihitung, misal `5,62 (12 kec)`, agar jelas basis rata-ratanya.
+     - Bulatkan 2 angka desimal, tampil dengan koma (`_toKoma()`).
+     - Hitung di backend (fungsi rekap kabupaten), front end tinggal menampilkan.
 
-### A5. Saran / hal yang perlu diputuskan
-1. **Cara hitung rata-rata**: rata-rata biasa dari kecamatan yang mengisi (lebih sederhana), atau rata-rata **tertimbang luas panen** dari data LTT bulan itu (lebih akurat secara statistik). Rekomendasi: mulai dari rata-rata biasa, kecamatan "Tidak panen" atau kosong **tidak dihitung** pembaginya.
-2. **Batas nilai wajar** untuk mencegah salah ketik (misal input 55 padahal 5,5). Contoh peringatan (bukan blokir): Padi 2–12, Jagung 2–12, Ubi Kayu 10–50 ton/ha. Angkanya perlu dikonfirmasi ke dinas.
-3. **Keterlambatan**: perlu ada mekanisme Admin Kab membuka kunci atau mengisi atas nama kecamatan jika BPP terlambat lewat akhir bulan?
-4. **Pengingat**: badge/notifikasi di menu mulai tanggal 25 jika bulan ini belum diisi.
-5. **Export Excel/CSV** untuk tabel Admin Kab (ikuti pola export yang sudah ada jika ada).
-6. **Cross-check dengan LTT**: jika ditandai "Tidak ada panen" padahal data LTT bulan itu punya luas panen > 0, tampilkan peringatan.
-
-### A6. Checklist uji
+## 5. Checklist uji
 - Login sebagai `Penyuluh`: tombol Produktivitas tidak muncul.
-- Login sebagai `Admin_BPP` tgl < 25: tombol bergembok, tabel bisa dilihat, form tidak bisa disimpan (cek juga panggilan langsung ke server ditolak).
-- Tgl 25–akhir bulan: simpan berhasil, simpan ulang meng-update baris yang sama (tidak dobel).
-- Tanda "Tidak ada panen" tersimpan dan tampil benar di tabel BPP & Admin Kab.
-- Admin Kab: 15 kecamatan selalu tampil, rata-rata benar, filter tahun/bulan berfungsi.
+- Login sebagai `Admin_BPP`: form dan tombol Edit bisa dipakai di tanggal berapa pun.
+- Simpan berhasil, simpan ulang meng-update baris yang sama (tidak dobel).
+- Bulan yang belum diisi tampil 0 di tabel BPP dan Admin Kab.
+- Edit bulan lalu dan bulan depan berhasil dan langsung terlihat di tabel BPP & Admin Kab.
+- Panggilan simpan dengan role selain `Admin_BPP` ditolak server.
+- Admin Kab: 15 kecamatan selalu tampil, filter tahun/bulan berfungsi, tidak ada tombol edit.
+- Rata-rata kabupaten: contoh 3 kecamatan isi Padi 5, 6, 7 dan 12 kecamatan 0 → rata-rata **6,00 (3 kec)**, bukan 1,2.
 - Naikkan `CODE_VERSION` di `Code.gs` setelah mengubah file HTML.

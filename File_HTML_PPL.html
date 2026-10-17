@@ -101,6 +101,23 @@
             Menu Lainnya
           </h2>
           <div class="grid grid-cols-4 gap-3">
+            <!-- Khusus Admin_BPP (ditampilkan lewat inisialisasiPPL) -->
+            <div id="wrapBtnProduktivitas" class="hidden">
+              <button
+                id="btnProduktivitas"
+                onclick="bukaProduktivitasBpp()"
+                class="flex flex-col items-center group transition active:scale-95"
+              >
+                <div
+                  class="w-16 h-16 bg-lime-100 rounded-2xl flex items-center justify-center mb-2 shadow text-lime-700 border border-lime-200"
+                >
+                  <i class="fa-solid fa-scale-balanced text-3xl"></i>
+                </div>
+                <span class="text-[11px] font-bold text-gray-700 text-center leading-tight"
+                  >Produk-<br />tivitas</span
+                >
+              </button>
+            </div>
             <button
               id="btnTarget"
               onclick="cekBukaTarget()"
@@ -550,6 +567,77 @@
       </div>
     </div>
     <!-- ===== AKHIR PANEL TARGET BULANAN PPL ===== -->
+
+    <!-- ===== PANEL PRODUKTIVITAS BPP (Admin_BPP) ===== -->
+    <div
+      id="prodArea"
+      class="hidden px-5 pt-6 absolute top-0 bg-white w-full h-full z-30 overflow-y-auto pb-20"
+    >
+      <div class="flex items-center mb-5 border-b pb-3">
+        <button
+          onclick="tutupProduktivitasBpp()"
+          class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex justify-center items-center text-gray-600 mr-3 transition active:scale-95"
+        >
+          <i class="fa-solid fa-arrow-left"></i>
+        </button>
+        <div>
+          <h2 class="text-base font-bold text-green-700 uppercase">Produktivitas</h2>
+          <p class="text-xs text-gray-500" id="prodSubtitleBpp">Kecamatan</p>
+        </div>
+      </div>
+
+      <!-- Form input bulan berjalan -->
+      <div class="bg-sky-50 rounded-2xl shadow-sm border border-sky-200 p-4 mb-5">
+        <p class="text-xs font-bold text-sky-700 uppercase mb-1">Input Bulan Ini</p>
+        <p class="text-[11px] text-gray-400 mb-3">Satuan ton/ha. Isi 0 jika tidak ada panen. Boleh memakai koma atau titik.</p>
+        <div class="space-y-2">
+          <label class="flex items-center justify-between text-sm font-bold text-gray-700">
+            Padi
+            <input type="text" inputmode="decimal" id="prodInputPadi" value="0"
+              class="w-28 px-3 py-2 border border-gray-200 rounded-xl text-right text-sm focus:outline-none focus:ring-2 focus:ring-green-300" />
+          </label>
+          <label class="flex items-center justify-between text-sm font-bold text-gray-700">
+            Jagung
+            <input type="text" inputmode="decimal" id="prodInputJagung" value="0"
+              class="w-28 px-3 py-2 border border-gray-200 rounded-xl text-right text-sm focus:outline-none focus:ring-2 focus:ring-green-300" />
+          </label>
+          <label class="flex items-center justify-between text-sm font-bold text-gray-700">
+            Ubi Kayu
+            <input type="text" inputmode="decimal" id="prodInputUbiKayu" value="0"
+              class="w-28 px-3 py-2 border border-gray-200 rounded-xl text-right text-sm focus:outline-none focus:ring-2 focus:ring-green-300" />
+          </label>
+        </div>
+        <button onclick="simpanProduktivitasBppForm()"
+          class="mt-4 w-full bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl font-bold transition active:scale-95">
+          <i class="fa-solid fa-floppy-disk mr-1"></i> Simpan Bulan Ini
+        </button>
+      </div>
+
+      <!-- Riwayat per tahun -->
+      <div class="flex items-center justify-between mb-2">
+        <p class="text-xs font-bold text-gray-500 uppercase">Riwayat</p>
+        <select id="prodTahunBpp" onchange="muatProduktivitasBpp()"
+          class="text-xs font-bold text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-1.5 outline-none cursor-pointer"></select>
+      </div>
+      <div class="overflow-x-auto bg-white rounded-2xl shadow-sm border border-gray-100">
+        <table class="w-full text-xs text-left">
+          <thead class="bg-gray-50 text-gray-500 uppercase">
+            <tr>
+              <th class="p-2">Bulan</th>
+              <th class="p-2 text-right">Padi</th>
+              <th class="p-2 text-right">Jagung</th>
+              <th class="p-2 text-right">Ubi Kayu</th>
+              <th class="p-2">Update</th>
+              <th class="p-2 text-center">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="prodTbodyBpp" class="divide-y divide-gray-100">
+            <tr><td colspan="6" class="p-6 text-center text-gray-400">Memuat...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <!-- ===== AKHIR PANEL PRODUKTIVITAS BPP ===== -->
 
     <!-- ===== PANEL REKAP BULANAN PPL ===== -->
     <div
