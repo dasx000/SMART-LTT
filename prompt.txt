@@ -1,10 +1,6 @@
 BUAT plan.MD  BERISI PLANNING
 
-jadi kita akan membuat fitur dimana ketika di tanggal tertentu (akhir bulan) 
-muncul sebuah menu baru di layar ppl
-menu ini akan menampilkan form input dan juga ada daftar isian di bulan tersebut yang bisa kita edit, ubikayu dan jagung,padi,
-tujuannya untuk perbaikan data atau inputan baru tapi user bisa pilih tanggal
-dropdown desa pada inpoutan laporan tampilkan desa di semua kecamatan user, bukan berdasarkan wkpp, 
+bikin plan.md berisi menu inputan dan dibawahnya ada tabel hasil input, ada filter pertahun, ini adlaah inputan produktifitas satuan harscode ton/ha, ini muncul di tampilan pentuluh dan khusus role admin_bpp/koorinator bpp, ini untuk komoditas padi, jagung , ubikayu, diinput tiap bulan sekali, dibuka tanggap 25-tanggal paling akhir dibulan berjalan, letak buttonnya ada di "menu lainnya" di paling awal sebelum target bulanan, ini diinput di bulan berjalan kecuali jika komoditas itu tidak adapanen dibulan tersebut. lalu susun juga tampilan untuk admin kabupatennya, ada sidebar baru bernama Produktifitas, berisi 15 kecamatan, kemudian mungkin ada rata ratanya, jika ada yg kurang sarankan, jika bingung tanyakan
 
 JANGAN TERLALU LOW LEVEL ATAU DETAIL
 CUKUP INSTRUKSIKAN SECARA HIGH LEVEL
