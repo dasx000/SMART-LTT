@@ -39,7 +39,7 @@ var LOGO_SRC_ =
   'https://lh3.googleusercontent.com/d/1eT8hkuReypIqxGP7O8G0zGS5hGjSFrmt';
 
 // Naikkan angka ini setiap kali ada perubahan File_HTML_*.html agar cache lama otomatis invalid
-var CODE_VERSION = 21;
+var CODE_VERSION = 1;
 
 function include(filename) {
   var tmpl = HtmlService.createTemplateFromFile(filename);

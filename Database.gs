@@ -2077,6 +2077,21 @@ function inisialisasiDatabase_() {
         .setBackground('#ffe599');
     }
   }
+
+  // Sheet: Target_Kecamatan_Provinsi
+  if (!ss.getSheetByName('Target_Kecamatan_Provinsi')) {
+    var skp = ss.insertSheet('Target_Kecamatan_Provinsi');
+    skp.appendRow([
+      'Bulan',
+      'Komoditas',
+      'Nama_Kecamatan',
+      'Total_Target_Tanam',
+      'Pembuat',
+      'Waktu_Update',
+    ]);
+    skp.getRange('A1:F1').setFontWeight('bold').setBackground('#ffe599');
+    skp.setFrozenRows(1);
+  }
 }
 
 // =========================================================================
@@ -2697,6 +2712,23 @@ function getDashboardTarget(params) {
     }
   }
 
+  // Target provinsi per kecamatan seluruhnya LTT Reguler, jadi menggantikan
+  // jumlah target desa hanya pada jenis tersebut.
+  var shProv = ss.getSheetByName('Target_Kecamatan_Provinsi');
+  if (shProv && shProv.getLastRow() > 1) {
+    var data = shProv.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      var rKom = String(data[i][1]).trim().toLowerCase();
+      var kec = String(data[i][2]).trim();
+      var tanam = parseFloat(data[i][3]);
+      if (parseInt(data[i][0]) !== bulan || rKom !== 'padi') continue;
+      if (!kec || isNaN(tanam)) continue;
+
+      if (!targetMap[kec]) targetMap[kec] = initRealisasi_();
+      targetMap[kec].LTTReguler.tanam = tanam;
+    }
+  }
+
   // 2. Realisasi Jagung + Ubi Kayu dari Data_LTT (manual PPL)
   var realisasiMap = {};
   var namaLTT = isPast ? 'Data_LTT_' + tahun + '_' + bulanStr : 'Data_LTT';
@@ -3244,6 +3276,41 @@ function invalidateAllTargetCaches() {
   }
 }
 
+// Dipanggil dari menu Pemeliharaan. Data di spreadsheet tidak berubah.
+function hapusSemuaCacheAplikasi() {
+  try {
+    clearAllAppCaches();
+    invalidateAllTargetCaches();
+
+    var tahun = new Date().getFullYear();
+    var keys = [];
+    for (var b = 0; b < 12; b++) {
+      keys.push('DASH_PMAAS_V2_' + tahun + '_' + b);
+    }
+    CacheService.getScriptCache().removeAll(keys);
+    return { status: 'success' };
+  } catch (e) {
+    console.error('Error hapusSemuaCacheAplikasi: ' + e.toString());
+    return { status: 'error', message: e.toString() };
+  }
+}
+
+// Dipanggil dari menu Pemeliharaan. Target_Kecamatan dibentuk ulang dari target desa.
+function hitungUlangTargetKecamatan() {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(15000);
+    rebuildTargetKecamatan(SpreadsheetApp.openById(SPREADSHEET_ID));
+    clearAllAppCaches();
+    return { status: 'success' };
+  } catch (e) {
+    console.error('Error hitungUlangTargetKecamatan: ' + e.toString());
+    return { status: 'error', message: e.toString() };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function fetchDesaTargetsFromSheet_(ss, bulan, komoditas) {
   var normKom = komoditas.toLowerCase().replace(/\s+/g, '');
   var desaSheetName = '';
@@ -3332,6 +3399,60 @@ function fetchDesaTargetsFromSheet_(ss, bulan, komoditas) {
   return targets;
 }
 
+// Target tanam kecamatan dari provinsi menggantikan hasil jumlah target desa.
+// Sheet ini sengaja terpisah karena Target_Kecamatan ditulis ulang setiap rebuild.
+function terapkanTargetKecamatanProvinsi_(ss, targets, komoditas, bulan) {
+  var sheet = ss.getSheetByName('Target_Kecamatan_Provinsi');
+  if (!sheet || sheet.getLastRow() <= 1) return targets;
+
+  var normKom = komoditas.toLowerCase().replace(/\s+/g, '');
+  var targetPerKec = {};
+  targets.forEach(function (t) {
+    targetPerKec[t.bulan + '|' + t.namaGeografi.toLowerCase()] = t;
+  });
+
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    var rBulan = parseInt(data[i][0]);
+    var rKom = String(data[i][1]).trim().toLowerCase().replace(/\s+/g, '');
+    var kec = String(data[i][2]).trim();
+    var tanam = parseFloat(data[i][3]);
+    if (!rBulan || !kec || isNaN(tanam) || rKom !== normKom) continue;
+    if (bulan && rBulan !== bulan) continue;
+
+    var key = rBulan + '|' + kec.toLowerCase();
+    if (!targetPerKec[key]) {
+      targetPerKec[key] = {
+        id: 'Kecamatan|' + rBulan + '|' + kec + '|' + komoditas,
+        bulan: rBulan,
+        level: 'Kecamatan',
+        kodeGeografi: '',
+        namaGeografi: kec,
+        kecamatan: kec,
+        komoditas: komoditas,
+        totalTarget: 0,
+        totalTargetPanen: 0,
+        ipEksisting: 0,
+        luasBakuSawah: 0,
+        luasStandingCrop: 0,
+        pembuat: '',
+        waktuUpdate: '',
+        details: [],
+      };
+      targets.push(targetPerKec[key]);
+    }
+
+    var waktu = data[i][5];
+    targetPerKec[key].totalTarget = tanam;
+    targetPerKec[key].pembuat = String(data[i][4] || 'Provinsi');
+    targetPerKec[key].waktuUpdate =
+      waktu instanceof Date
+        ? Utilities.formatDate(waktu, 'Asia/Jakarta', 'yyyy-MM-dd HH:mm:ss')
+        : String(waktu || '');
+  }
+  return targets;
+}
+
 function fetchKecamatanTargetsFromSheet_(ss, bulan, komoditas) {
   var normKom = komoditas.toLowerCase().replace(/\s+/g, '');
   var targets = [];
@@ -3374,7 +3495,7 @@ function fetchKecamatanTargetsFromSheet_(ss, bulan, komoditas) {
       });
     }
   }
-  return targets;
+  return terapkanTargetKecamatanProvinsi_(ss, targets, komoditas, bulan);
 }
 
 function fetchKabupatenTargetsFromSheet_(ss, bulan, komoditas) {
@@ -3551,7 +3672,7 @@ function fetchAllKecamatanTargetsFromSheet_(ss, komoditas) {
       });
     }
   }
-  return targets;
+  return terapkanTargetKecamatanProvinsi_(ss, targets, komoditas);
 }
 
 function fetchAllKabupatenTargetsFromSheet_(ss, komoditas) {

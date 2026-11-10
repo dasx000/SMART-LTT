@@ -710,6 +710,28 @@
     });
   }
 
+  function jalankanPemeliharaan(namaFungsi, judulProses, pesanSukses) {
+    Swal.fire({
+      title: judulProses,
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading(),
+    });
+    const gagal = (pesan) =>
+      Swal.fire({ icon: 'error', title: 'Gagal', text: pesan });
+
+    google.script.run
+      .withSuccessHandler((res) => {
+        if (!res || res.status !== 'success') {
+          gagal((res && res.message) || 'Terjadi kesalahan.');
+          return;
+        }
+        cacheTargetBulanan = {};
+        Swal.fire({ icon: 'success', title: 'Selesai', text: pesanSukses });
+      })
+      .withFailureHandler((err) => gagal(err.message || String(err)))
+      [namaFungsi]();
+  }
+
   function navigasi(section) {
     [
       'sectionDashboard',
@@ -720,7 +742,8 @@
       'sectionDetailTarget',
       'sectionLaporanLTT',
       'sectionLttPmAas',
-      'sectionProduktivitas'
+      'sectionProduktivitas',
+      'sectionPemeliharaan'
     ].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.classList.add('hidden');
@@ -772,6 +795,11 @@
         .classList.add('bg-green-700', 'text-white', 'font-bold');
       _inisialisasiFilterProduktivitasKab();
       muatProduktivitasKab();
+    } else if (section === 'pemeliharaan') {
+      document.getElementById('sectionPemeliharaan').classList.remove('hidden');
+      document
+        .getElementById('nav-pemeliharaan')
+        .classList.add('bg-green-700', 'text-white', 'font-bold');
     } else if (section === 'lttPmAas') {
       document.getElementById('sectionLttPmAas').classList.remove('hidden');
       document
@@ -2434,27 +2462,25 @@
 
     // Render Tabel Detail Target vs Realisasi
     let tableHTML = '';
-    semuaKec.forEach((kec) => {
-      const t =
-        dataTarget.target[kec] && dataTarget.target[kec][jenisKey]
-          ? dataTarget.target[kec][jenisKey][side] || 0
-          : 0;
-      const r =
-        dataTarget.realisasi[kec] && dataTarget.realisasi[kec][jenisKey]
-          ? dataTarget.realisasi[kec][jenisKey][side] || 0
-          : 0;
+    let totalTarget = 0;
+    let totalRealisasi = 0;
+
+    const barisCapaian = (label, t, r, isTotal) => {
       const pct = t > 0 ? Math.round((r / t) * 100) : '-';
+      const rowClass = isTotal
+        ? 'bg-green-50 border-t-2 border-green-200 font-bold'
+        : 'border-b border-gray-50 hover:bg-gray-50 transition';
 
       let colorClass = 'text-gray-500';
       let badgeClass = 'bg-gray-100 text-gray-600';
       let barColor = 'bg-gray-200';
 
       if (pct !== '-') {
-        if (pct >= 80) {
+        if (pct >= 85) {
           colorClass = 'text-green-600 font-bold';
           badgeClass = 'bg-green-100 text-green-700';
           barColor = 'bg-green-500';
-        } else if (pct >= 50) {
+        } else if (pct >= 60) {
           colorClass = 'text-yellow-600 font-bold';
           badgeClass = 'bg-yellow-100 text-yellow-700';
           barColor = 'bg-yellow-500';
@@ -2467,9 +2493,9 @@
 
       let barWidth = pct !== '-' ? Math.min(pct, 100) : 0;
 
-      tableHTML += `
-            <tr class="border-b border-gray-50 hover:bg-gray-50 transition">
-                <td class="p-3 font-bold text-gray-800 w-1/4">${kec}</td>
+      return `
+            <tr class="${rowClass}">
+                <td class="p-3 font-bold text-gray-800 w-1/4">${label}</td>
                 <td class="p-3 text-center w-1/6">${_numId(t)}</td>
                 <td class="p-3 text-center ${colorClass} w-1/6">${_numId(r)}</td>
                 <td class="p-3 w-5/12">
@@ -2481,7 +2507,27 @@
                     </div>
                 </td>
             </tr>`;
+    };
+
+    semuaKec.forEach((kec) => {
+      const t =
+        dataTarget.target[kec] && dataTarget.target[kec][jenisKey]
+          ? dataTarget.target[kec][jenisKey][side] || 0
+          : 0;
+      const r =
+        dataTarget.realisasi[kec] && dataTarget.realisasi[kec][jenisKey]
+          ? dataTarget.realisasi[kec][jenisKey][side] || 0
+          : 0;
+      totalTarget += t;
+      totalRealisasi += r;
+      tableHTML += barisCapaian(kec, t, r, false);
     });
+    tableHTML += barisCapaian(
+      'Total Kabupaten',
+      totalTarget,
+      totalRealisasi,
+      true,
+    );
     document.getElementById('tabelTargetVsRealisasi').innerHTML = tableHTML;
     document
       .getElementById('tableTargetVsRealisasiContainer')

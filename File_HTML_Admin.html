@@ -130,6 +130,18 @@
       >
         <i class="fa-solid fa-clipboard-check w-6"></i> Verifikasi LTT
       </a>
+      <a
+        href="#"
+        id="nav-pemeliharaan"
+        data-roles="Admin_Kab"
+        onclick="
+          navigasi('pemeliharaan');
+          toggleSidebar(true);
+        "
+        class="nav-item flex items-center px-4 py-3 text-green-200 hover:bg-green-700 hover:text-white rounded-lg transition"
+      >
+        <i class="fa-solid fa-screwdriver-wrench w-6"></i> Pemeliharaan
+      </a>
     </nav>
     <div class="p-4 border-t border-green-700">
       <button
@@ -1829,6 +1841,46 @@
             </tbody>
             <tfoot id="prodTfootKab" class="bg-green-50 font-bold text-gray-800"></tfoot>
           </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SECTION: PEMELIHARAAN ===== -->
+    <div id="sectionPemeliharaan" class="hidden">
+      <div class="p-4 sm:p-6 lg:p-8">
+        <div class="mb-6 border-b pb-3">
+          <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+            <i class="fa-solid fa-screwdriver-wrench text-green-600"></i> Pemeliharaan
+          </h2>
+          <p class="text-xs text-gray-500">Alat bantu admin tanpa perlu membuka editor Apps Script.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col">
+            <h3 class="font-bold text-gray-800">Hapus Cache</h3>
+            <p class="text-sm text-gray-500 mt-1 mb-4 flex-1">
+              Pakai ini kalau data di spreadsheet sudah berubah tetapi tampilan aplikasi masih data lama. Isi spreadsheet tidak berubah.
+            </p>
+            <button
+              onclick="jalankanPemeliharaan('hapusSemuaCacheAplikasi', 'Menghapus cache...', 'Cache sudah dihapus. Muat ulang halaman untuk melihat data terbaru.')"
+              class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
+            >
+              <i class="fa-solid fa-broom"></i> Hapus Cache
+            </button>
+          </div>
+
+          <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col">
+            <h3 class="font-bold text-gray-800">Hitung Ulang Target Kecamatan</h3>
+            <p class="text-sm text-gray-500 mt-1 mb-4 flex-1">
+              Menjumlahkan ulang target desa ke sheet Target_Kecamatan. Pakai ini kalau target desa diubah langsung di spreadsheet. Target dari provinsi tidak terpengaruh.
+            </p>
+            <button
+              onclick="jalankanPemeliharaan('hitungUlangTargetKecamatan', 'Menghitung ulang...', 'Target kecamatan sudah dihitung ulang. Muat ulang halaman untuk melihat data terbaru.')"
+              class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
+            >
+              <i class="fa-solid fa-calculator"></i> Hitung Ulang
+            </button>
+          </div>
         </div>
       </div>
     </div>
