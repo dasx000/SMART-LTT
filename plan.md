@@ -505,6 +505,10 @@ Aturan: satu util `lib/excel.ts` (ExcelJS, dimuat dinamis saat tombol ditekan), 
 | 22 | Fitur tambahan | **Realtime & PWA ditunda ke v1.1**; audit trail (`log_perubahan`) tetap di v1 |
 
 | 23 | Hasil audit logika | Lihat **`docs/logika-bisnis.md` §25** — terpenting: **fitur verifikasi dihapus**, **bookmarklet e-Pusluh dihapus**, target **tanpa tahun**, target kecamatan diisi Admin BPP dan **kabupaten = jumlah kecamatan**, warna capaian 60/85 |
+| 24 | Supabase | **Pakai project yang sama dengan CWS** (akan diganti nama "CWS"), supaya **satu akun bisa masuk ke semua aplikasi**. Ikut pola yang sudah ada: identitas di `core.profiles` (nip, email), role di `core.memberships` (`app_slug='ltt'`), data SMART LTT di **schema `ltt`**. Tidak menyentuh schema `core`/`cws`/`taniku` selain menambah baris `core.apps` & membership. **Paket gratis 2 project tidak lagi jadi masalah.** Revisi §4b: tabel `profiles` → `core.profiles` + `ltt.anggota` + `ltt.anggota_desa` (lihat `supabase/migrations/0001_ltt_auth.sql`) |
+| 25 | Login | NIP → email dicari di **server** (`ltt.resolve_login_email`, hanya service role) — tidak dibuka ke anon seperti di CWS, agar NIP tidak bisa dipakai menebak email. Boleh juga login pakai email. Akun tanpa membership `ltt` ditolak ("belum terdaftar di SMART LTT") |
+| 26 | Sumber data migrasi | **File ekspor `MASTER DATABASE LTT.xlsx`** di folder proyek (di-`.gitignore`). Service account Google **tidak diperlukan** untuk tahap ini. Saat cutover cukup ekspor ulang file yang sama. Hasil cek kualitas: `docs/laporan-isi-data.md` |
+| 27 | Repo | Remote diganti ke **`https://github.com/dasx000/SMART-LTT.git`** (repo baru, masih kosong). Repo lama `dasx000/LTT` tidak dipakai lagi. **Belum di-push** |
 
 > ⚠️ Karena keputusan 23, bagian plan yang menyebut verifikasi (§4c status, §4g RLS, Fase 3.5, Fase 5–6), bookmarklet/endpoint e-Pusluh (§7, §6 baris `doPost`/`doGet`), dan `target_kecamatan_provinsi` akan direvisi setelah pertanyaan lanjutan §26 dijawab.
 

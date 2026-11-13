@@ -39,3 +39,8 @@ _gas_lama/.clasp.json
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Ekspor spreadsheet lama (data pribadi, password teks biasa) — JANGAN di-commit
+*.xlsx
+*.xls
+*.csv

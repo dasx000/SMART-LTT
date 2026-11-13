@@ -42,13 +42,12 @@ export async function getPenggunaOpsional(): Promise<Pengguna | null> {
   const userId = klaim?.claims?.sub;
   if (!userId) return null;
 
-  const { data: p } = await supabase
-    .from("profiles")
-    .select("id, nip, nama, role, kecamatan_id, aktif, wajib_ganti_password")
-    .eq("id", userId)
-    .maybeSingle();
-
-  if (!p || !p.aktif) return null;
+  // Satu RPC menggabungkan core.profiles (nama, nip), core.memberships (role di app 'ltt')
+  // dan ltt.anggota (kecamatan, aktif, wajib ganti password) untuk auth.uid().
+  // Didefinisikan di supabase/migrations (Fase 2).
+  const { data, error } = await supabase.rpc("pengguna_saya");
+  const p = Array.isArray(data) ? data[0] : data;
+  if (error || !p || !p.aktif) return null; // tidak punya akses SMART LTT / nonaktif
 
   return {
     id: p.id,

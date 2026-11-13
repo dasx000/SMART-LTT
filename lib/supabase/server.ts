@@ -2,17 +2,20 @@ import "server-only";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { env } from "@/lib/env";
+import { SKEMA_LTT } from "./skema";
 
 /**
  * Client Supabase atas nama user yang login (RLS berlaku).
  * Satu-satunya jalur data aplikasi: dipanggil dari Server Component / Server Action.
  * Browser tidak pernah query Supabase langsung (keputusan plan §11 no. 17).
+ * Default ke schema `ltt`; data identitas bersama ada di schema `core`.
  */
 export async function supabaseServer() {
   const { NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY } = env();
   const cookieStore = await cookies();
 
   return createServerClient(NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, {
+    db: { schema: SKEMA_LTT },
     cookies: {
       getAll() {
         return cookieStore.getAll();
