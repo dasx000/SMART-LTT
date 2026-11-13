@@ -332,3 +332,4 @@ create policy "sarana ditulis sesuai wilayah" on ltt.sarana_desa
 -- Logs Sinkron:
 create policy "logs dibaca admin kab dan bpp" on ltt.logs_sinkron
   for select to authenticated using (ltt.role_saya() in ('Admin_Kab', 'Admin_BPP'));
+

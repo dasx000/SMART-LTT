@@ -144,3 +144,4 @@ export interface RekapBulananKecamatanView {
   jumlah_desa_lapor: number;
   jumlah_laporan: number;
 }
+
