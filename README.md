@@ -1,30 +1,41 @@
-# SMART LTT Palawija & Padi
+# SMART LTT
 
-Sistem pelaporan LTT (Luas Tambah Tanam) berbasis Google Apps Script untuk komoditas Padi, Jagung, dan Ubi Kayu.
+Pelaporan Luas Tambah Tanam (LTT) Padi, Jagung, dan Ubi Kayu — versi Next.js + Supabase.
+Pengganti aplikasi Google Apps Script lama (kodenya disimpan di `_gas_lama/`, tag git `gas-final`).
 
-## 🚀 Fitur Utama
-- **Dashboard Multi-Role:** Akses khusus untuk PPL (Penyuluh), BPP (Kecamatan), dan Admin Kabupaten.
-- **Virtual Sheet Array:** Optimasi performa tinggi untuk pengolahan data ribuan baris tanpa time-out.
-- **Otomasi Arsip:** Pemindahan data bulanan otomatis ke sheet arsip tiap tanggal 1.
-- **Sinkronisasi e-Pusluh:** Integrasi log sinkronisasi data dari sistem e-Pusluh.
-- **Client-Side Caching:** Perpindahan menu instan dengan memori cache di browser.
+- Rencana migrasi: [plan.md](plan.md)
+- Aturan bisnis hasil audit aplikasi lama: [docs/logika-bisnis.md](docs/logika-bisnis.md)
 
-## 🛠️ Cara Setup (Deploy Baru)
-1. **Spreadsheet:** Buat Spreadsheet baru dan catat ID-nya.
-2. **Database.gs:** Masukkan ID Spreadsheet tersebut ke variabel `SPREADSHEET_ID` di baris pertama.
-3. **Deploy:** Lakukan `clasp push` atau copy-paste kode ke Google Apps Script editor.
-4. **Inisialisasi:** Jalankan aplikasi (buka URL Web App). Sistem akan otomatis membuat semua sheet yang diperlukan (`Data_User`, `Data_LTT`, dll).
-5. **Aktivasi Otomasi:** Di Editor GAS, jalankan fungsi `setupTriggers()` sekali saja untuk mengaktifkan fitur arsip otomatis.
+## Stack
 
-## 📂 Struktur Database
-- `Data_User`: Manajemen akun dan role penyuluh.
-- `Data_LTT`: Data realisasi Jagung & Ubi Kayu (manual).
-- `Data_LTT_Padi`: Data realisasi Padi (hasil sinkron).
-- `Ringkasan_Harian`: Tabel pivot harian untuk performa dashboard cepat.
-- `Data_Geografi`: Referensi wilayah Kecamatan & Desa.
+Next.js 16 (App Router, Cache Components) · TypeScript · Tailwind CSS v4 · Supabase (Postgres + Auth) · Zod · SweetAlert2 · Vercel
 
-## ⚡ Pemeliharaan
-Jika data dashboard terasa tidak sinkron dengan data mentah, jalankan fungsi `rekalkulasiRingkasan()` di editor script untuk membangun ulang tabel rekap dari nol.
+## Menjalankan di laptop
 
----
-**Status:** Production Ready | **Optimized by Antigravity**
+```bash
+npm install
+cp .env.example .env.local   # lalu isi nilai Supabase
+npm run dev                  # http://localhost:3000
+```
+
+Perintah lain: `npm run build` (build produksi + cek TypeScript), `npm run lint`.
+
+## Struktur
+
+```
+app/              halaman (login, ppl, bpp, kab) — Server Components & Server Actions
+components/       komponen bersama (kerangka halaman, header)
+lib/auth.ts       satu-satunya tempat membaca sesi & role (Data Access Layer)
+lib/supabase/     client Supabase: server.ts (atas nama user), admin.ts (service role, server saja)
+lib/format.ts     format angka koma & tanggal WIB
+lib/swal.ts       helper SweetAlert2
+proxy.ts          menyegarkan token sesi (nama baru middleware di Next 16)
+docs/             dokumentasi
+_gas_lama/        kode Apps Script lama (rujukan, jangan diubah)
+```
+
+## Aturan penting
+
+- Browser **tidak pernah** query Supabase langsung. Semua data lewat Server Component / Server Action.
+- Setiap Server Action wajib memeriksa ulang user & role (`lib/auth.ts`), jangan percaya data dari browser.
+- `SUPABASE_SERVICE_ROLE_KEY` hanya untuk server. `.env.local` dan `credentials.json` tidak boleh di-commit.

@@ -1,9 +1,41 @@
-node_modules/
-.clasp.json
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+
+# testing
+/coverage
+/playwright-report
+/test-results
+
+# next.js
+/.next/
+/out/
+/build
+/dist
+
+# misc
 .DS_Store
+*.pem
 *.log
 tmp/
 .gemini/
-dist/
-build/
-.env
+
+# env & rahasia (JANGAN di-commit)
+.env*
+!.env.example
+credentials.json
+*.credentials.json
+
+# data mentah hasil ekspor spreadsheet (berisi data pribadi)
+/data_lama/
+
+# GAS lama
+_gas_lama/.clasp.json
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts

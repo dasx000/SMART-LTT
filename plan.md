@@ -32,7 +32,7 @@
 
 | Lapisan | Pilihan | Alasan |
 |---|---|---|
-| Framework | **Next.js 15 (App Router) + TypeScript** | Server Components + Server Actions menggantikan `google.script.run` |
+| Framework | **Next.js 16 (App Router) + TypeScript** | Server Components + Server Actions menggantikan `google.script.run` |
 | Hosting | **Vercel Hobby (gratis)** + **domain sendiri** | Untuk sementara deploy lewat **Vercel CLI** dari laptop (`vercel` / `vercel --prod`) karena repo belum di-push ke GitHub |
 | Styling | **Tailwind CSS v4 + shadcn/ui** | Kelas Tailwind lama bisa banyak dipakai ulang; komponen tabel/dialog/form siap pakai |
 | Database | **Supabase Postgres** | Relasional, constraint, index, view, RLS |
@@ -47,7 +47,7 @@
 | Excel | `exceljs` (di-load dinamis di client) | Sama seperti sekarang |
 | Tanggal | `date-fns` + `date-fns-tz` (zona `Asia/Jakarta`) | |
 | Monitoring | Vercel Analytics + Sentry (opsional) | |
-| Package manager | `pnpm` | |
+| Package manager | `npm` | pnpm tidak terpasang di laptop |
 
 ---
 
@@ -90,7 +90,7 @@
 > Target: halaman PPL terbuka cepat di HP kelas menengah dengan sinyal 3G/4G lemah. Aturan di bawah **wajib**, dicek tiap fase.
 
 **Anggaran (budget)**
-- JS yang diunduh halaman PPL awal: **< 150 KB gzip** (sekarang ±360 KB JS + Tailwind CDN + ApexCharts tiap buka).
+- ~~JS halaman PPL < 150 KB gzip~~ → **direvisi (Fase 1, diukur):** runtime Next 16 + React sendiri ±144 KB gzip dan tidak bisa dihindari. Anggaran baru: **JS milik aplikasi (di luar runtime) < 60 KB gzip per halaman PPL, total < 220 KB gzip.** Ukuran halaman login saat Fase 1: 181 KB total (±37 KB milik aplikasi). Pembanding aplikasi lama: ±330 KB gzip (JS 360 KB mentah + Tailwind CDN + ApexCharts) di setiap pembukaan, tanpa cache ber-hash.
 - Lighthouse Mobile: Performance **≥ 90**, LCP < 2,5 detik pada *throttling* 4G lambat.
 - Dicek dengan `@next/bundle-analyzer` sebelum tiap fase ditutup.
 
@@ -243,7 +243,7 @@ Helper SQL: `auth_role()`, `auth_kecamatan_id()`, `is_desa_binaan(desa_id)` (`se
 
 > **Keputusan:** proyek Next.js dibuat **langsung di root folder ini**. Folder ini hasil clone, jadi file Apps Script (`*.gs`, `File_*.html`, `Index.html`, `appsscript.json`, `.clasp*`, `v222/`) boleh dihapus.
 > Aman: `.clasp.json` di sini menunjuk `rootDir: d:\CODING\LTT` (folder lain), jadi GAS production tidak terpengaruh.
-> Sebelum dihapus: pindahkan dulu ke `_gas_lama/` (masuk `.gitignore`) selama pengembangan sebagai rujukan logika, dan buat tag git `gas-final`. Hapus permanen setelah cutover stabil.
+> Sebelum dihapus: pindahkan dulu ke `_gas_lama/` (tetap dilacak git) selama pengembangan sebagai rujukan logika, dan buat tag git `gas-final`. Hapus permanen setelah cutover stabil.
 
 ```
 /  (root repo)
@@ -371,7 +371,7 @@ Aturan: satu util `lib/excel.ts` (ExcelJS, dimuat dinamis saat tombol ditekan), 
 - [ ] Buat project Supabase Free (region **Singapore** `ap-southeast-1`) dan project Vercel Hobby (deploy via CLI, belum terhubung GitHub).
 - [ ] Pakai URL `*.vercel.app` dulu; domain sendiri menyusul (tinggal tambah record DNS di Vercel).
 - [ ] Buat service account Google (Cloud Console) → unduh `credentials.json` (masuk `.gitignore`) → bagikan spreadsheet ke email service account sebagai *Viewer*.
-- [ ] Pindahkan file GAS ke `_gas_lama/` + tag `gas-final`.
+- [x] Pindahkan file GAS ke `_gas_lama/` (tetap dilacak git sebagai rujukan) + tag `gas-final`.
 - [ ] Siapkan env: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `EPUSLUH_INGEST_TOKEN`, `VPS_WEBHOOK_URL`, `VPS_WEBHOOK_SECRET`, `CRON_SECRET`.
 - [ ] **Ekspor awal (keputusan C):** skrip `scripts/etl/ekspor.ts` tarik semua sheet → JSON lokal (`data_lama/`, di `.gitignore`) + `laporan-isi-data.md`: jumlah baris per sheet, nilai unik status/komoditas/jenis, desa yang tidak cocok dengan `Data_Geografi`, tanggal berformat teks, sel kosong. Skema §4 direvisi berdasarkan laporan ini.
 
@@ -381,13 +381,21 @@ Aturan: satu util `lib/excel.ts` (ExcelJS, dimuat dinamis saat tombol ditekan), 
 - [x] Catat juga **perilaku aneh/bug** yang ditemukan → daftar keputusan di `docs/logika-bisnis.md` §24 (16 pertanyaan).
 - [ ] **User mengoreksi** dokumen ini. Setelah disetujui, dokumen jadi acuan SQL dan daftar kasus uji "angka lama = angka baru".
 
-### Fase 1 — Fondasi (1–2 hari)
-- [ ] `pnpm create next-app web` (TS, App Router, Tailwind v4, ESLint), `shadcn init`.
-- [ ] `@supabase/ssr` client server/browser + `middleware.ts` refresh sesi & redirect ke `/login`.
-- [ ] Layout per role, tema warna & logo dari UI lama, mode HP diutamakan (mayoritas PPL pakai HP).
-- [ ] Pasang progress bar atas (`nextjs-toploader`) di root layout + file `loading.tsx` (skeleton) per segmen halaman.
-- [ ] Pasang SweetAlert2 + helper `lib/swal.ts` (konfirmasi, sukses, gagal, loading) dengan tema warna aplikasi.
-- [ ] Util `lib/format.ts` (angka koma, tanggal WIB, nama bulan Indonesia).
+### Fase 1 — Fondasi (1–2 hari) — **SELESAI 13 Nov 2026** (belum terhubung Supabase)
+- [x] `create-next-app` → ternyata **Next.js 16.4.6** + React 19.3, TS, Tailwind v4, ESLint, `cacheComponents` & `partialPrefetching` aktif. Pakai **npm** (pnpm tidak terpasang). shadcn ditunda: dipasang per komponen saat dibutuhkan (Fase 3.5) agar JS tetap kecil.
+- [x] `@supabase/ssr`: `lib/supabase/server.ts` (atas nama user), `lib/supabase/admin.ts` (service role, server saja). **Tidak ada client browser** (satu jalur data). `proxy.ts` (nama baru `middleware.ts` di Next 16) hanya menyegarkan token.
+- [x] `lib/auth.ts` = Data Access Layer: `getPenggunaOpsional` (`use cache: private`), `getPengguna`, `wajibRole`. Halaman role dijaga di dalam `<Suspense>` (aturan Next 16).
+- [x] Login NIP + password (`app/(auth)/login`) via Server Action + Zod; email sintetis `NIP@AUTH_EMAIL_DOMAIN`; pesan galat sama untuk NIP/password salah. Logout.
+- [x] Kerangka halaman `/ppl`, `/bpp`, `/kab`, `/ganti-password` (isi menyusul), header aplikasi, skeleton, `error.tsx`, `not-found.tsx` berbahasa Indonesia.
+- [x] Tema warna hijau (token CSS), font sistem, header keamanan (`X-Frame-Options`, HSTS, dll.).
+- [x] Progress bar atas `nextjs-toploader` di root layout.
+- [x] SweetAlert2 + `lib/swal.ts` (dimuat saat pertama dipakai).
+- [x] `lib/format.ts` (angka koma, tanggal WIB via `Intl`, nama bulan) — tanpa date-fns.
+- [x] `.env.example`, `.gitignore` (rahasia, `data_lama/`, `credentials.json`).
+- [ ] Logo asli (sekarang ikon sementara) — butuh file logo dari user.
+- Hasil uji: `npm run build` & `npm run lint` bersih; `/login` statis, halaman role partial-prerender; JS `/login` 181 KB gzip (runtime ±144 KB).
+
+**Anggapan sementara (bisa diubah sebelum Fase 2):** PPL boleh edit laporannya sendiri **kapan saja** (tercatat di `log_perubahan`); target desa tetap ada dan target kecamatan diisi **bebas** oleh Admin BPP (tidak dijumlah dari desa), isinya mengikuti format target desa.
 
 ### Fase 2 — Skema & RLS (1–2 hari)
 - [ ] Migration SQL §4 di `supabase/migrations`.
@@ -538,7 +546,7 @@ Aturan: satu util `lib/excel.ts` (ExcelJS, dimuat dinamis saat tombol ditekan), 
 - Semua fitur di §6 jalan di Vercel untuk 4 role, diuji di HP.
 - Tidak ada siasat GAS dari §2b yang ikut terbawa (tidak ada tabel turunan manual, cache berlapis, loop baris, pencocokan nama di runtime).
 - Halaman utama tiap role tampil < 1 detik di HP dengan sinyal normal; pindah halaman terasa instan (prefetch).
-- Anggaran §2c terpenuhi: JS halaman PPL < 150 KB gzip, Lighthouse Mobile ≥ 90.
+- Anggaran §2c terpenuhi: JS milik aplikasi < 60 KB gzip per halaman PPL (total < 220 KB), Lighthouse Mobile ≥ 90.
 - Staging dan production terpisah; seed data uji jalan; Playwright alur utama lulus.
 - `cek.ts` menunjukkan total Sheets = Supabase untuk semua komoditas/bulan/kecamatan.
 - Tidak ada password plaintext; RLS lulus uji per role.
