@@ -254,13 +254,6 @@
     document.getElementById('namaPenyuluh').innerText = userAktif.nama;
     document.getElementById('wilayahPenyuluh').innerText =
       'WKPP: ' + userAktif.desa;
-    jalankanLogikaWaktu();
-
-    // Tombol Produktivitas hanya untuk Koordinator BPP
-    const wrapProd = document.getElementById('wrapBtnProduktivitas');
-    if (wrapProd) {
-      wrapProd.classList.toggle('hidden', userAktif.role !== 'Admin_BPP');
-    }
 
     // Cek visibilitas tombol jembatan BPP
     const btnJembatan = document.getElementById('btnJembatanBPP');
@@ -270,39 +263,6 @@
       } else {
         btnJembatan.classList.add('hidden');
       }
-    }
-  }
-
-  function jalankanLogikaWaktu() {
-    const jam = new Date().getHours();
-    if (jam >= 24) {
-      // Diubah sementara untuk debugging (sebelumnya 14)
-      document
-        .getElementById('statusWaktu')
-        .classList.replace('border-green-500', 'border-red-500');
-      document.getElementById('teksStatusWaktu').innerText =
-        'Ditutup (Otomatis Nihil)';
-      document
-        .getElementById('teksStatusWaktu')
-        .classList.replace('text-green-600', 'text-red-600');
-      document
-        .getElementById('ikonStatusWaktu')
-        .classList.replace('fa-lock-open', 'fa-lock');
-      document
-        .getElementById('ikonStatusWaktu')
-        .classList.replace('text-green-500', 'text-red-500');
-
-      document.querySelectorAll('.btn-komoditas').forEach((btn) => {
-        btn.classList.add('opacity-40', 'grayscale');
-        btn.onclick = function (e) {
-          e.stopPropagation();
-          Swal.fire(
-            'Batas Waktu Habis!',
-            'Pelaporan ditutup pukul 14:00 WIB.',
-            'info',
-          );
-        };
-      });
     }
   }
 
@@ -743,6 +703,7 @@
       'sectionLaporanLTT',
       'sectionLttPmAas',
       'sectionProduktivitas',
+      'sectionSarana',
       'sectionPemeliharaan'
     ].forEach((id) => {
       const el = document.getElementById(id);
@@ -795,6 +756,12 @@
         .classList.add('bg-green-700', 'text-white', 'font-bold');
       _inisialisasiFilterProduktivitasKab();
       muatProduktivitasKab();
+    } else if (section === 'sarana') {
+      document.getElementById('sectionSarana').classList.remove('hidden');
+      document
+        .getElementById('nav-sarana')
+        .classList.add('bg-green-700', 'text-white', 'font-bold');
+      muatSaranaKab();
     } else if (section === 'pemeliharaan') {
       document.getElementById('sectionPemeliharaan').classList.remove('hidden');
       document
@@ -4450,6 +4417,18 @@
       return;
     }
 
+    // PPL Produktivitas & Sarana Desa
+    const prodArea = document.getElementById('prodArea');
+    if (prodArea && !prodArea.classList.contains('hidden')) {
+      prodArea.classList.add('hidden');
+      return;
+    }
+    const saranaArea = document.getElementById('saranaArea');
+    if (saranaArea && !saranaArea.classList.contains('hidden')) {
+      saranaArea.classList.add('hidden');
+      return;
+    }
+
     // PPL Rekap Area
     const rekapArea = document.getElementById('rekapArea');
     if (rekapArea && !rekapArea.classList.contains('hidden')) {
@@ -5668,22 +5647,48 @@
   }
 
   // =========================================================================
-  // PRODUKTIVITAS (ton/ha) — input Koordinator BPP
+  // PRODUKTIVITAS (ton/ha) & SARANA PER DESA — input PPL, rekap BPP & Admin Kab
   // =========================================================================
   const _BULAN_NAMA = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
   ];
+  const _BULAN_PENDEK = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
   const _KOMODITAS_PRODUKTIVITAS = ['Padi', 'Jagung', 'Ubi Kayu'];
-  let _prodDataBpp = null;
+  const _SARANA_JENIS = ['Gudang_Gabah', 'Embung', 'Lantai_Jemur', 'Mesin_Pengering'];
+  const _SARANA_LABEL = {
+    Gudang_Gabah: 'Gudang Gabah',
+    Embung: 'Embung',
+    Lantai_Jemur: 'Lantai Jemur',
+    Mesin_Pengering: 'Mesin Pengering',
+  };
+  let _prodDirty = false;
+  let _prodPilihan = { desa: '', tahun: '' };
+  let _prodReq = 0;
+  let _saranaDirty = false;
+  let _saranaDesaAktif = '';
+  let _saranaReq = 0;
+  let _prodKabData = null;
+  let _saranaKabData = null;
+
+  function _escHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    })[c]);
+  }
 
   function _fmtProduktivitas(n) {
     return Number(n || 0).toFixed(2).replace('.', ',');
   }
 
-  // Terima angka dengan koma atau titik, kosong dianggap 0
+  // Desimal >= 0 dengan koma atau titik; kosong boleh (dianggap 0)
   function _nilaiProdValid(s) {
     return /^\s*(\d+([.,]\d*)?|[.,]\d+)?\s*$/.test(String(s));
+  }
+
+  // Bilangan bulat >= 0, wajib diisi
+  function _nilaiUnitValid(s) {
+    return /^\s*\d+\s*$/.test(String(s));
   }
 
   function _isiPilihanTahun(selEl, tahunAktif) {
@@ -5697,171 +5702,461 @@
     }
   }
 
-  // Satu pintu kirim ke server (dipakai form bulan ini dan modal Edit)
-  function _kirimProduktivitas(tahun, bulan, nilai) {
+  function _isiPilihanBulan(selEl) {
+    if (!selEl || selEl.options.length) return;
+    _BULAN_NAMA.forEach((nama, i) => {
+      const opt = document.createElement('option');
+      opt.value = i + 1;
+      opt.textContent = nama;
+      selEl.appendChild(opt);
+    });
+    selEl.value = String(new Date().getMonth() + 1);
+  }
+
+  function _desaBinaanList() {
+    return String((userAktif && userAktif.desa) || '')
+      .split(/[,;]/)
+      .map((d) => d.trim())
+      .filter(Boolean);
+  }
+
+  function _isiPilihanDesa(selEl) {
+    const list = _desaBinaanList();
+    if (!selEl) return list;
+    const cur = selEl.value;
+    selEl.innerHTML = list.map((d) => `<option value="${_escHtml(d)}">${_escHtml(d)}</option>`).join('');
+    if (list.includes(cur)) selEl.value = cur;
+    selEl.disabled = list.length <= 1;
+    return list;
+  }
+
+  // Panggil fungsi server sebagai Promise. Respons { status: 'error' } dianggap gagal.
+  function _panggilServer(fn, params) {
     return new Promise((resolve, reject) => {
       google.script.run
         .withSuccessHandler((res) => {
-          if (res && res.status === 'success') resolve(res);
-          else reject(new Error((res && res.message) || 'Gagal menyimpan'));
+          if (res && res.status === 'error') reject(new Error(res.message || 'Terjadi kesalahan'));
+          else resolve(res);
         })
         .withFailureHandler((err) => reject(err))
-        .simpanProduktivitas({
-          role: userAktif.role,
-          nip: userAktif.nip,
-          nama: userAktif.nama,
-          kecamatan: userAktif.kecamatan,
-          tahun: tahun,
-          bulan: bulan,
-          nilai: nilai,
-        });
+        [fn](params);
     });
   }
 
-  function bukaProduktivitasBpp() {
-    const area = document.getElementById('prodArea');
-    if (!area) return;
-    area.classList.remove('hidden');
-    window.history.pushState({ overlay: 'prodArea' }, '');
-
-    const subtitle = document.getElementById('prodSubtitleBpp');
-    if (subtitle) subtitle.textContent = userAktif.kecamatan || 'Kecamatan';
-
-    _isiPilihanTahun(document.getElementById('prodTahunBpp'), new Date().getFullYear());
-    muatProduktivitasBpp();
+  function _konfirmasiBuangPerubahan() {
+    return Swal.fire({
+      title: 'Perubahan belum disimpan',
+      text: 'Lanjutkan tanpa menyimpan?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, lanjutkan',
+      cancelButtonText: 'Batal',
+    }).then((r) => r.isConfirmed);
   }
 
-  function tutupProduktivitasBpp() {
-    const area = document.getElementById('prodArea');
+  // Tab Isi/Rekap di panel PPL: tab hanya tampil untuk Admin_BPP yang punya desa binaan.
+  // Admin_BPP tanpa desa binaan langsung ke Rekap. Kembalikan tab awal.
+  function _aturTabPpl(prefix, punyaDesa) {
+    const isBpp = userAktif.role === 'Admin_BPP';
+    document.getElementById(prefix + 'TabWrap').classList.toggle('hidden', !isBpp || !punyaDesa);
+    return isBpp && !punyaDesa ? 'rekap' : 'isi';
+  }
+
+  function _tampilTabPpl(prefix, tab) {
+    ['isi', 'rekap'].forEach((t) => {
+      const aktif = t === tab;
+      document.getElementById(`${prefix}Panel-${t}`).classList.toggle('hidden', !aktif);
+      const btn = document.getElementById(`${prefix}Tab-${t}`);
+      if (!btn) return;
+      btn.classList.toggle('bg-white', aktif);
+      btn.classList.toggle('shadow', aktif);
+      btn.classList.toggle('text-green-700', aktif);
+      btn.classList.toggle('text-gray-500', !aktif);
+    });
+  }
+
+  function _tutupOverlay(id) {
+    const area = document.getElementById(id);
     if (area) area.classList.add('hidden');
-    if (window.history.state && window.history.state.overlay === 'prodArea') {
+    if (window.history.state && window.history.state.overlay === id) {
       window.history.back();
     }
   }
 
-  function muatProduktivitasBpp() {
-    const tbody = document.getElementById('prodTbodyBpp');
-    const selTahun = document.getElementById('prodTahunBpp');
-    if (!tbody || !selTahun) return;
-    const tahun = parseInt(selTahun.value, 10) || new Date().getFullYear();
-
-    tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-gray-400">
-      <i class="fa-solid fa-circle-notch fa-spin text-green-500 mr-2"></i>Memuat...</td></tr>`;
-
-    google.script.run
-      .withSuccessHandler((data) => renderProduktivitasBpp(data))
-      .withFailureHandler((err) => {
-        tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-red-400">${err.message || err}</td></tr>`;
-      })
-      .getProduktivitasKecamatan({ tahun: tahun, kecamatan: userAktif.kecamatan });
+  function _selProd(v, pad) {
+    return v > 0
+      ? `<td class="${pad} text-right">${_toKoma(v)}</td>`
+      : `<td class="${pad} text-right text-gray-300">0</td>`;
   }
 
-  function renderProduktivitasBpp(data) {
-    const tbody = document.getElementById('prodTbodyBpp');
-    if (!tbody || !data || !data.bulan) return;
-    _prodDataBpp = data;
+  function _selRata(nilai, jumlah, satuan, pad) {
+    return `<td class="${pad} text-right whitespace-nowrap">${_fmtProduktivitas(nilai)}
+      <span class="text-[10px] font-normal text-gray-500">(${jumlah} ${satuan})</span></td>`;
+  }
 
-    const now = new Date();
-    const isTahunIni = data.tahun === now.getFullYear();
+  function _barisRekapDesaProd(rows, pad) {
+    if (!rows || !rows.length) {
+      return `<tr><td colspan="4" class="p-4 text-center text-gray-400">Belum ada daftar desa.</td></tr>`;
+    }
+    return rows
+      .map((r) => `<tr>
+        <td class="${pad} font-medium text-gray-700">${_escHtml(r.desa)}</td>
+        ${_KOMODITAS_PRODUKTIVITAS.map((kom) => _selProd(r.nilai[kom], pad)).join('')}
+      </tr>`)
+      .join('');
+  }
 
-    tbody.innerHTML = data.bulan
-      .map((b) => {
-        const isBulanIni = isTahunIni && b.bulan === now.getMonth() + 1;
-        return `<tr class="${isBulanIni ? 'bg-sky-50 font-semibold' : ''}">
-          <td class="p-2 font-semibold text-gray-700">${_BULAN_NAMA[b.bulan - 1]}</td>
-          <td class="p-2 text-right">${_toKoma(b.Padi)}</td>
-          <td class="p-2 text-right">${_toKoma(b['Jagung'])}</td>
-          <td class="p-2 text-right">${_toKoma(b['Ubi Kayu'])}</td>
-          <td class="p-2 text-gray-400">${b.waktuUpdate || '-'}</td>
-          <td class="p-2 text-center">
-            <button onclick="editProduktivitasBpp(${data.tahun}, ${b.bulan})"
-              class="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded-md font-bold hover:bg-blue-600 hover:text-white transition">Edit</button>
-          </td>
+  function _barisRekapDesaSarana(rows, pad, denganUpdate) {
+    const kolom = 5 + (denganUpdate ? 1 : 0);
+    if (!rows || !rows.length) {
+      return `<tr><td colspan="${kolom}" class="p-4 text-center text-gray-400">Belum ada daftar desa.</td></tr>`;
+    }
+    return rows
+      .map((r) => {
+        const sel = _SARANA_JENIS.map((j) =>
+          r.nilai
+            ? `<td class="${pad} text-right">${r.nilai[j]}</td>`
+            : `<td class="${pad} text-right text-gray-300">–</td>`,
+        ).join('');
+        const upd = denganUpdate
+          ? `<td class="${pad} text-gray-400 whitespace-nowrap">${r.nilai ? _escHtml(r.waktuUpdate) : 'Belum diisi'}</td>`
+          : '';
+        return `<tr>
+          <td class="${pad} font-medium ${r.nilai ? 'text-gray-700' : 'text-gray-400'}">${_escHtml(r.desa)}</td>${sel}${upd}
         </tr>`;
       })
       .join('');
+  }
 
-    // Form bulan berjalan diisi dari data bulan ini
-    if (isTahunIni) {
-      const cur = data.bulan[now.getMonth()];
-      document.getElementById('prodInputPadi').value = _toKoma(cur.Padi);
-      document.getElementById('prodInputJagung').value = _toKoma(cur['Jagung']);
-      document.getElementById('prodInputUbiKayu').value = _toKoma(cur['Ubi Kayu']);
+  // -------------------------------------------------------------------------
+  // PPL — PRODUKTIVITAS DESA
+  // -------------------------------------------------------------------------
+  function bukaProduktivitas() {
+    const area = document.getElementById('prodArea');
+    if (!area) return;
+    area.classList.remove('hidden');
+    window.history.pushState({ overlay: 'prodArea' }, '');
+    document.getElementById('prodSubtitle').textContent = 'Kec. ' + (userAktif.kecamatan || '-');
+
+    _isiPilihanTahun(document.getElementById('prodTahun'), new Date().getFullYear());
+    const list = _isiPilihanDesa(document.getElementById('prodDesa'));
+    _prodDirty = false;
+    pilihTabProduktivitas(_aturTabPpl('prod', list.length > 0));
+  }
+
+  function tutupProduktivitas() {
+    if (!_prodDirty) return _tutupOverlay('prodArea');
+    _konfirmasiBuangPerubahan().then((ok) => {
+      if (!ok) return;
+      _prodDirty = false;
+      _tutupOverlay('prodArea');
+    });
+  }
+
+  function pilihTabProduktivitas(tab) {
+    _tampilTabPpl('prod', tab);
+    if (tab === 'isi') {
+      if (!_prodDirty) muatProduktivitasDesa();
+    } else {
+      _isiPilihanTahun(document.getElementById('prodRekapTahun'), new Date().getFullYear());
+      _isiPilihanBulan(document.getElementById('prodRekapBulan'));
+      muatRekapProduktivitasBpp();
     }
   }
 
-  function simpanProduktivitasBppForm() {
-    const now = new Date();
-    const ids = {
-      Padi: 'prodInputPadi',
-      Jagung: 'prodInputJagung',
-      'Ubi Kayu': 'prodInputUbiKayu',
-    };
-    const nilai = {};
-    for (const kom of _KOMODITAS_PRODUKTIVITAS) {
-      const raw = document.getElementById(ids[kom]).value;
-      if (!_nilaiProdValid(raw)) {
-        Swal.fire('Periksa input', `Nilai ${kom} harus angka 0 atau lebih.`, 'warning');
-        return;
-      }
-      nilai[kom] = raw;
-    }
-
-    Swal.fire({ title: 'Menyimpan...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-    _kirimProduktivitas(now.getFullYear(), now.getMonth() + 1, nilai)
-      .then(() => {
-        Swal.fire('Tersimpan!', `Produktivitas ${_BULAN_NAMA[now.getMonth()]} ${now.getFullYear()} berhasil disimpan.`, 'success');
-        muatProduktivitasBpp();
-      })
-      .catch((err) => Swal.fire('Gagal', err.message || String(err), 'error'));
-  }
-
-  function editProduktivitasBpp(tahun, bulan) {
-    const b = _prodDataBpp && _prodDataBpp.bulan ? _prodDataBpp.bulan[bulan - 1] : null;
-    const nilaiAwal = (kom) => (b ? _toKoma(b[kom]) : '0');
-
-    Swal.fire({
-      title: `Edit ${_BULAN_NAMA[bulan - 1]} ${tahun}`,
-      html: `
-        <div class="text-left space-y-2 text-sm">
-          <label class="flex justify-between items-center font-bold">Padi (ton/ha)
-            <input id="swalProdPadi" type="text" inputmode="decimal" class="swal2-input" style="width:8em;margin:0" value="${nilaiAwal('Padi')}"></label>
-          <label class="flex justify-between items-center font-bold">Jagung (ton/ha)
-            <input id="swalProdJagung" type="text" inputmode="decimal" class="swal2-input" style="width:8em;margin:0" value="${nilaiAwal('Jagung')}"></label>
-          <label class="flex justify-between items-center font-bold">Ubi Kayu (ton/ha)
-            <input id="swalProdUbiKayu" type="text" inputmode="decimal" class="swal2-input" style="width:8em;margin:0" value="${nilaiAwal('Ubi Kayu')}"></label>
-        </div>`,
-      focusConfirm: false,
-      showCancelButton: true,
-      confirmButtonText: 'Simpan',
-      cancelButtonText: 'Batal',
-      showLoaderOnConfirm: true,
-      preConfirm: () => {
-        const nilai = {
-          Padi: document.getElementById('swalProdPadi').value,
-          Jagung: document.getElementById('swalProdJagung').value,
-          'Ubi Kayu': document.getElementById('swalProdUbiKayu').value,
-        };
-        if (!Object.values(nilai).every(_nilaiProdValid)) {
-          Swal.showValidationMessage('Nilai harus angka 0 atau lebih');
-          return false;
-        }
-        return _kirimProduktivitas(tahun, bulan, nilai).catch((err) => {
-          Swal.showValidationMessage(`Gagal: ${err.message || err}`);
-        });
-      },
-      allowOutsideClick: () => !Swal.isLoading(),
-    }).then((result) => {
-      if (result.isConfirmed) {
-        Swal.fire('Tersimpan!', 'Produktivitas berhasil diperbarui.', 'success');
-        muatProduktivitasBpp();
+  function gantiPilihanProduktivitas() {
+    const selDesa = document.getElementById('prodDesa');
+    const selTahun = document.getElementById('prodTahun');
+    if (!_prodDirty) return muatProduktivitasDesa();
+    _konfirmasiBuangPerubahan().then((ok) => {
+      if (ok) {
+        _prodDirty = false;
+        muatProduktivitasDesa();
+      } else {
+        selDesa.value = _prodPilihan.desa;
+        selTahun.value = _prodPilihan.tahun;
       }
     });
   }
 
-  // =========================================================================
-  // PRODUKTIVITAS — tampilan Admin Kabupaten (hanya lihat)
-  // =========================================================================
+  function muatProduktivitasDesa() {
+    const tbody = document.getElementById('prodTbodyIsi');
+    const btn = document.getElementById('prodBtnSimpan');
+    const waktu = document.getElementById('prodWaktuUpdate');
+    const desa = document.getElementById('prodDesa').value;
+    const tahun = parseInt(document.getElementById('prodTahun').value, 10) || new Date().getFullYear();
+    waktu.textContent = '';
+    btn.disabled = true;
+
+    if (!desa) {
+      tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-gray-400">
+        Desa binaan Anda belum diatur. Hubungi Koordinator BPP.</td></tr>`;
+      return;
+    }
+
+    _prodPilihan = { desa: desa, tahun: String(tahun) };
+    const req = ++_prodReq;
+    tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-gray-400">
+      <i class="fa-solid fa-circle-notch fa-spin text-green-500 mr-2"></i>Memuat...</td></tr>`;
+
+    _panggilServer('getProduktivitasDesa', { nip: userAktif.nip, desa: desa, tahun: tahun })
+      .then((res) => {
+        if (req !== _prodReq) return;
+        _renderIsianProduktivitas(res);
+        btn.disabled = false;
+      })
+      .catch((err) => {
+        if (req !== _prodReq) return;
+        tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-red-400">${_escHtml(err.message || err)}</td></tr>`;
+      });
+  }
+
+  function _renderIsianProduktivitas(res) {
+    const tbody = document.getElementById('prodTbodyIsi');
+    const now = new Date();
+    const bulanIni = res.tahun === now.getFullYear() ? now.getMonth() : -1;
+
+    tbody.innerHTML = _BULAN_PENDEK
+      .map((bln, b) => `<tr class="${b === bulanIni ? 'bg-sky-50' : ''}">
+        <td class="p-2 font-semibold text-gray-700">${bln}</td>
+        ${_KOMODITAS_PRODUKTIVITAS.map((kom) => {
+          const v = res.nilai[kom][b];
+          return `<td class="p-1"><input type="text" inputmode="decimal" placeholder="0"
+            class="prod-in w-full px-2 py-1.5 border border-gray-200 rounded-lg text-right text-sm focus:outline-none focus:ring-2 focus:ring-green-300"
+            data-kom="${kom}" data-b="${b}" value="${v > 0 ? _toKoma(v) : ''}"></td>`;
+        }).join('')}
+      </tr>`)
+      .join('');
+
+    tbody.querySelectorAll('.prod-in').forEach((el) => {
+      el.addEventListener('input', () => {
+        _prodDirty = true;
+        const salah = !_nilaiProdValid(el.value);
+        el.classList.toggle('border-red-400', salah);
+        el.classList.toggle('bg-red-50', salah);
+      });
+    });
+    _prodDirty = false;
+    document.getElementById('prodWaktuUpdate').textContent = res.waktuUpdate
+      ? `Terakhir diperbarui: ${res.waktuUpdate}`
+      : `Belum pernah diisi untuk tahun ${res.tahun}.`;
+  }
+
+  function simpanProduktivitasDesaForm() {
+    const inputs = Array.from(document.querySelectorAll('#prodTbodyIsi .prod-in'));
+    if (!inputs.length) return;
+    const salah = inputs.find((el) => !_nilaiProdValid(el.value));
+    if (salah) {
+      Swal.fire('Periksa input', `${salah.dataset.kom} bulan ${_BULAN_NAMA[salah.dataset.b]} harus angka 0 atau lebih.`, 'warning');
+      return;
+    }
+
+    const nilai = {};
+    _KOMODITAS_PRODUKTIVITAS.forEach((kom) => {
+      nilai[kom] = new Array(12).fill('');
+    });
+    inputs.forEach((el) => {
+      nilai[el.dataset.kom][parseInt(el.dataset.b, 10)] = el.value.trim();
+    });
+
+    const desa = _prodPilihan.desa;
+    const tahun = parseInt(_prodPilihan.tahun, 10);
+    Swal.fire({ title: 'Menyimpan...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    _panggilServer('simpanProduktivitasDesa', { nip: userAktif.nip, desa: desa, tahun: tahun, nilai: nilai })
+      .then((res) => {
+        _prodDirty = false;
+        document.getElementById('prodWaktuUpdate').textContent = `Terakhir diperbarui: ${res.waktuUpdate}`;
+        Swal.fire({
+          icon: 'success',
+          title: 'Tersimpan!',
+          text: `Produktivitas ${desa} tahun ${tahun} berhasil disimpan.`,
+          timer: 1800,
+          showConfirmButton: false,
+        });
+      })
+      .catch((err) => Swal.fire('Gagal', err.message || String(err), 'error'));
+  }
+
+  function muatRekapProduktivitasBpp() {
+    const tbody = document.getElementById('prodTbodyRekap');
+    const tfoot = document.getElementById('prodTfootRekap');
+    const tahun = parseInt(document.getElementById('prodRekapTahun').value, 10);
+    const bulan = parseInt(document.getElementById('prodRekapBulan').value, 10);
+    tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-gray-400">
+      <i class="fa-solid fa-circle-notch fa-spin text-green-500 mr-2"></i>Memuat...</td></tr>`;
+    tfoot.innerHTML = '';
+
+    _panggilServer('getRekapProduktivitasKecamatan', { nip: userAktif.nip, tahun: tahun, bulan: bulan })
+      .then((data) => {
+        tbody.innerHTML = _barisRekapDesaProd(data.rows, 'p-2');
+        const ra = data.rataRata;
+        tfoot.innerHTML = `<tr>
+          <td class="p-2">Rata-rata Kecamatan</td>
+          ${_KOMODITAS_PRODUKTIVITAS.map((kom) => _selRata(ra.nilai[kom], ra.jumlah[kom], 'desa', 'p-2')).join('')}
+        </tr>`;
+      })
+      .catch((err) => {
+        tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-red-400">${_escHtml(err.message || err)}</td></tr>`;
+      });
+  }
+
+  // -------------------------------------------------------------------------
+  // PPL — SARANA DESA
+  // -------------------------------------------------------------------------
+  function bukaSaranaDesa() {
+    const area = document.getElementById('saranaArea');
+    if (!area) return;
+    area.classList.remove('hidden');
+    window.history.pushState({ overlay: 'saranaArea' }, '');
+    document.getElementById('saranaSubtitle').textContent = 'Kec. ' + (userAktif.kecamatan || '-');
+
+    document.getElementById('saranaForm').oninput = (e) => {
+      if (!e.target.classList.contains('sarana-in')) return;
+      _saranaDirty = true;
+      const salah = e.target.value.trim() !== '' && !_nilaiUnitValid(e.target.value);
+      e.target.classList.toggle('border-red-400', salah);
+      e.target.classList.toggle('bg-red-50', salah);
+    };
+
+    const list = _isiPilihanDesa(document.getElementById('saranaDesa'));
+    _saranaDirty = false;
+    pilihTabSarana(_aturTabPpl('sarana', list.length > 0));
+  }
+
+  function tutupSaranaDesa() {
+    if (!_saranaDirty) return _tutupOverlay('saranaArea');
+    _konfirmasiBuangPerubahan().then((ok) => {
+      if (!ok) return;
+      _saranaDirty = false;
+      _tutupOverlay('saranaArea');
+    });
+  }
+
+  function pilihTabSarana(tab) {
+    _tampilTabPpl('sarana', tab);
+    if (tab === 'isi') {
+      if (!_saranaDirty) muatSaranaDesa();
+    } else {
+      muatRekapSaranaBpp();
+    }
+  }
+
+  function gantiDesaSarana() {
+    if (!_saranaDirty) return muatSaranaDesa();
+    _konfirmasiBuangPerubahan().then((ok) => {
+      if (ok) {
+        _saranaDirty = false;
+        muatSaranaDesa();
+      } else {
+        document.getElementById('saranaDesa').value = _saranaDesaAktif;
+      }
+    });
+  }
+
+  function _setStatusSarana(teks, warna) {
+    const el = document.getElementById('saranaStatus');
+    el.textContent = teks;
+    el.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full ' + warna;
+  }
+
+  function muatSaranaDesa() {
+    const desa = document.getElementById('saranaDesa').value;
+    const inputs = Array.from(document.querySelectorAll('#saranaForm .sarana-in'));
+    const btn = document.getElementById('saranaBtnSimpan');
+    const waktu = document.getElementById('saranaWaktuUpdate');
+    waktu.textContent = '';
+    btn.disabled = true;
+    inputs.forEach((el) => {
+      el.value = '';
+      el.disabled = true;
+      el.classList.remove('border-red-400', 'bg-red-50');
+    });
+
+    if (!desa) {
+      _setStatusSarana('Desa binaan belum diatur', 'bg-red-100 text-red-600');
+      return;
+    }
+
+    _saranaDesaAktif = desa;
+    const req = ++_saranaReq;
+    _setStatusSarana('Memuat...', 'bg-gray-100 text-gray-500');
+
+    _panggilServer('getSaranaDesa', { nip: userAktif.nip, desa: desa })
+      .then((res) => {
+        if (req !== _saranaReq) return;
+        inputs.forEach((el) => {
+          el.value = res.nilai ? String(res.nilai[el.dataset.sarana]) : '';
+          el.disabled = false;
+        });
+        if (res.nilai) _setStatusSarana('Sudah diisi', 'bg-green-100 text-green-700');
+        else _setStatusSarana('Belum diisi', 'bg-gray-200 text-gray-600');
+        waktu.textContent = res.waktuUpdate ? `Terakhir diperbarui: ${res.waktuUpdate}` : '';
+        btn.disabled = false;
+        _saranaDirty = false;
+      })
+      .catch((err) => {
+        if (req !== _saranaReq) return;
+        _setStatusSarana('Gagal memuat', 'bg-red-100 text-red-600');
+        waktu.textContent = err.message || String(err);
+      });
+  }
+
+  function simpanSaranaDesaForm() {
+    const inputs = Array.from(document.querySelectorAll('#saranaForm .sarana-in'));
+    const salah = inputs.find((el) => !_nilaiUnitValid(el.value));
+    if (salah) {
+      Swal.fire('Periksa input', `${_SARANA_LABEL[salah.dataset.sarana]} wajib diisi angka bulat (isi 0 bila tidak ada).`, 'warning');
+      return;
+    }
+    const nilai = {};
+    inputs.forEach((el) => {
+      nilai[el.dataset.sarana] = el.value.trim();
+    });
+
+    const desa = _saranaDesaAktif;
+    Swal.fire({ title: 'Menyimpan...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    _panggilServer('simpanSaranaDesa', { nip: userAktif.nip, desa: desa, nilai: nilai })
+      .then((res) => {
+        _saranaDirty = false;
+        _setStatusSarana('Sudah diisi', 'bg-green-100 text-green-700');
+        document.getElementById('saranaWaktuUpdate').textContent = `Terakhir diperbarui: ${res.waktuUpdate}`;
+        Swal.fire({
+          icon: 'success',
+          title: 'Tersimpan!',
+          text: `Sarana desa ${desa} berhasil disimpan.`,
+          timer: 1800,
+          showConfirmButton: false,
+        });
+      })
+      .catch((err) => Swal.fire('Gagal', err.message || String(err), 'error'));
+  }
+
+  function muatRekapSaranaBpp() {
+    const tbody = document.getElementById('saranaTbodyRekap');
+    const tfoot = document.getElementById('saranaTfootRekap');
+    const info = document.getElementById('saranaRekapInfo');
+    tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-400">
+      <i class="fa-solid fa-circle-notch fa-spin text-orange-500 mr-2"></i>Memuat...</td></tr>`;
+    tfoot.innerHTML = '';
+    info.textContent = '';
+
+    _panggilServer('getRekapSaranaKecamatan', { nip: userAktif.nip })
+      .then((data) => {
+        tbody.innerHTML = _barisRekapDesaSarana(data.rows, 'p-2', false);
+        tfoot.innerHTML = `<tr>
+          <td class="p-2">Total Kecamatan</td>
+          ${_SARANA_JENIS.map((j) => `<td class="p-2 text-right">${data.total[j]}</td>`).join('')}
+        </tr>`;
+        info.textContent = `Desa terisi: ${data.terisi} / ${data.jumlahDesa}`;
+      })
+      .catch((err) => {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-red-400">${_escHtml(err.message || err)}</td></tr>`;
+      });
+  }
+
+  // -------------------------------------------------------------------------
+  // ADMIN KAB — PRODUKTIVITAS (hanya lihat)
+  // -------------------------------------------------------------------------
   function _inisialisasiFilterProduktivitasKab() {
     const now = new Date();
     _isiPilihanTahun(document.getElementById('prodFilterTahunKab'), now.getFullYear());
@@ -5883,47 +6178,147 @@
       <i class="fa-solid fa-circle-notch fa-spin text-green-500 mr-2"></i>Memuat...</td></tr>`;
     if (tfoot) tfoot.innerHTML = '';
 
-    google.script.run
-      .withSuccessHandler((data) => renderProduktivitasKab(data))
-      .withFailureHandler((err) => {
-        tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-red-400">${err.message || err}</td></tr>`;
-      })
-      .getProduktivitasKabupaten({ tahun: tahun, bulan: bulan });
+    _panggilServer('getRekapProduktivitasKabupaten', { nip: userAktif.nip, tahun: tahun, bulan: bulan })
+      .then((data) => renderProduktivitasKab(data))
+      .catch((err) => {
+        tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-red-400">${_escHtml(err.message || err)}</td></tr>`;
+      });
   }
 
   function renderProduktivitasKab(data) {
     const tbody = document.getElementById('prodTbodyKab');
     const tfoot = document.getElementById('prodTfootKab');
     if (!tbody || !data) return;
+    _prodKabData = data;
 
     tbody.innerHTML = (data.rows || [])
-      .map(
-        (r) => `<tr class="hover:bg-gray-50">
-          <td class="p-3 font-medium text-gray-800">${r.kecamatan}</td>
-          <td class="p-3 text-right">${_toKoma(r.Padi)}</td>
-          <td class="p-3 text-right">${_toKoma(r['Jagung'])}</td>
-          <td class="p-3 text-right">${_toKoma(r['Ubi Kayu'])}</td>
-        </tr>`,
-      )
+      .map((r, i) => `<tr class="hover:bg-gray-50 cursor-pointer" onclick="toggleDetailProduktivitasKab(${i})">
+          <td class="p-3 font-medium text-gray-800">
+            <i id="prodKabIkon-${i}" class="fa-solid fa-chevron-right text-[10px] text-gray-400 mr-2 transition-transform"></i>${_escHtml(r.kecamatan)}</td>
+          ${_KOMODITAS_PRODUKTIVITAS.map((kom) =>
+            r.nilai[kom] > 0
+              ? _selRata(r.nilai[kom], r.jumlah[kom], 'desa', 'p-3')
+              : `<td class="p-3 text-right text-gray-300">0</td>`,
+          ).join('')}
+        </tr>
+        <tr id="prodKabDetail-${i}" class="hidden"><td colspan="4" class="p-0"></td></tr>`)
       .join('');
 
     if (tfoot && data.rataRata) {
       const ra = data.rataRata;
-      const sel = (kom) =>
-        `<td class="p-3 text-right">${_fmtProduktivitas(ra[kom].nilai)}
-          <span class="text-[10px] font-normal text-gray-500">(${ra[kom].jumlahKec} kec)</span></td>`;
       tfoot.innerHTML = `<tr>
         <td class="p-3">Rata-rata Kabupaten</td>
-        ${sel('Padi')}${sel('Jagung')}${sel('Ubi Kayu')}
+        ${_KOMODITAS_PRODUKTIVITAS.map((kom) => _selRata(ra.nilai[kom], ra.jumlah[kom], 'kec', 'p-3')).join('')}
       </tr>`;
     }
   }
 
-  // Export Excel: satu sheet per komoditas per tahun (mis. "Padi 2025", "Jagung 2026").
-  // Baris = kecamatan, kolom = Jan..Des, plus baris rata-rata kabupaten (nilai 0 tidak ikut dihitung).
+  function toggleDetailProduktivitasKab(i) {
+    const row = document.getElementById(`prodKabDetail-${i}`);
+    const ikon = document.getElementById(`prodKabIkon-${i}`);
+    if (!row || !_prodKabData) return;
+    if (!row.classList.contains('hidden')) {
+      row.classList.add('hidden');
+      ikon.classList.remove('rotate-90');
+      return;
+    }
+    row.classList.remove('hidden');
+    ikon.classList.add('rotate-90');
+
+    const cell = row.firstElementChild;
+    cell.innerHTML = `<div class="bg-gray-50 px-6 py-4 text-xs text-gray-400">
+      <i class="fa-solid fa-circle-notch fa-spin text-green-500 mr-2"></i>Memuat desa...</div>`;
+    _panggilServer('getRekapProduktivitasKecamatan', {
+      nip: userAktif.nip,
+      kecamatan: _prodKabData.rows[i].kecamatan,
+      tahun: _prodKabData.tahun,
+      bulan: _prodKabData.bulan,
+    })
+      .then((d) => {
+        cell.innerHTML = `<div class="bg-gray-50 px-4 sm:px-8 py-3">
+          <table class="w-full text-xs text-left">
+            <thead class="text-gray-400 uppercase">
+              <tr><th class="p-2">Desa</th><th class="p-2 text-right">Padi</th><th class="p-2 text-right">Jagung</th><th class="p-2 text-right">Ubi Kayu</th></tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">${_barisRekapDesaProd(d.rows, 'p-2')}</tbody>
+          </table></div>`;
+      })
+      .catch((err) => {
+        cell.innerHTML = `<div class="bg-gray-50 px-6 py-4 text-xs text-red-400">${_escHtml(err.message || err)}</div>`;
+      });
+  }
+
+  // -------------------------------------------------------------------------
+  // ADMIN KAB — SARANA DESA (hanya lihat)
+  // -------------------------------------------------------------------------
+  function muatSaranaKab() {
+    const tbody = document.getElementById('saranaTbodyKab');
+    const tfoot = document.getElementById('saranaTfootKab');
+    if (!tbody) return;
+    tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-gray-400">
+      <i class="fa-solid fa-circle-notch fa-spin text-orange-500 mr-2"></i>Memuat...</td></tr>`;
+    tfoot.innerHTML = '';
+
+    _panggilServer('getRekapSaranaKabupaten', { nip: userAktif.nip })
+      .then((data) => {
+        _saranaKabData = data;
+        tbody.innerHTML = (data.rows || [])
+          .map((r, i) => `<tr class="hover:bg-gray-50 cursor-pointer" onclick="toggleDetailSaranaKab(${i})">
+              <td class="p-3 font-medium text-gray-800">
+                <i id="saranaKabIkon-${i}" class="fa-solid fa-chevron-right text-[10px] text-gray-400 mr-2 transition-transform"></i>${_escHtml(r.kecamatan)}</td>
+              ${_SARANA_JENIS.map((j) => `<td class="p-3 text-right">${r.total[j]}</td>`).join('')}
+              <td class="p-3 text-right ${r.terisi < r.jumlahDesa ? 'text-amber-600' : 'text-green-600'} font-semibold">${r.terisi} / ${r.jumlahDesa}</td>
+            </tr>
+            <tr id="saranaKabDetail-${i}" class="hidden"><td colspan="6" class="p-0"></td></tr>`)
+          .join('');
+        tfoot.innerHTML = `<tr>
+          <td class="p-3">Total Kabupaten</td>
+          ${_SARANA_JENIS.map((j) => `<td class="p-3 text-right">${data.total[j]}</td>`).join('')}
+          <td class="p-3 text-right">${data.terisi} / ${data.jumlahDesa}</td>
+        </tr>`;
+      })
+      .catch((err) => {
+        tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-red-400">${_escHtml(err.message || err)}</td></tr>`;
+      });
+  }
+
+  function toggleDetailSaranaKab(i) {
+    const row = document.getElementById(`saranaKabDetail-${i}`);
+    const ikon = document.getElementById(`saranaKabIkon-${i}`);
+    if (!row || !_saranaKabData) return;
+    if (!row.classList.contains('hidden')) {
+      row.classList.add('hidden');
+      ikon.classList.remove('rotate-90');
+      return;
+    }
+    row.classList.remove('hidden');
+    ikon.classList.add('rotate-90');
+
+    const cell = row.firstElementChild;
+    cell.innerHTML = `<div class="bg-gray-50 px-6 py-4 text-xs text-gray-400">
+      <i class="fa-solid fa-circle-notch fa-spin text-orange-500 mr-2"></i>Memuat desa...</div>`;
+    _panggilServer('getRekapSaranaKecamatan', { nip: userAktif.nip, kecamatan: _saranaKabData.rows[i].kecamatan })
+      .then((d) => {
+        cell.innerHTML = `<div class="bg-gray-50 px-4 sm:px-8 py-3 overflow-x-auto">
+          <table class="w-full text-xs text-left">
+            <thead class="text-gray-400 uppercase">
+              <tr><th class="p-2">Desa</th>${_SARANA_JENIS.map((j) => `<th class="p-2 text-right">${_SARANA_LABEL[j]}</th>`).join('')}<th class="p-2">Update</th></tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">${_barisRekapDesaSarana(d.rows, 'p-2', true)}</tbody>
+          </table></div>`;
+      })
+      .catch((err) => {
+        cell.innerHTML = `<div class="bg-gray-50 px-6 py-4 text-xs text-red-400">${_escHtml(err.message || err)}</div>`;
+      });
+  }
+
+  // -------------------------------------------------------------------------
+  // EXCEL — Admin Kab (semua kecamatan) & Admin_BPP (kecamatannya saja)
+  // Sheet per komoditas per tahun (baris = desa, dikelompokkan per kecamatan) + sheet Sarana Desa.
+  // -------------------------------------------------------------------------
   function unduhExcelProduktivitas() {
     const tahunIni = new Date().getFullYear();
-    const selTahun = document.getElementById('prodFilterTahunKab');
+    const selTahun = document.getElementById('prodFilterTahunKab') || document.getElementById('prodRekapTahun');
     const tahunDefault = (selTahun && parseInt(selTahun.value, 10)) || tahunIni;
     const opsi = (pilih) => {
       let html = '';
@@ -5934,9 +6329,9 @@
     };
 
     Swal.fire({
-      title: 'Unduh Excel Produktivitas',
+      title: 'Unduh Excel',
       html: `
-        <p class="text-sm text-gray-500 mb-4">Tiap tahun dibuat sheet terpisah per komoditas.</p>
+        <p class="text-sm text-gray-500 mb-4">Produktivitas per desa (satu sheet per komoditas per tahun) dan Sarana Desa.</p>
         <div class="flex items-end justify-center gap-3">
           <label class="text-left">
             <span class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Dari Tahun</span>
@@ -5972,42 +6367,53 @@
 
   function _prosesUnduhExcelProduktivitas(tahunDari, tahunSampai) {
     Swal.fire({ title: 'Menyiapkan Excel...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-    google.script.run
-      .withSuccessHandler((data) => {
-        _buatExcelProduktivitas(data, tahunDari, tahunSampai)
-          .then((ada) => {
-            if (ada) Swal.close();
-            else Swal.fire('Kosong', `Belum ada data produktivitas tahun ${tahunDari}–${tahunSampai}.`, 'info');
-          })
-          .catch((err) => Swal.fire('Error', err.message || 'Gagal mengekspor Excel.', 'error'));
+    _panggilServer('getProduktivitasSaranaExport', { nip: userAktif.nip, tahunDari: tahunDari, tahunSampai: tahunSampai })
+      .then((data) => _buatExcelProduktivitas(data, tahunDari, tahunSampai))
+      .then((ada) => {
+        if (ada) Swal.close();
+        else Swal.fire('Kosong', `Belum ada data produktivitas maupun sarana untuk tahun ${tahunDari}–${tahunSampai}.`, 'info');
       })
-      .withFailureHandler((err) => Swal.fire('Error', err.message || String(err), 'error'))
-      .getProduktivitasSemua({ tahunDari: tahunDari, tahunSampai: tahunSampai });
+      .catch((err) => Swal.fire('Error', err.message || 'Gagal mengekspor Excel.', 'error'));
   }
 
   async function _buatExcelProduktivitas(data, tahunDari, tahunSampai) {
-    const rows = (data && data.rows) || [];
-    if (rows.length === 0) return false;
+    const prod = (data && data.prod) || [];
+    const sarana = (data && data.sarana) || [];
+    if (!prod.length && !sarana.length) return false;
     await loadExcelJS();
 
-    // Kecamatan: daftar resmi + kecamatan lain yang kebetulan ada di data
-    const kecList = [...(data.kecamatan || [])];
-    rows.forEach((r) => {
-      if (!kecList.includes(r[2])) kecList.push(r[2]);
-    });
+    const norm = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const kunci = (kec, desa) => `${norm(kec)}|${norm(desa)}`;
+    const isKab = data.lingkup === 'kabupaten';
 
-    // nilai[tahun][komoditas][kecamatan][bulan-1]
+    // Kecamatan → desa: daftar resmi Data_Geografi + desa yang ada di data tapi tidak di Geografi
+    const kecList = (data.kecamatan || []).map((k) => ({ nama: k.nama, desa: (k.desa || []).slice() }));
+    const tambahDesa = (kecNama, desaNama) => {
+      let k = kecList.find((x) => norm(x.nama) === norm(kecNama));
+      if (!k) {
+        k = { nama: kecNama, desa: [] };
+        kecList.push(k);
+      }
+      if (!k.desa.some((d) => norm(d) === norm(desaNama))) k.desa.push(desaNama);
+    };
+    prod.forEach((r) => tambahDesa(r[1], r[2]));
+    sarana.forEach((r) => tambahDesa(r[0], r[1]));
+    kecList.forEach((k) => k.desa.sort((a, b) => a.localeCompare(b)));
+
+    // nilai[tahun][komoditas][kec|desa] = [12 bulan]
     const nilai = {};
-    rows.forEach(([tahun, bulan, kec, kom, v]) => {
+    prod.forEach((r) => {
+      const [tahun, kec, desa, kom] = r;
       nilai[tahun] = nilai[tahun] || {};
       nilai[tahun][kom] = nilai[tahun][kom] || {};
-      nilai[tahun][kom][kec] = nilai[tahun][kom][kec] || new Array(12).fill(0);
-      nilai[tahun][kom][kec][bulan - 1] = v;
+      nilai[tahun][kom][kunci(kec, desa)] = r.slice(4, 16);
     });
     const tahunList = Object.keys(nilai).map(Number).sort((a, b) => a - b);
 
-    const BULAN_PENDEK = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    const rataPositif = (arr) => {
+      const isi = arr.filter((v) => v > 0);
+      return isi.length ? Math.round((isi.reduce((s, v) => s + v, 0) / isi.length) * 100) / 100 : 0;
+    };
     const border = {
       top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
       bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
@@ -6015,69 +6421,129 @@
       right: { style: 'thin', color: { argb: 'FFD1D5DB' } },
     };
     const fill = (argb) => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
-    const NUM_FMT = '0.00';
+    const gayaJudul = (ws, teks, jmlKolom, warna) => {
+      ws.mergeCells(1, 1, 1, jmlKolom);
+      const c = ws.getCell(1, 1);
+      c.value = teks;
+      c.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+      c.fill = fill(warna);
+      c.alignment = { horizontal: 'center', vertical: 'middle' };
+      ws.getRow(1).height = 24;
+    };
+    const gayaHeader = (row, warna) => {
+      row.height = 20;
+      row.eachCell((c) => {
+        c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        c.fill = fill(warna);
+        c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        c.border = border;
+      });
+    };
+    // opsi: { zebra, tebal, warna, angkaMulai, numFmt }
+    const gayaBaris = (row, opsi) => {
+      row.eachCell({ includeEmpty: true }, (c, ci) => {
+        c.border = border;
+        c.alignment = { vertical: 'middle', horizontal: ci === 2 || ci === 3 ? 'left' : 'center' };
+        if (ci >= opsi.angkaMulai && opsi.numFmt) c.numFmt = opsi.numFmt;
+        if (opsi.tebal) c.font = { bold: true };
+        if (opsi.warna) c.fill = fill(opsi.warna);
+      });
+    };
+    const catatan = (ws, teks) => {
+      ws.addRow([]);
+      const r = ws.addRow(['', teks]);
+      r.getCell(2).font = { italic: true, size: 9, color: { argb: 'FF6B7280' } };
+    };
 
     const wb = new ExcelJS.Workbook();
 
+    // ---- Sheet produktivitas: satu per komoditas per tahun ----
     tahunList.forEach((tahun) => {
       _KOMODITAS_PRODUKTIVITAS.forEach((kom) => {
-        const ws = wb.addWorksheet(`${kom} ${tahun}`, {
-          views: [{ state: 'frozen', xSplit: 2, ySplit: 2 }],
-        });
-        ws.columns = [{ width: 5 }, { width: 20 }].concat(BULAN_PENDEK.map(() => ({ width: 8 })));
+        const ws = wb.addWorksheet(`${kom} ${tahun}`, { views: [{ state: 'frozen', xSplit: 3, ySplit: 2 }] });
+        ws.columns = [{ width: 5 }, { width: 18 }, { width: 22 }].concat(_BULAN_PENDEK.map(() => ({ width: 8 })));
+        gayaJudul(ws, `Produktivitas ${kom} per Desa Tahun ${tahun} (ton/ha)`, 15, 'FF16A34A');
+        gayaHeader(ws.addRow(['No', 'Kecamatan', 'Desa', ..._BULAN_PENDEK]), 'FF15803D');
 
-        // Judul
-        ws.mergeCells(1, 1, 1, 14);
-        const judul = ws.getCell(1, 1);
-        judul.value = `Produktivitas ${kom} Tahun ${tahun} (ton/ha)`;
-        judul.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
-        judul.fill = fill('FF16A34A');
-        judul.alignment = { horizontal: 'center', vertical: 'middle' };
-        ws.getRow(1).height = 24;
-
-        // Header
-        const header = ws.addRow(['No', 'Kecamatan', ...BULAN_PENDEK]);
-        header.height = 20;
-        header.eachCell((c) => {
-          c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-          c.fill = fill('FF15803D');
-          c.alignment = { horizontal: 'center', vertical: 'middle' };
-          c.border = border;
-        });
-
-        // Data per kecamatan, zebra
         const perKom = (nilai[tahun] && nilai[tahun][kom]) || {};
-        kecList.forEach((kec, i) => {
-          const vals = perKom[kec] || new Array(12).fill(0);
-          const row = ws.addRow([i + 1, kec, ...vals]);
-          row.eachCell({ includeEmpty: true }, (c, ci) => {
-            c.border = border;
-            c.alignment = { vertical: 'middle', horizontal: ci === 2 ? 'left' : 'center' };
-            if (ci >= 3) c.numFmt = NUM_FMT;
-            if (i % 2 === 1) c.fill = fill('FFF0FDF4');
+        const rataKec = [];
+        let no = 0;
+        kecList.forEach((k) => {
+          if (!k.desa.length) return;
+          const vals = k.desa.map((desa) => perKom[kunci(k.nama, desa)] || new Array(12).fill(0));
+          vals.forEach((v, i) => {
+            no++;
+            gayaBaris(ws.addRow([no, k.nama, k.desa[i], ...v]), {
+              angkaMulai: 4, numFmt: '0.00', warna: no % 2 === 0 ? 'FFF0FDF4' : null,
+            });
           });
+          const rata = _BULAN_PENDEK.map((_, b) => rataPositif(vals.map((v) => v[b])));
+          rataKec.push(rata);
+          const r = ws.addRow(['', `Rata-rata Kec. ${k.nama}`, '', ...rata]);
+          gayaBaris(r, { angkaMulai: 4, numFmt: '0.00', tebal: true, warna: 'FFDCFCE7' });
+          ws.mergeCells(r.number, 2, r.number, 3);
         });
 
-        // Rata-rata kabupaten per bulan (hanya kecamatan dengan nilai > 0)
-        const rata = BULAN_PENDEK.map((_, b) => {
-          const isi = kecList.map((kec) => (perKom[kec] ? perKom[kec][b] : 0)).filter((v) => v > 0);
-          return isi.length ? Math.round((isi.reduce((s, v) => s + v, 0) / isi.length) * 100) / 100 : 0;
-        });
-        const rowRata = ws.addRow(['', 'Rata-rata Kabupaten', ...rata]);
-        rowRata.eachCell({ includeEmpty: true }, (c, ci) => {
-          c.font = { bold: true };
-          c.fill = fill('FFDCFCE7');
-          c.border = border;
-          c.alignment = { vertical: 'middle', horizontal: ci === 2 ? 'left' : 'center' };
-          if (ci >= 3) c.numFmt = NUM_FMT;
-        });
-
-        // Keterangan
-        const ket = ws.addRow([]);
-        ws.addRow(['', 'Catatan: 0 = tidak ada panen / belum diisi. Rata-rata hanya dari kecamatan bernilai > 0.']);
-        ws.getRow(ket.number + 1).getCell(2).font = { italic: true, size: 9, color: { argb: 'FF6B7280' } };
+        if (isKab) {
+          const rataKab = _BULAN_PENDEK.map((_, b) => rataPositif(rataKec.map((r) => r[b])));
+          const r = ws.addRow(['', 'Rata-rata Kabupaten', '', ...rataKab]);
+          gayaBaris(r, { angkaMulai: 4, numFmt: '0.00', tebal: true, warna: 'FFBBF7D0' });
+          ws.mergeCells(r.number, 2, r.number, 3);
+        }
+        catatan(
+          ws,
+          isKab
+            ? 'Catatan: 0 = tidak ada panen / belum diisi. Rata-rata kecamatan dari desa bernilai > 0; rata-rata kabupaten dari kecamatan bernilai > 0.'
+            : 'Catatan: 0 = tidak ada panen / belum diisi. Rata-rata kecamatan dari desa bernilai > 0.',
+        );
       });
     });
+
+    // ---- Sheet sarana desa ----
+    const saranaMap = {};
+    sarana.forEach((r) => {
+      saranaMap[kunci(r[0], r[1])] = r;
+    });
+    const ws = wb.addWorksheet('Sarana Desa', { views: [{ state: 'frozen', xSplit: 3, ySplit: 2 }] });
+    ws.columns = [{ width: 5 }, { width: 18 }, { width: 22 }, { width: 12 }, { width: 10 }, { width: 12 }, { width: 12 }, { width: 18 }];
+    gayaJudul(ws, 'Jumlah Sarana per Desa (unit)', 8, 'FFEA580C');
+    gayaHeader(
+      ws.addRow(['No', 'Kecamatan', 'Desa', 'Gudang Gabah', 'Embung', 'Lantai Jemur', 'Mesin Pengering', 'Terakhir Update']),
+      'FFC2410C',
+    );
+    const totalKab = [0, 0, 0, 0];
+    let terisiKab = 0;
+    let desaKab = 0;
+    let no = 0;
+    kecList.forEach((k) => {
+      if (!k.desa.length) return;
+      const totalKec = [0, 0, 0, 0];
+      let terisiKec = 0;
+      k.desa.forEach((desa) => {
+        const s = saranaMap[kunci(k.nama, desa)];
+        no++;
+        if (s) {
+          terisiKec++;
+          for (let j = 0; j < 4; j++) totalKec[j] += s[2 + j];
+        }
+        gayaBaris(
+          ws.addRow([no, k.nama, desa, ...(s ? s.slice(2, 6) : ['', '', '', '']), s ? s[6] : 'Belum diisi']),
+          { angkaMulai: 4, warna: no % 2 === 0 ? 'FFFFF7ED' : null },
+        );
+      });
+      const r = ws.addRow(['', `Jumlah Kec. ${k.nama} (terisi ${terisiKec}/${k.desa.length} desa)`, '', ...totalKec, '']);
+      gayaBaris(r, { angkaMulai: 4, tebal: true, warna: 'FFFFEDD5' });
+      ws.mergeCells(r.number, 2, r.number, 3);
+      for (let j = 0; j < 4; j++) totalKab[j] += totalKec[j];
+      terisiKab += terisiKec;
+      desaKab += k.desa.length;
+    });
+    if (isKab) {
+      const r = ws.addRow(['', `Total Kabupaten (terisi ${terisiKab}/${desaKab} desa)`, '', ...totalKab, '']);
+      gayaBaris(r, { angkaMulai: 4, tebal: true, warna: 'FFFED7AA' });
+      ws.mergeCells(r.number, 2, r.number, 3);
+    }
+    catatan(ws, 'Catatan: "Belum diisi" = PPL belum mengisi data sarana desa tersebut (berbeda dengan 0).');
 
     const now = new Date();
     const tgl = [
@@ -6085,6 +6551,8 @@
       String(now.getMonth() + 1).padStart(2, '0'),
       String(now.getDate()).padStart(2, '0'),
     ].join('');
+    const rentang = tahunDari === tahunSampai ? `${tahunDari}` : `${tahunDari}-${tahunSampai}`;
+    const lingkup = isKab ? '' : `_Kec_${String((kecList[0] && kecList[0].nama) || '').replace(/\s+/g, '_')}`;
 
     const buf = await wb.xlsx.writeBuffer();
     const blob = new Blob([buf], {
@@ -6093,8 +6561,7 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    const rentang = tahunDari === tahunSampai ? `${tahunDari}` : `${tahunDari}-${tahunSampai}`;
-    a.download = `Produktivitas_${rentang}_${tgl}.xlsx`;
+    a.download = `Produktivitas_Sarana_${rentang}${lingkup}_${tgl}.xlsx`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

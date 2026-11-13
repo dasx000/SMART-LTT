@@ -83,6 +83,18 @@
       </a>
       <a
         href="#"
+        id="nav-sarana"
+        data-roles="Admin_Kab"
+        onclick="
+          navigasi('sarana');
+          toggleSidebar(true);
+        "
+        class="nav-item flex items-center px-4 py-3 text-green-200 hover:bg-green-700 hover:text-white rounded-lg transition"
+      >
+        <i class="fa-solid fa-warehouse w-6"></i> Sarana Desa
+      </a>
+      <a
+        href="#"
         id="nav-manajemen"
         data-roles="Admin_Kab"
         onclick="
@@ -1805,9 +1817,9 @@
         <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 border-b pb-3 gap-3">
           <div>
             <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
-              <i class="fa-solid fa-scale-balanced text-green-600"></i> Produktivitas per Kecamatan
+              <i class="fa-solid fa-scale-balanced text-green-600"></i> Produktivitas
             </h2>
-            <p class="text-xs text-gray-500">Satuan ton/ha. Kecamatan tanpa data tampil 0.</p>
+            <p class="text-xs text-gray-500">Satuan ton/ha, diisi PPL per desa. Nilai kecamatan = rata-rata desa &gt; 0. Klik kecamatan untuk melihat desa.</p>
           </div>
           <div class="flex items-center gap-2">
             <select id="prodFilterTahunKab" onchange="muatProduktivitasKab()"
@@ -1840,6 +1852,49 @@
               <tr><td colspan="4" class="p-6 text-center text-gray-400">Memuat...</td></tr>
             </tbody>
             <tfoot id="prodTfootKab" class="bg-green-50 font-bold text-gray-800"></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SECTION: SARANA DESA (hanya lihat) ===== -->
+    <div id="sectionSarana" class="hidden">
+      <div class="p-4 sm:p-6 lg:p-8">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 border-b pb-3 gap-3">
+          <div>
+            <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+              <i class="fa-solid fa-warehouse text-orange-500"></i> Sarana Desa
+            </h2>
+            <p class="text-xs text-gray-500">Jumlah unit, diisi PPL per desa. Klik kecamatan untuk melihat desa.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="muatSaranaKab()"
+              class="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm">
+              <i class="fa-solid fa-rotate"></i> Muat Ulang
+            </button>
+            <button onclick="unduhExcelProduktivitas()"
+              class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm">
+              <i class="fa-solid fa-file-excel"></i> Unduh Excel
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto bg-white rounded-xl shadow-sm border border-gray-100">
+          <table class="w-full text-sm text-left">
+            <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+              <tr>
+                <th class="p-3">Kecamatan</th>
+                <th class="p-3 text-right">Gudang Gabah</th>
+                <th class="p-3 text-right">Embung</th>
+                <th class="p-3 text-right">Lantai Jemur</th>
+                <th class="p-3 text-right">Mesin Pengering</th>
+                <th class="p-3 text-right">Desa Terisi</th>
+              </tr>
+            </thead>
+            <tbody id="saranaTbodyKab" class="divide-y divide-gray-100">
+              <tr><td colspan="6" class="p-6 text-center text-gray-400">Memuat...</td></tr>
+            </tbody>
+            <tfoot id="saranaTfootKab" class="bg-orange-50 font-bold text-gray-800"></tfoot>
           </table>
         </div>
       </div>

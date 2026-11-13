@@ -5749,106 +5749,276 @@ function getRekapHarianPPL(nip, tanggal) {
 }
 
 // =========================================================================
-// PRODUKTIVITAS (ton/ha) — input Koordinator BPP, rekap Admin Kab
+// PRODUKTIVITAS (ton/ha) & SARANA PER DESA — input PPL, rekap BPP & Admin Kab
 // =========================================================================
-var PRODUKTIVITAS_SHEET = 'Data_Produktivitas';
-var PRODUKTIVITAS_HEADER = [
-  'ID', 'Tahun', 'Bulan', 'Kecamatan', 'Komoditas',
-  'Produktivitas_Ton_Ha', 'NIP_Penginput', 'Nama_Penginput',
-  'Waktu_Input', 'Waktu_Update',
-];
+var PROD_DESA_SHEET = 'Data_Produktivitas_Desa';
+var PROD_KEC_LAMA_SHEET = 'Data_Produktivitas';
+var PROD_KEC_ARSIP_SHEET = 'Data_Produktivitas_Kec_Arsip';
+var PROD_BULAN_HEADER = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+// Kolom: 0 ID, 1 Tahun, 2 Kecamatan, 3 Desa, 4 Komoditas, 5..16 Jan..Des, 17 NIP, 18 Nama, 19 Waktu_Input, 20 Waktu_Update
+var PROD_DESA_HEADER = ['ID', 'Tahun', 'Kecamatan', 'Desa', 'Komoditas']
+  .concat(PROD_BULAN_HEADER)
+  .concat(['NIP_Penginput', 'Nama_Penginput', 'Waktu_Input', 'Waktu_Update']);
 var PRODUKTIVITAS_KOMODITAS = ['Padi', 'Jagung', 'Ubi Kayu'];
+var PROD_MAKS_TON_HA = 100; // batas wajar, mencegah salah input (mis. kg/ha)
 
-function getSheetProduktivitas_(ss) {
-  var sh = ss.getSheetByName(PRODUKTIVITAS_SHEET);
+var SARANA_SHEET = 'Data_Sarana_Desa';
+var SARANA_JENIS = ['Gudang_Gabah', 'Embung', 'Lantai_Jemur', 'Mesin_Pengering'];
+// Kolom: 0 ID, 1 Kecamatan, 2 Desa, 3..6 jenis sarana, 7 NIP, 8 Nama, 9 Waktu_Input, 10 Waktu_Update
+var SARANA_HEADER = ['ID', 'Kecamatan', 'Desa']
+  .concat(SARANA_JENIS)
+  .concat(['NIP_Penginput', 'Nama_Penginput', 'Waktu_Input', 'Waktu_Update']);
+
+function _normNama_(s) {
+  return String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function _bulat2_(n) {
+  return Math.round(n * 100) / 100;
+}
+
+function _fmtWaktuProd_(v) {
+  if (!v) return '';
+  return v instanceof Date ? Utilities.formatDate(v, 'Asia/Jakarta', 'dd/MM/yyyy HH:mm') : String(v);
+}
+
+function _sheetDenganHeader_(ss, nama, header) {
+  var sh = ss.getSheetByName(nama);
   if (!sh) {
-    sh = ss.insertSheet(PRODUKTIVITAS_SHEET);
-    sh.appendRow(PRODUKTIVITAS_HEADER);
-    sh.getRange(1, 1, 1, PRODUKTIVITAS_HEADER.length).setFontWeight('bold');
+    sh = ss.insertSheet(nama);
+    sh.getRange(1, 1, 1, header.length).setValues([header]).setFontWeight('bold').setBackground('#d9ead3');
     sh.setFrozenRows(1);
   }
   return sh;
 }
 
-// Terima angka dengan koma atau titik sebagai desimal. Kembalikan NaN jika tidak valid.
-function parseNilaiProduktivitas_(val) {
-  if (val === null || val === undefined || val === '') return 0;
-  var n = parseFloat(String(val).replace(',', '.'));
-  return isNaN(n) ? NaN : n;
+// Sheet produktivitas lama (per kecamatan) diarsipkan sekali, lalu sheet per desa dibuat bila belum ada.
+function getSheetProduktivitasDesa_(ss) {
+  var lama = ss.getSheetByName(PROD_KEC_LAMA_SHEET);
+  if (lama && !ss.getSheetByName(PROD_KEC_ARSIP_SHEET)) lama.setName(PROD_KEC_ARSIP_SHEET);
+  return _sheetDenganHeader_(ss, PROD_DESA_SHEET, PROD_DESA_HEADER);
 }
 
-// Simpan 3 komoditas sekaligus untuk satu kecamatan, satu bulan. Upsert per Tahun+Bulan+Kecamatan+Komoditas.
-// params: { role, nip, nama, kecamatan, tahun, bulan, nilai: { 'Padi': '5,5', 'Jagung': '', 'Ubi Kayu': '0' } }
-function simpanProduktivitas(params) {
+function getSheetSaranaDesa_(ss) {
+  return _sheetDenganHeader_(ss, SARANA_SHEET, SARANA_HEADER);
+}
+
+function _ambilUserProd_(ss, nip) {
+  var target = String(nip || '').trim();
+  if (!target) return null;
+  var data = ss.getSheetByName('Data_User').getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][2]).trim() !== target) continue;
+    return {
+      nip: target,
+      nama: String(data[i][1] || '').trim(),
+      role: String(data[i][4] || '').trim(),
+      kecamatan: String(data[i][5] || '').trim(),
+      desaBinaan: String(data[i][6] || '')
+        .split(/[,;]/)
+        .map(function (d) { return d.trim(); })
+        .filter(function (d) { return d; }),
+      aktif: data[i][7] === 'Aktif',
+    };
+  }
+  return null;
+}
+
+// PPL (Penyuluh / Admin_BPP) hanya boleh mengisi desa binaannya sendiri.
+// Kembalikan { user, desa } dengan nama desa resmi dari Desa_Binaan, atau { error }.
+function _validasiPplDesa_(ss, nip, desa) {
+  var u = _ambilUserProd_(ss, nip);
+  if (!u) return { error: 'NIP tidak terdaftar.' };
+  if (!u.aktif) return { error: 'Akun Anda nonaktif.' };
+  if (u.role !== 'Penyuluh' && u.role !== 'Admin_BPP') {
+    return { error: 'Hanya penyuluh yang dapat mengisi data desa.' };
+  }
+  if (!u.kecamatan) return { error: 'Kecamatan akun Anda belum diatur.' };
+  var cocok = null;
+  for (var i = 0; i < u.desaBinaan.length; i++) {
+    if (_normNama_(u.desaBinaan[i]) === _normNama_(desa)) cocok = u.desaBinaan[i];
+  }
+  if (!cocok) return { error: 'Desa tersebut bukan desa binaan Anda.' };
+  return { user: u, desa: cocok };
+}
+
+// Rekap: Admin_BPP dikunci ke kecamatannya, Admin_Kab/Dinas bebas (null = semua kecamatan).
+function _scopeKecamatanProd_(ss, nip, kecParam) {
+  var u = _ambilUserProd_(ss, nip);
+  if (!u || !u.aktif) throw new Error('Akun tidak dikenali atau nonaktif.');
+  if (u.role === 'Admin_BPP') return u.kecamatan;
+  if (u.role === 'Admin_Kab' || u.role === 'Dinas') return kecParam ? String(kecParam).trim() : null;
+  throw new Error('Akses rekap ditolak.');
+}
+
+// Kosong = 0. Kembalikan NaN bila bukan angka desimal >= 0 (koma/titik diterima).
+function _parseProd_(v) {
+  if (v === null || v === undefined) return 0;
+  var s = String(v).trim().replace(',', '.');
+  if (s === '') return 0;
+  if (!/^(\d+(\.\d*)?|\.\d+)$/.test(s)) return NaN;
+  return parseFloat(s);
+}
+
+// Kosong = 0. Kembalikan NaN bila bukan bilangan bulat >= 0.
+function _parseUnit_(v) {
+  if (v === null || v === undefined) return 0;
+  var s = String(v).trim();
+  if (s === '') return 0;
+  if (!/^\d+$/.test(s)) return NaN;
+  return parseInt(s, 10);
+}
+
+function _tahunValid_(t) {
+  var n = parseInt(t, 10);
+  return !isNaN(n) && n >= 2000 && n <= 2100 ? n : null;
+}
+
+function _nextId_(data) {
+  var next = 1;
+  for (var i = 1; i < data.length; i++) {
+    var id = parseInt(data[i][0], 10);
+    if (!isNaN(id) && id >= next) next = id + 1;
+  }
+  return next;
+}
+
+// Peta Data_Geografi: { normKec: { nama, desa: [nama desa...] } }
+function _petaDesaGeografi_(ss) {
+  var peta = {};
+  var sh = ss.getSheetByName('Data_Geografi');
+  if (!sh) return peta;
+  var data = sh.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    var kec = String(data[i][1] || '').trim();
+    var desa = String(data[i][3] || '').trim();
+    if (!kec) continue;
+    var k = _normNama_(kec);
+    if (!peta[k]) peta[k] = { nama: kec, desa: [], _ada: {} };
+    if (desa && !peta[k]._ada[_normNama_(desa)]) {
+      peta[k]._ada[_normNama_(desa)] = true;
+      peta[k].desa.push(desa);
+    }
+  }
+  Object.keys(peta).forEach(function (k) {
+    peta[k].desa.sort();
+  });
+  return peta;
+}
+
+// Rata-rata nilai > 0. Kembalikan { nilai, jumlah }.
+function _rataPositif_(arr) {
+  var sum = 0;
+  var n = 0;
+  arr.forEach(function (v) {
+    if (v > 0) {
+      sum += v;
+      n++;
+    }
+  });
+  return { nilai: n ? _bulat2_(sum / n) : 0, jumlah: n };
+}
+
+// -------------------------------------------------------------------------
+// INPUT PPL — PRODUKTIVITAS
+// -------------------------------------------------------------------------
+
+// params: { nip, desa, tahun } -> 12 bulan x 3 komoditas untuk satu desa
+function getProduktivitasDesa(params) {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var v = _validasiPplDesa_(ss, params && params.nip, params && params.desa);
+  if (v.error) return { status: 'error', message: v.error };
+  var tahun = _tahunValid_(params.tahun) || new Date().getFullYear();
+
+  var nilai = {};
+  PRODUKTIVITAS_KOMODITAS.forEach(function (kom) {
+    nilai[kom] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  });
+  var waktuUpdate = null;
+
+  var data = getSheetProduktivitasDesa_(ss).getDataRange().getValues();
+  var nKec = _normNama_(v.user.kecamatan);
+  var nDesa = _normNama_(v.desa);
+  for (var i = 1; i < data.length; i++) {
+    if (parseInt(data[i][1], 10) !== tahun) continue;
+    if (_normNama_(data[i][2]) !== nKec || _normNama_(data[i][3]) !== nDesa) continue;
+    var kom = String(data[i][4]).trim();
+    if (!nilai[kom]) continue;
+    for (var b = 0; b < 12; b++) nilai[kom][b] = parseFloat(data[i][5 + b]) || 0;
+    var wu = data[i][20];
+    if (wu instanceof Date && (!waktuUpdate || wu > waktuUpdate)) waktuUpdate = wu;
+  }
+
+  return {
+    status: 'success',
+    tahun: tahun,
+    kecamatan: v.user.kecamatan,
+    desa: v.desa,
+    nilai: nilai,
+    waktuUpdate: _fmtWaktuProd_(waktuUpdate),
+  };
+}
+
+// params: { nip, desa, tahun, nilai: { Padi: [12], Jagung: [12], 'Ubi Kayu': [12] } }
+// Upsert 3 baris (satu per komoditas) untuk Tahun + Kecamatan + Desa.
+function simpanProduktivitasDesa(params) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    if (!params || params.role !== 'Admin_BPP') {
-      return { status: 'error', message: 'Hanya Koordinator BPP yang dapat menyimpan produktivitas.' };
-    }
-    var tahun = parseInt(params.tahun, 10);
-    var bulan = parseInt(params.bulan, 10);
-    if (isNaN(tahun) || isNaN(bulan) || bulan < 1 || bulan > 12) {
-      return { status: 'error', message: 'Tahun atau bulan tidak valid.' };
-    }
-    var kecamatan = (params.kecamatan || '').toString().trim();
-    if (!kecamatan) {
-      return { status: 'error', message: 'Kecamatan tidak diketahui.' };
-    }
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var v = _validasiPplDesa_(ss, params && params.nip, params && params.desa);
+    if (v.error) return { status: 'error', message: v.error };
+    var tahun = _tahunValid_(params.tahun);
+    if (!tahun) return { status: 'error', message: 'Tahun tidak valid.' };
 
     var nilai = {};
     for (var k = 0; k < PRODUKTIVITAS_KOMODITAS.length; k++) {
       var kom = PRODUKTIVITAS_KOMODITAS[k];
-      var v = parseNilaiProduktivitas_((params.nilai || {})[kom]);
-      if (isNaN(v) || v < 0) {
-        return { status: 'error', message: 'Nilai ' + kom + ' harus angka 0 atau lebih.' };
+      var arr = (params.nilai || {})[kom] || [];
+      nilai[kom] = [];
+      for (var b = 0; b < 12; b++) {
+        var n = _parseProd_(arr[b]);
+        if (isNaN(n) || n < 0) {
+          return { status: 'error', message: kom + ' bulan ' + PROD_BULAN_HEADER[b] + ' harus angka 0 atau lebih.' };
+        }
+        if (n > PROD_MAKS_TON_HA) {
+          return {
+            status: 'error',
+            message: kom + ' bulan ' + PROD_BULAN_HEADER[b] + ' tidak wajar (maks ' + PROD_MAKS_TON_HA + ' ton/ha). Pastikan satuannya ton/ha.',
+          };
+        }
+        nilai[kom].push(n);
       }
-      nilai[kom] = v;
     }
 
-    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    var sh = getSheetProduktivitas_(ss);
+    var sh = getSheetProduktivitasDesa_(ss);
     var data = sh.getDataRange().getValues();
-
-    // Peta: Tahun|Bulan|Kecamatan|Komoditas -> nomor baris (1-indexed)
+    var nKec = _normNama_(v.user.kecamatan);
+    var nDesa = _normNama_(v.desa);
     var rowMap = {};
     for (var i = 1; i < data.length; i++) {
-      var key = [parseInt(data[i][1], 10), parseInt(data[i][2], 10), String(data[i][3]).trim(), String(data[i][4]).trim()].join('|');
-      rowMap[key] = i + 1;
+      if (parseInt(data[i][1], 10) !== tahun) continue;
+      if (_normNama_(data[i][2]) !== nKec || _normNama_(data[i][3]) !== nDesa) continue;
+      rowMap[String(data[i][4]).trim()] = i; // index di data (baris sheet = i + 1)
     }
 
     var now = new Date();
-    var nip = (params.nip || '').toString();
-    var nama = (params.nama || '').toString();
-    // ID = ID terbesar + 1 (aman walau ada baris yang sudah dihapus)
-    var nextId = 1;
-    for (var x = 1; x < data.length; x++) {
-      var idLama = parseInt(data[x][0], 10);
-      if (!isNaN(idLama) && idLama >= nextId) nextId = idLama + 1;
-    }
-
-    // Nilai 0 tidak disimpan (saat dibaca, baris yang tidak ada = 0).
-    // Jika sebelumnya ada nilai lalu diubah jadi 0, barisnya dihapus.
-    var barisDihapus = [];
-    for (var j = 0; j < PRODUKTIVITAS_KOMODITAS.length; j++) {
-      var komoditas = PRODUKTIVITAS_KOMODITAS[j];
-      var rKey = [tahun, bulan, kecamatan, komoditas].join('|');
-      var rowNum = rowMap[rKey];
-      if (nilai[komoditas] === 0) {
-        if (rowNum) barisDihapus.push(rowNum);
-      } else if (rowNum) {
-        sh.getRange(rowNum, 6).setValue(nilai[komoditas]);
-        sh.getRange(rowNum, 7, 1, 4).setValues([[nip, nama, data[rowNum - 1][8] || now, now]]);
-      } else {
-        sh.appendRow([nextId++, tahun, bulan, kecamatan, komoditas, nilai[komoditas], nip, nama, now, now]);
-      }
-    }
-    // Hapus dari bawah ke atas agar nomor baris tidak bergeser
-    barisDihapus.sort(function (a, b) { return b - a; }).forEach(function (r) {
-      sh.deleteRow(r);
+    var nextId = _nextId_(data);
+    var baru = [];
+    PRODUKTIVITAS_KOMODITAS.forEach(function (kom) {
+      var idx = rowMap[kom];
+      var lama = idx !== undefined ? data[idx] : null;
+      var row = [lama ? lama[0] : nextId++, tahun, v.user.kecamatan, v.desa, kom]
+        .concat(nilai[kom])
+        .concat([v.user.nip, v.user.nama, lama && lama[19] ? lama[19] : now, now]);
+      if (lama) sh.getRange(idx + 1, 1, 1, row.length).setValues([row]);
+      else baru.push(row);
     });
+    if (baru.length) {
+      sh.getRange(sh.getLastRow() + 1, 1, baru.length, baru[0].length).setValues(baru);
+    }
 
-    return { status: 'success' };
+    return { status: 'success', waktuUpdate: _fmtWaktuProd_(now) };
   } catch (e) {
     return { status: 'error', message: e.toString() };
   } finally {
@@ -5856,97 +6026,308 @@ function simpanProduktivitas(params) {
   }
 }
 
-// Data 12 bulan untuk satu kecamatan pada satu tahun. Bulan tanpa data = 0.
-// params: { tahun, kecamatan }
-function getProduktivitasKecamatan(params) {
-  var tahun = parseInt(params && params.tahun, 10) || new Date().getFullYear();
-  var kecamatan = ((params && params.kecamatan) || '').toString().trim();
-  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  var sh = getSheetProduktivitas_(ss);
-  var data = sh.getDataRange().getValues();
+// -------------------------------------------------------------------------
+// INPUT PPL — SARANA
+// -------------------------------------------------------------------------
 
-  var bulanArr = [];
-  for (var b = 1; b <= 12; b++) {
-    bulanArr.push({ bulan: b, Padi: 0, Jagung: 0, 'Ubi Kayu': 0, waktuUpdate: '' });
+// params: { nip, desa } -> { nilai: {jenis: n} | null bila belum diisi }
+function getSaranaDesa(params) {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var v = _validasiPplDesa_(ss, params && params.nip, params && params.desa);
+  if (v.error) return { status: 'error', message: v.error };
+
+  var data = getSheetSaranaDesa_(ss).getDataRange().getValues();
+  var nKec = _normNama_(v.user.kecamatan);
+  var nDesa = _normNama_(v.desa);
+  for (var i = 1; i < data.length; i++) {
+    if (_normNama_(data[i][1]) !== nKec || _normNama_(data[i][2]) !== nDesa) continue;
+    var nilai = {};
+    SARANA_JENIS.forEach(function (j, x) {
+      nilai[j] = parseInt(data[i][3 + x], 10) || 0;
+    });
+    return { status: 'success', desa: v.desa, nilai: nilai, waktuUpdate: _fmtWaktuProd_(data[i][10]) };
   }
+  return { status: 'success', desa: v.desa, nilai: null, waktuUpdate: '' };
+}
+
+// params: { nip, desa, nilai: { Gudang_Gabah, Embung, Lantai_Jemur, Mesin_Pengering } }
+function simpanSaranaDesa(params) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var v = _validasiPplDesa_(ss, params && params.nip, params && params.desa);
+    if (v.error) return { status: 'error', message: v.error };
+
+    var angka = [];
+    for (var x = 0; x < SARANA_JENIS.length; x++) {
+      var n = _parseUnit_((params.nilai || {})[SARANA_JENIS[x]]);
+      if (isNaN(n) || n < 0) {
+        return { status: 'error', message: SARANA_JENIS[x].replace(/_/g, ' ') + ' harus bilangan bulat 0 atau lebih.' };
+      }
+      angka.push(n);
+    }
+
+    var sh = getSheetSaranaDesa_(ss);
+    var data = sh.getDataRange().getValues();
+    var nKec = _normNama_(v.user.kecamatan);
+    var nDesa = _normNama_(v.desa);
+    var idx = -1;
+    for (var i = 1; i < data.length; i++) {
+      if (_normNama_(data[i][1]) === nKec && _normNama_(data[i][2]) === nDesa) {
+        idx = i;
+        break;
+      }
+    }
+
+    var now = new Date();
+    var lama = idx > 0 ? data[idx] : null;
+    var row = [lama ? lama[0] : _nextId_(data), v.user.kecamatan, v.desa]
+      .concat(angka)
+      .concat([v.user.nip, v.user.nama, lama && lama[9] ? lama[9] : now, now]);
+    if (lama) sh.getRange(idx + 1, 1, 1, row.length).setValues([row]);
+    else sh.getRange(sh.getLastRow() + 1, 1, 1, row.length).setValues([row]);
+
+    return { status: 'success', waktuUpdate: _fmtWaktuProd_(now) };
+  } catch (e) {
+    return { status: 'error', message: e.toString() };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// -------------------------------------------------------------------------
+// REKAP — dibaca Admin_BPP (kecamatannya) dan Admin Kab (semua)
+// -------------------------------------------------------------------------
+
+// { normKec: { nama, desa: { normDesa: { nama, Padi:[12], Jagung:[12], 'Ubi Kayu':[12] } } } } untuk satu tahun
+function _bacaProduktivitasTahun_(ss, tahun) {
+  var peta = {};
+  var data = getSheetProduktivitasDesa_(ss).getDataRange().getValues();
   for (var i = 1; i < data.length; i++) {
     if (parseInt(data[i][1], 10) !== tahun) continue;
-    if (String(data[i][3]).trim() !== kecamatan) continue;
-    var bln = parseInt(data[i][2], 10);
     var kom = String(data[i][4]).trim();
-    if (bln < 1 || bln > 12 || PRODUKTIVITAS_KOMODITAS.indexOf(kom) === -1) continue;
-    bulanArr[bln - 1][kom] = parseFloat(data[i][5]) || 0;
-    var wu = data[i][9];
-    if (wu) bulanArr[bln - 1].waktuUpdate = wu instanceof Date
-      ? Utilities.formatDate(wu, 'Asia/Jakarta', 'dd/MM/yyyy HH:mm')
-      : String(wu);
+    if (PRODUKTIVITAS_KOMODITAS.indexOf(kom) === -1) continue;
+    var kec = String(data[i][2]).trim();
+    var desa = String(data[i][3]).trim();
+    var nk = _normNama_(kec);
+    var nd = _normNama_(desa);
+    if (!peta[nk]) peta[nk] = { nama: kec, desa: {} };
+    if (!peta[nk].desa[nd]) peta[nk].desa[nd] = { nama: desa };
+    var arr = [];
+    for (var b = 0; b < 12; b++) arr.push(parseFloat(data[i][5 + b]) || 0);
+    peta[nk].desa[nd][kom] = arr;
   }
-  return { tahun: tahun, kecamatan: kecamatan, bulan: bulanArr };
+  return peta;
 }
 
-// Rekap semua kecamatan untuk satu tahun + bulan, plus rata-rata kabupaten.
-// Rata-rata hanya dari kecamatan yang nilainya > 0 (kecamatan 0 tidak ikut pembagi).
-// params: { tahun, bulan }
-function getProduktivitasKabupaten(params) {
-  var now = new Date();
-  var tahun = parseInt(params && params.tahun, 10) || now.getFullYear();
-  var bulan = parseInt(params && params.bulan, 10) || (now.getMonth() + 1);
-  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  var sh = getSheetProduktivitas_(ss);
-  var data = sh.getDataRange().getValues();
-
-  var daftarKec = getKecamatanLaporan();
-  var perKec = {};
-  daftarKec.forEach(function (kec) {
-    perKec[kec] = { kecamatan: kec, Padi: 0, Jagung: 0, 'Ubi Kayu': 0 };
+// Daftar desa sebuah kecamatan: dari Data_Geografi + desa yang ada di data tapi tidak di Geografi.
+function _gabungDesa_(geoDesa, dataDesaMap) {
+  var hasil = (geoDesa || []).slice();
+  var ada = {};
+  hasil.forEach(function (d) {
+    ada[_normNama_(d)] = true;
   });
+  Object.keys(dataDesaMap || {}).forEach(function (nd) {
+    if (!ada[nd]) {
+      ada[nd] = true;
+      hasil.push(dataDesaMap[nd].nama);
+    }
+  });
+  return hasil.sort();
+}
 
-  for (var i = 1; i < data.length; i++) {
-    if (parseInt(data[i][1], 10) !== tahun || parseInt(data[i][2], 10) !== bulan) continue;
-    var kec = String(data[i][3]).trim();
-    var kom = String(data[i][4]).trim();
-    if (!perKec[kec] || PRODUKTIVITAS_KOMODITAS.indexOf(kom) === -1) continue;
-    perKec[kec][kom] = parseFloat(data[i][5]) || 0;
-  }
-
-  var rows = daftarKec.map(function (kec) { return perKec[kec]; });
-
-  var rataRata = {};
-  PRODUKTIVITAS_KOMODITAS.forEach(function (kom) {
-    var sum = 0;
-    var jumlah = 0;
-    rows.forEach(function (r) {
-      if (r[kom] > 0) {
-        sum += r[kom];
-        jumlah++;
-      }
+function _rekapProdSatuKec_(namaKec, geoDesa, kecData, bulanIdx) {
+  var desaMap = (kecData && kecData.desa) || {};
+  var rows = _gabungDesa_(geoDesa, desaMap).map(function (desa) {
+    var d = desaMap[_normNama_(desa)] || {};
+    var nilai = {};
+    PRODUKTIVITAS_KOMODITAS.forEach(function (kom) {
+      nilai[kom] = d[kom] ? d[kom][bulanIdx] : 0;
     });
-    rataRata[kom] = {
-      nilai: jumlah > 0 ? Math.round((sum / jumlah) * 100) / 100 : 0,
-      jumlahKec: jumlah,
-    };
+    return { desa: desa, nilai: nilai };
   });
-
-  return { tahun: tahun, bulan: bulan, rows: rows, rataRata: rataRata };
+  var rata = { nilai: {}, jumlah: {} };
+  PRODUKTIVITAS_KOMODITAS.forEach(function (kom) {
+    var r = _rataPositif_(rows.map(function (x) { return x.nilai[kom]; }));
+    rata.nilai[kom] = r.nilai;
+    rata.jumlah[kom] = r.jumlah;
+  });
+  return { kecamatan: namaKec, rows: rows, rataRata: rata };
 }
 
-// Data mentah untuk export Excel (diolah di sisi client), dibatasi rentang tahun.
-// params: { tahunDari, tahunSampai }. rows: [tahun, bulan, kecamatan, komoditas, nilai]
-function getProduktivitasSemua(params) {
-  var tahunDari = parseInt(params && params.tahunDari, 10) || 0;
-  var tahunSampai = parseInt(params && params.tahunSampai, 10) || 9999;
+// params: { nip, kecamatan, tahun, bulan }
+function getRekapProduktivitasKecamatan(params) {
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  var sh = getSheetProduktivitas_(ss);
-  var data = sh.getDataRange().getValues();
-  var rows = [];
+  var kec = _scopeKecamatanProd_(ss, params && params.nip, params && params.kecamatan);
+  if (!kec) throw new Error('Kecamatan belum dipilih.');
+  var now = new Date();
+  var tahun = _tahunValid_(params.tahun) || now.getFullYear();
+  var bulan = parseInt(params.bulan, 10) || now.getMonth() + 1;
+  if (bulan < 1 || bulan > 12) bulan = now.getMonth() + 1;
+
+  var geo = _petaDesaGeografi_(ss)[_normNama_(kec)];
+  var dataKec = _bacaProduktivitasTahun_(ss, tahun)[_normNama_(kec)];
+  var hasil = _rekapProdSatuKec_(geo ? geo.nama : kec, geo ? geo.desa : [], dataKec, bulan - 1);
+  hasil.tahun = tahun;
+  hasil.bulan = bulan;
+  return hasil;
+}
+
+// params: { nip, tahun, bulan } -> rata-rata per kecamatan + rata-rata kabupaten (dari kecamatan > 0)
+function getRekapProduktivitasKabupaten(params) {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  if (_scopeKecamatanProd_(ss, params && params.nip, null) !== null) {
+    throw new Error('Rekap kabupaten hanya untuk Admin Kabupaten.');
+  }
+  var now = new Date();
+  var tahun = _tahunValid_(params.tahun) || now.getFullYear();
+  var bulan = parseInt(params.bulan, 10) || now.getMonth() + 1;
+  if (bulan < 1 || bulan > 12) bulan = now.getMonth() + 1;
+
+  var geo = _petaDesaGeografi_(ss);
+  var dataTahun = _bacaProduktivitasTahun_(ss, tahun);
+  var daftarKec = getKecamatanLaporan().slice();
+  var adaKec = {};
+  daftarKec.forEach(function (k) { adaKec[_normNama_(k)] = true; });
+  Object.keys(dataTahun).forEach(function (nk) {
+    if (!adaKec[nk]) daftarKec.push(dataTahun[nk].nama);
+  });
+
+  var rows = daftarKec.map(function (kec) {
+    var nk = _normNama_(kec);
+    var r = _rekapProdSatuKec_(kec, geo[nk] ? geo[nk].desa : [], dataTahun[nk], bulan - 1);
+    return { kecamatan: kec, nilai: r.rataRata.nilai, jumlah: r.rataRata.jumlah };
+  });
+
+  var rata = { nilai: {}, jumlah: {} };
+  PRODUKTIVITAS_KOMODITAS.forEach(function (kom) {
+    var r = _rataPositif_(rows.map(function (x) { return x.nilai[kom]; }));
+    rata.nilai[kom] = r.nilai;
+    rata.jumlah[kom] = r.jumlah;
+  });
+
+  return { tahun: tahun, bulan: bulan, rows: rows, rataRata: rata };
+}
+
+// { normKec: { nama, desa: { normDesa: { nama, nilai: {jenis:n}, waktuUpdate } } } }
+function _bacaSarana_(ss) {
+  var peta = {};
+  var data = getSheetSaranaDesa_(ss).getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    var kec = String(data[i][1]).trim();
+    var desa = String(data[i][2]).trim();
+    if (!kec || !desa) continue;
+    var nk = _normNama_(kec);
+    if (!peta[nk]) peta[nk] = { nama: kec, desa: {} };
+    var nilai = {};
+    SARANA_JENIS.forEach(function (j, x) {
+      nilai[j] = parseInt(data[i][3 + x], 10) || 0;
+    });
+    peta[nk].desa[_normNama_(desa)] = { nama: desa, nilai: nilai, waktuUpdate: _fmtWaktuProd_(data[i][10]) };
+  }
+  return peta;
+}
+
+function _totalSaranaKosong_() {
+  var t = {};
+  SARANA_JENIS.forEach(function (j) { t[j] = 0; });
+  return t;
+}
+
+function _rekapSaranaSatuKec_(namaKec, geoDesa, kecData) {
+  var desaMap = (kecData && kecData.desa) || {};
+  var total = _totalSaranaKosong_();
+  var terisi = 0;
+  var rows = _gabungDesa_(geoDesa, desaMap).map(function (desa) {
+    var d = desaMap[_normNama_(desa)];
+    if (d) {
+      terisi++;
+      SARANA_JENIS.forEach(function (j) { total[j] += d.nilai[j]; });
+    }
+    return { desa: desa, nilai: d ? d.nilai : null, waktuUpdate: d ? d.waktuUpdate : '' };
+  });
+  return { kecamatan: namaKec, rows: rows, total: total, terisi: terisi, jumlahDesa: rows.length };
+}
+
+// params: { nip, kecamatan }
+function getRekapSaranaKecamatan(params) {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var kec = _scopeKecamatanProd_(ss, params && params.nip, params && params.kecamatan);
+  if (!kec) throw new Error('Kecamatan belum dipilih.');
+  var geo = _petaDesaGeografi_(ss)[_normNama_(kec)];
+  return _rekapSaranaSatuKec_(geo ? geo.nama : kec, geo ? geo.desa : [], _bacaSarana_(ss)[_normNama_(kec)]);
+}
+
+// params: { nip }
+function getRekapSaranaKabupaten(params) {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  if (_scopeKecamatanProd_(ss, params && params.nip, null) !== null) {
+    throw new Error('Rekap kabupaten hanya untuk Admin Kabupaten.');
+  }
+  var geo = _petaDesaGeografi_(ss);
+  var sarana = _bacaSarana_(ss);
+  var daftarKec = getKecamatanLaporan().slice();
+  var adaKec = {};
+  daftarKec.forEach(function (k) { adaKec[_normNama_(k)] = true; });
+  Object.keys(sarana).forEach(function (nk) {
+    if (!adaKec[nk]) daftarKec.push(sarana[nk].nama);
+  });
+
+  var total = _totalSaranaKosong_();
+  var terisi = 0;
+  var jumlahDesa = 0;
+  var rows = daftarKec.map(function (kec) {
+    var nk = _normNama_(kec);
+    var r = _rekapSaranaSatuKec_(kec, geo[nk] ? geo[nk].desa : [], sarana[nk]);
+    SARANA_JENIS.forEach(function (j) { total[j] += r.total[j]; });
+    terisi += r.terisi;
+    jumlahDesa += r.jumlahDesa;
+    return { kecamatan: kec, total: r.total, terisi: r.terisi, jumlahDesa: r.jumlahDesa };
+  });
+  return { rows: rows, total: total, terisi: terisi, jumlahDesa: jumlahDesa };
+}
+
+// Data mentah untuk Excel (diolah di client). Admin_BPP otomatis hanya kecamatannya.
+// params: { nip, tahunDari, tahunSampai }
+// -> { lingkup: 'kabupaten'|'kecamatan', kecamatan: [{ nama, desa: [...] }],
+//      prod: [[tahun, kec, desa, komoditas, jan..des(12)]], sarana: [[kec, desa, g, e, l, m, waktuUpdate]] }
+function getProduktivitasSaranaExport(params) {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var kecScope = _scopeKecamatanProd_(ss, params && params.nip, null);
+  var nScope = kecScope ? _normNama_(kecScope) : null;
+  var tahunDari = _tahunValid_(params.tahunDari) || 2000;
+  var tahunSampai = _tahunValid_(params.tahunSampai) || 2100;
+
+  var geo = _petaDesaGeografi_(ss);
+  var prod = [];
+  var data = getSheetProduktivitasDesa_(ss).getDataRange().getValues();
   for (var i = 1; i < data.length; i++) {
     var tahun = parseInt(data[i][1], 10);
-    var bulan = parseInt(data[i][2], 10);
+    if (isNaN(tahun) || tahun < tahunDari || tahun > tahunSampai) continue;
     var kom = String(data[i][4]).trim();
-    if (isNaN(tahun) || isNaN(bulan) || bulan < 1 || bulan > 12) continue;
-    if (tahun < tahunDari || tahun > tahunSampai) continue;
     if (PRODUKTIVITAS_KOMODITAS.indexOf(kom) === -1) continue;
-    rows.push([tahun, bulan, String(data[i][3]).trim(), kom, parseFloat(data[i][5]) || 0]);
+    if (nScope && _normNama_(data[i][2]) !== nScope) continue;
+    var row = [tahun, String(data[i][2]).trim(), String(data[i][3]).trim(), kom];
+    for (var b = 0; b < 12; b++) row.push(parseFloat(data[i][5 + b]) || 0);
+    prod.push(row);
   }
-  return { kecamatan: getKecamatanLaporan(), rows: rows };
+
+  var saranaMap = _bacaSarana_(ss);
+  var sarana = [];
+  Object.keys(saranaMap).forEach(function (nk) {
+    if (nScope && nk !== nScope) return;
+    Object.keys(saranaMap[nk].desa).forEach(function (nd) {
+      var d = saranaMap[nk].desa[nd];
+      sarana.push([saranaMap[nk].nama, d.nama].concat(SARANA_JENIS.map(function (j) { return d.nilai[j]; })).concat([d.waktuUpdate]));
+    });
+  });
+
+  var daftarKec = kecScope ? [geo[nScope] ? geo[nScope].nama : kecScope] : getKecamatanLaporan();
+  var kecamatan = daftarKec.map(function (kec) {
+    var g = geo[_normNama_(kec)];
+    return { nama: kec, desa: g ? g.desa : [] };
+  });
+
+  return { lingkup: kecScope ? 'kecamatan' : 'kabupaten', kecamatan: kecamatan, prod: prod, sarana: sarana };
 }
