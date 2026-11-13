@@ -374,9 +374,9 @@ Aturan: satu util `lib/excel.ts` (ExcelJS, dimuat dinamis saat tombol ditekan), 
 - [ ] **Ekspor awal (keputusan C):** skrip `scripts/etl/ekspor.ts` tarik semua sheet → JSON lokal (`data_lama/`, di `.gitignore`) + `laporan-isi-data.md`: jumlah baris per sheet, nilai unik status/komoditas/jenis, desa yang tidak cocok dengan `Data_Geografi`, tanggal berformat teks, sel kosong. Skema §4 direvisi berdasarkan laporan ini.
 
 ### Fase 0.5 — Audit logika (1–2 hari) *(keputusan A)*
-- [ ] Baca seluruh `Database.gs`, `Code.gs`, `LoaderTuyul.gs`, dan bagian terkait di `File_Javascript.html`.
-- [ ] Tulis `docs/logika-bisnis.md` dalam bahasa biasa, per fitur: input apa, aturan validasi, rumus (capaian %, PM AAS, pemetaan kolom padi per jenis, rata-rata produktivitas, status verifikasi & alurnya, batas "hari ini"/bulan berjalan, aturan e-Pusluh upsert), siapa boleh apa.
-- [ ] Catat juga **perilaku aneh/bug** yang ditemukan dan putuskan: dipertahankan (karena user sudah terbiasa) atau diperbaiki.
+- [x] Baca seluruh `Database.gs`, `Code.gs`, `LoaderTuyul.gs`, dan bagian terkait di `File_Javascript.html`.
+- [x] Tulis `docs/logika-bisnis.md` dalam bahasa biasa, per fitur: input apa, aturan validasi, rumus (capaian %, PM AAS, pemetaan kolom padi per jenis, rata-rata produktivitas, status verifikasi & alurnya, batas "hari ini"/bulan berjalan, aturan e-Pusluh upsert), siapa boleh apa.
+- [x] Catat juga **perilaku aneh/bug** yang ditemukan → daftar keputusan di `docs/logika-bisnis.md` §24 (16 pertanyaan).
 - [ ] **User mengoreksi** dokumen ini. Setelah disetujui, dokumen jadi acuan SQL dan daftar kasus uji "angka lama = angka baru".
 
 ### Fase 1 — Fondasi (1–2 hari)
@@ -479,7 +479,7 @@ Aturan: satu util `lib/excel.ts` (ExcelJS, dimuat dinamis saat tombol ditekan), 
 | 7 | Domain | **Pakai `*.vercel.app` dulu**, domain sendiri menyusul |
 | 8 | Backup | Dijalankan dari **cron VPS** (§7b). **Dikerjakan paling akhir** setelah aplikasi jalan |
 | 9 | Akses data lama (ETL) | **Service account** Google diberi akses *Viewer* ke spreadsheet; cadangan: unduh `.xlsx` manual |
-| 10 | `Target_Bulanan` / `Target_Detail_Jenis` | **Masih dipakai** → ikut dimigrasi (lihat catatan §4e) |
+| 10 | `Target_Bulanan` / `Target_Detail_Jenis` | ~~Masih dipakai~~ → **perlu dikonfirmasi ulang**: audit menemukan keduanya hanya dibaca fungsi migrasi lama, bukan oleh aplikasi (lihat `docs/logika-bisnis.md` §17a, §24 no. 2) |
 | 11 | Role Dinas | **Hanya melihat** (read-only semua halaman kabupaten) |
 | 12 | Login | **NIP + password** saja, tanpa OTP |
 | 13 | Ekspor | **Tombol unduh Excel** saja, tidak ada sinkron ke Google Sheets |
