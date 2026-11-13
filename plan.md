@@ -318,15 +318,17 @@ Aturan: satu util `lib/excel.ts` (ExcelJS, dimuat dinamis saat tombol ditekan), 
 
 ---
 
-## 7. Integrasi e-Pusluh (bookmarklet)
+## 7. Integrasi e-Pusluh (cron VPS → endpoint sinkron padi)
 
-- Bookmarklet berjalan di domain e-Pusluh, kirim ke server kita lintas origin.
-- Endpoint baru:
-  - Wajib header/field **token** (`EPUSLUH_INGEST_TOKEN` di env Vercel). Token disisipkan ke kode bookmarklet saat disajikan oleh `/api/tuyul/[nama]` hanya untuk user Admin yang login, atau per-user token (lebih aman, bisa dicabut).
-  - CORS: izinkan origin e-Pusluh saja, tangani `OPTIONS`. Ganti `mode: 'no-cors'` → `cors` agar respons sukses/gagal bisa dibaca bookmarklet.
-  - Validasi Zod, batasi ukuran body, upsert idempoten.
-- Ganti `GAS_URL` di `LoaderTuyul.gs` → URL Vercel (dipindah ke `web/lib/tuyul/*.ts` sebagai template string).
-- Selama masa transisi, endpoint GAS lama **tetap aktif** (lihat Fase 7).
+> **Revisi setelah audit:** bookmarklet (`LoaderTuyul.gs`, `/api/tuyul/*`, impor target e-Pusluh) **dihapus**. Data padi masuk otomatis dari bot VPS (`DASBOT/scripts/run_tarik_data.py`, cron 11:30/12:30/13:30/22:30 WIB) — lihat `docs/logika-bisnis.md` §25.
+
+- Satu endpoint: **`POST /api/epusluh/sinkron-padi`** (pengganti `doPost aksi=sinkron_padi`).
+  - Wajib header **`Authorization: Bearer <EPUSLUH_INGEST_TOKEN>`** (env Vercel; disimpan juga di `.env` DASBOT).
+  - Server ke server → **tanpa CORS**.
+  - Body sama dengan sekarang (`data` 18 kolom termasuk metode penanaman, `logData`; `dataVPS` diabaikan). Validasi Zod, batasi ukuran body.
+  - Aturan **timpa per tanggal** dalam satu transaksi (RPC), catat `logs_sinkron`, balas JSON `{status, inserted}` agar skrip tahu sukses/gagal.
+- Perubahan di repo DASBOT (saat cutover): ganti `GAS_URL` → URL Vercel + header token di `run_tarik_data.py` (cek juga `downloader-ltt.js`).
+- Selama masa transisi, endpoint GAS lama **tetap aktif**; bisa kirim ke dua tujuan sekaligus selama uji paralel (Fase 7).
 
 ### 7a. VPS (bot WA + webhook) — tetap dipakai
 - Webhook `/webhook/saran` dan `/deteksi-ltt` di VPS tetap dipanggil, sekarang dari server Next.js (Server Action), URL di env `VPS_WEBHOOK_URL`.
@@ -479,8 +481,8 @@ Aturan: satu util `lib/excel.ts` (ExcelJS, dimuat dinamis saat tombol ditekan), 
 | 7 | Domain | **Pakai `*.vercel.app` dulu**, domain sendiri menyusul |
 | 8 | Backup | Dijalankan dari **cron VPS** (§7b). **Dikerjakan paling akhir** setelah aplikasi jalan |
 | 9 | Akses data lama (ETL) | **Service account** Google diberi akses *Viewer* ke spreadsheet; cadangan: unduh `.xlsx` manual |
-| 10 | `Target_Bulanan` / `Target_Detail_Jenis` | ~~Masih dipakai~~ → **perlu dikonfirmasi ulang**: audit menemukan keduanya hanya dibaca fungsi migrasi lama, bukan oleh aplikasi (lihat `docs/logika-bisnis.md` §17a, §24 no. 2) |
-| 11 | Role Dinas | **Hanya melihat** (read-only semua halaman kabupaten) |
+| 10 | `Target_Bulanan` / `Target_Detail_Jenis` | **Tidak dimigrasi** (tidak dipakai aplikasi lama; audit §17a) |
+| 11 | Role Dinas | **Hanya melihat Dashboard + LTT PM AAS** (seperti aplikasi lama) |
 | 12 | Login | **NIP + password** saja, tanpa OTP |
 | 13 | Ekspor | **Tombol unduh Excel** saja, tidak ada sinkron ke Google Sheets |
 | 14 | VPS (HTTPS, akses bot ke data baru) | **Disetting belakangan** |
@@ -494,7 +496,12 @@ Aturan: satu util `lib/excel.ts` (ExcelJS, dimuat dinamis saat tombol ditekan), 
 | 21 | Ekspor data awal | **Ya** → tarik semua sheet ke JSON + laporan isi data **sebelum** skema difinalkan |
 | 22 | Fitur tambahan | **Realtime & PWA ditunda ke v1.1**; audit trail (`log_perubahan`) tetap di v1 |
 
+| 23 | Hasil audit logika | Lihat **`docs/logika-bisnis.md` §25** — terpenting: **fitur verifikasi dihapus**, **bookmarklet e-Pusluh dihapus**, target **tanpa tahun**, target kecamatan diisi Admin BPP dan **kabupaten = jumlah kecamatan**, warna capaian 60/85 |
+
+> ⚠️ Karena keputusan 23, bagian plan yang menyebut verifikasi (§4c status, §4g RLS, Fase 3.5, Fase 5–6), bookmarklet/endpoint e-Pusluh (§7, §6 baris `doPost`/`doGet`), dan `target_kecamatan_provinsi` akan direvisi setelah pertanyaan lanjutan §26 dijawab.
+
 ### Masih terbuka
+- **Pertanyaan lanjutan audit** (`docs/logika-bisnis.md` §26): sumber data padi tanpa bookmarklet, detail target kecamatan, aturan edit laporan tanpa verifikasi.
 - **E. Tanggal cutover** — usulan 1 Januari 2027 (3–4 minggu kerja + 2 minggu uji paralel; awal tahun = target & rekap bersih). Menunggu keputusan.
 
 
