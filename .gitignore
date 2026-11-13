@@ -29,6 +29,7 @@ credentials.json
 
 # data mentah hasil ekspor spreadsheet (berisi data pribadi)
 /data_lama/
+/scripts/etl/data_bersih/
 
 # GAS lama
 _gas_lama/.clasp.json
