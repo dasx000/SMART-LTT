@@ -1,70 +1,130 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { Check, ChevronLeft, ChevronRight, RotateCw, TriangleAlert } from "lucide-react";
 import { wajibRole } from "@/lib/auth";
 import { KerangkaHalaman } from "@/components/kerangka-halaman";
 import { supabaseServer } from "@/lib/supabase/server";
-import { formatTanggal, formatTanggalJam } from "@/lib/format";
-import { JudulHalaman, Kartu, Kosong, Tabel, sel, selAngka } from "@/components/ui";
+import { formatTanggalJam } from "@/lib/format";
+import { angkaParam, urlDengan, type CariParam } from "@/lib/param";
 
-export const metadata: Metadata = { title: "Log Sinkron — SMART LTT" };
+export const metadata: Metadata = { title: "Log Sinkronisasi — SMART LTT" };
 
-export default function HalamanLogs() {
+export default function HalamanLogs({ searchParams }: { searchParams: CariParam }) {
   return (
-    <KerangkaHalaman judul="SMART LTT · Log Sinkron" role={["admin_kab"]}>
-      <Isi />
+    <KerangkaHalaman judul="Log Sinkronisasi" role={["admin_kab"]} gaya="kab">
+      <Isi searchParams={searchParams} />
     </KerangkaHalaman>
   );
 }
 
-type Ket = {
-  disimpan?: number;
-  dihapus_lama?: number;
-  desa_tidak_cocok?: string[];
-  tanggal_tidak_terbaca?: number;
-  id_sync?: string | null;
-} | null;
+type Ket = { id_sync?: string | null; desa_tidak_cocok?: string[]; tanggal_tidak_terbaca?: number } | null;
+const tglPanjang = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric" });
 
-async function Isi() {
+/** Log Sinkronisasi e-Pusluh (aplikasi lama) — halaman & jumlah baris lewat URL. */
+async function Isi({ searchParams }: { searchParams: CariParam }) {
   await wajibRole("admin_kab");
+  const q = await searchParams;
+  const per = [10, 25, 50].includes(angkaParam(q, "per", 1, 50, 10)) ? angkaParam(q, "per", 1, 50, 10) : 10;
+  const hal = angkaParam(q, "hal", 1, 100000, 1);
   const s = await supabaseServer();
-  const { data, error } = await s
+  const { data, count, error } = await s
     .from("logs_sinkron")
-    .select("id, waktu, total_tarik, data_berisi, data_nihil, tanggal_laporan, status, keterangan")
+    .select("id, waktu, total_tarik, data_berisi, data_nihil, tanggal_laporan, status, keterangan", { count: "exact" })
     .order("waktu", { ascending: false })
-    .limit(200);
+    .range((hal - 1) * per, hal * per - 1);
+  const total = count ?? 0;
+  const jmlHal = Math.max(1, Math.ceil(total / per));
+  const baris = error ? [] : (data ?? []);
 
   return (
     <>
-      <JudulHalaman judul="Log Sinkron e-Pusluh" sub="Data padi dari bot VPS (11:30, 12:30, 13:30, 22:30 WIB). 200 log terakhir." />
-      <Kartu>
-        {error ? (
-          <Kosong teks={`Gagal memuat log: ${error.message}`} />
-        ) : !data || data.length === 0 ? (
-          <Kosong teks="Belum ada log sinkron. Log muncul setelah bot VPS diarahkan ke aplikasi baru." />
-        ) : (
-          <Tabel kepala={["Waktu", "Tgl Laporan", "Status", "Ditarik", "Berisi", "Nihil", "Disimpan", "Catatan"]}>
-            {data.map((l) => {
-              const k = l.keterangan as Ket;
-              const tak = k?.desa_tidak_cocok ?? [];
-              const ok = l.status.startsWith("Sukses");
-              return (
-                <tr key={l.id}>
-                  <td className={sel}>{formatTanggalJam(l.waktu)}</td>
-                  <td className={sel}>{l.tanggal_laporan ? formatTanggal(l.tanggal_laporan) : "-"}</td>
-                  <td className={`${sel} font-bold ${ok ? (l.status === "Sukses" ? "text-primary" : "text-warning") : "text-danger"}`}>{l.status}</td>
-                  <td className={selAngka}>{l.total_tarik}</td>
-                  <td className={selAngka}>{l.data_berisi}</td>
-                  <td className={selAngka}>{l.data_nihil}</td>
-                  <td className={selAngka}>{k?.disimpan ?? "-"}</td>
-                  <td className={`${sel} max-w-72 whitespace-normal text-[11px] text-muted`}>
-                    {tak.length > 0 && <div>Desa tak cocok: {tak.join("; ")}</div>}
-                    {(k?.tanggal_tidak_terbaca ?? 0) > 0 && <div>Tanggal tak terbaca: {k?.tanggal_tidak_terbaca}</div>}
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-bold text-gray-800">Log Sinkronisasi e-Pusluh</h2>
+          <p className="text-[11px] text-gray-500">Pantau aktivitas penarikan data padi otomatis</p>
+        </div>
+        <Link href="/kab/logs" className="flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-bold text-blue-600">
+          <RotateCw size={14} /> Refresh
+        </Link>
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[820px] text-xs">
+            <thead>
+              <tr className="border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase">
+                <th className="p-3 text-left">Waktu Sinkronisasi</th>
+                <th className="p-3 text-left">ID Sync</th>
+                <th className="p-3 text-left">Tanggal Laporan</th>
+                <th className="p-3 text-right">Total Tarik</th>
+                <th className="p-3 text-right">Data Berisi</th>
+                <th className="p-3 text-right">Data Nihil</th>
+                <th className="p-3 text-center">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {baris.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="p-8 text-center text-gray-400">
+                    {error ? `Gagal memuat log: ${error.message}` : "Belum ada log. Log muncul setelah bot VPS diarahkan ke aplikasi baru."}
                   </td>
                 </tr>
-              );
-            })}
-          </Tabel>
-        )}
-      </Kartu>
+              ) : (
+                baris.map((l) => {
+                  const k = l.keterangan as Ket;
+                  const ok = l.status === "Sukses";
+                  const sebagian = l.status.startsWith("Sukses") && !ok;
+                  return (
+                    <tr key={l.id} className="hover:bg-gray-50">
+                      <td className="p-3 font-bold text-gray-700">{formatTanggalJam(l.waktu)}</td>
+                      <td className="p-3 font-mono text-[10px] text-gray-400">{k?.id_sync ?? "-"}</td>
+                      <td className="p-3 font-semibold text-blue-600">{l.tanggal_laporan ? tglPanjang.format(new Date(l.tanggal_laporan)) : "-"}</td>
+                      <td className="p-3 text-right font-bold text-gray-800">{l.total_tarik}</td>
+                      <td className="p-3 text-right font-bold text-green-600">{l.data_berisi}</td>
+                      <td className="p-3 text-right text-gray-400">{l.data_nihil}</td>
+                      <td className="p-3 text-center" title={(k?.desa_tidak_cocok ?? []).join("; ")}>
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                            ok ? "bg-green-50 text-green-600" : sebagian ? "bg-yellow-50 text-yellow-700" : "bg-red-50 text-red-600"
+                          }`}
+                        >
+                          {ok ? <Check size={10} /> : <TriangleAlert size={10} />} {ok ? "Sukses" : sebagian ? "Sebagian" : "Gagal"}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 p-3 text-xs text-gray-500">
+          <form method="get" className="flex items-center gap-2">
+            Baris
+            <select name="per" defaultValue={String(per)} className="rounded-lg border border-gray-200 px-2 py-1 font-bold">
+              {[10, 25, 50].map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+            <button type="submit" className="rounded-lg bg-gray-100 px-2 py-1 font-bold">OK</button>
+          </form>
+          <span>
+            Menampilkan {baris.length ? (hal - 1) * per + 1 : 0} - {(hal - 1) * per + baris.length} dari {total} log
+          </span>
+          <nav className="flex gap-1" aria-label="Halaman">
+            {hal > 1 && (
+              <Link href={urlDengan("/kab/logs", q, { hal: hal - 1 })} className="rounded-lg border border-gray-200 p-1.5" aria-label="Sebelumnya">
+                <ChevronLeft size={14} />
+              </Link>
+            )}
+            {hal < jmlHal && (
+              <Link href={urlDengan("/kab/logs", q, { hal: hal + 1 })} className="rounded-lg border border-gray-200 p-1.5" aria-label="Berikutnya">
+                <ChevronRight size={14} />
+              </Link>
+            )}
+          </nav>
+        </div>
+      </div>
     </>
   );
 }

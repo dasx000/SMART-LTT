@@ -69,7 +69,7 @@ export async function editLaporanKabAction(formData: FormData): Promise<ResponsA
       return { sukses: false, pesan: "Tidak ada data yang berubah. Laporan mungkin sudah dihapus atau di luar wilayah kewenangan Anda." };
     }
 
-    revalidatePath("/kab");
+    revalidatePath("/kab", "layout");
     return { sukses: true, pesan: "Laporan berhasil diperbarui oleh Admin Kabupaten!" };
   } catch (err: unknown) {
     const pesan = err instanceof Error ? err.message : "Terjadi kesalahan internal.";
@@ -105,7 +105,7 @@ export async function hapusLaporanKabAction(id: number): Promise<ResponsAksiKab>
       return { sukses: false, pesan: "Tidak ada data yang berubah. Laporan mungkin sudah dihapus atau di luar wilayah kewenangan Anda." };
     }
 
-    revalidatePath("/kab");
+    revalidatePath("/kab", "layout");
     return { sukses: true, pesan: "Laporan berhasil dihapus oleh Admin Kabupaten." };
   } catch (err: unknown) {
     const pesan = err instanceof Error ? err.message : "Terjadi kesalahan internal.";

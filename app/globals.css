@@ -2,15 +2,16 @@
 
 /* Token warna SMART LTT (hijau pertanian). Mode terang dulu; mode gelap menyusul. */
 :root {
-  --background: #f6f8f5;
-  --foreground: #1c2a1f;
-  --muted: #5b6b5e;
+  /* Palet disamakan dengan aplikasi lama (Tailwind gray + green). */
+  --background: #f3f4f6; /* gray-100 */
+  --foreground: #1f2937; /* gray-800 */
+  --muted: #6b7280;      /* gray-500 */
   --surface: #ffffff;
-  --border: #dfe7de;
-  --primary: #15803d;
-  --primary-strong: #166534;
-  --primary-soft: #dcfce7;
-  --danger: #dc2626;
+  --border: #e5e7eb;     /* gray-200 */
+  --primary: #16a34a;    /* green-600 */
+  --primary-strong: #15803d; /* green-700 */
+  --primary-soft: #dcfce7;   /* green-100 */
+  --danger: #ef4444;
   --warning: #ca8a04;
 }
 
@@ -25,8 +26,8 @@
   --color-primary-soft: var(--primary-soft);
   --color-danger: var(--danger);
   --color-warning: var(--warning);
-  /* Font sistem HP: tidak ada unduhan font (plan §2c). */
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* Inter seperti aplikasi lama (di-host sendiri via next/font), cadangan font sistem. */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 body {
@@ -38,5 +39,5 @@ body {
 
 /* SweetAlert2: samakan dengan tema */
 .swal2-popup { border-radius: 1rem !important; font-family: var(--font-sans) !important; }
-.swal2-confirm { background-color: var(--primary) !important; border-radius: 0.75rem !important; }
+.swal2-confirm { background-color: var(--primary) !important; border-radius: 0.5rem !important; }
 .swal2-cancel { border-radius: 0.75rem !important; }

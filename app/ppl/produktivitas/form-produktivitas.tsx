@@ -6,7 +6,6 @@ import { gagal, sukses } from "@/lib/swal";
 import { simpanProduktivitasAction, simpanSaranaAction } from "./actions";
 
 type Komoditas = "Padi" | "Jagung" | "Ubi Kayu";
-const KOM: Komoditas[] = ["Padi", "Jagung", "Ubi Kayu"];
 export type ProdData = { tahun: number; desaId: number; komoditas: Komoditas; nilai: number[] };
 export type SaranaData = { desaId: number; gudang_gabah: number; embung: number; lantai_jemur: number; mesin_pengering: number };
 
@@ -20,79 +19,8 @@ const SARANA = [
 const kelasIn =
   "w-full rounded-lg border border-border bg-background px-2 py-1.5 text-right text-sm tabular-nums focus:border-primary focus:outline-hidden";
 
-export function FormProduktivitas({
-  desa,
-  data,
-  sarana,
-  tahunPilihan,
-}: {
-  desa: { id: number; nama: string }[];
-  data: ProdData[];
-  sarana: SaranaData[];
-  tahunPilihan: number[];
-}) {
-  const [tahun, setTahun] = useState(tahunPilihan[0]);
-  const [kom, setKom] = useState<Komoditas>("Padi");
-  const [tab, setTab] = useState<"prod" | "sarana">("prod");
-
-  return (
-    <div className="space-y-3">
-      <div className="flex gap-2">
-        {(["prod", "sarana"] as const).map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setTab(t)}
-            className={`rounded-xl px-4 py-2 text-xs font-bold ${tab === t ? "bg-primary text-white" : "border border-border bg-surface"}`}
-          >
-            {t === "prod" ? "Produktivitas" : "Sarana"}
-          </button>
-        ))}
-      </div>
-
-      {tab === "prod" ? (
-        <>
-          <div className="flex flex-wrap items-end gap-2 rounded-2xl border border-border bg-surface p-3">
-            <label className="flex flex-col gap-1 text-[11px] font-semibold text-muted">
-              Tahun
-              <select value={tahun} onChange={(e) => setTahun(Number(e.target.value))} className="rounded-xl border border-border bg-background px-3 py-2 text-sm">
-                {tahunPilihan.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {KOM.map((k) => (
-              <button
-                key={k}
-                type="button"
-                onClick={() => setKom(k)}
-                className={`rounded-xl px-3 py-2 text-xs font-bold ${kom === k ? "bg-primary text-white" : "border border-border bg-background"}`}
-              >
-                {k}
-              </button>
-            ))}
-            <p className="w-full text-[11px] text-muted">Satuan ton/ha (maks. 100). Kosong = 0.</p>
-          </div>
-          {desa.map((d) => (
-            <KartuProd
-              key={`${d.id}-${tahun}-${kom}`}
-              desa={d}
-              tahun={tahun}
-              kom={kom}
-              awal={data.find((x) => x.desaId === d.id && x.tahun === tahun && x.komoditas === kom)?.nilai}
-            />
-          ))}
-        </>
-      ) : (
-        desa.map((d) => <KartuSarana key={d.id} desa={d} awal={sarana.find((x) => x.desaId === d.id)} />)
-      )}
-    </div>
-  );
-}
-
-function KartuProd({ desa, tahun, kom, awal }: { desa: { id: number; nama: string }; tahun: number; kom: Komoditas; awal?: number[] }) {
+/** Kartu isian produktivitas satu desa (tahun & komoditas dari URL). */
+export function KartuProd({ desa, tahun, kom, awal }: { desa: { id: number; nama: string }; tahun: number; kom: Komoditas; awal?: number[] }) {
   const [nilai, setNilai] = useState<string[]>(() => (awal ?? new Array(12).fill(0)).map((v) => (v ? formatAngka(v) : "")));
   const [proses, mulai] = useTransition();
 
@@ -136,7 +64,8 @@ function KartuProd({ desa, tahun, kom, awal }: { desa: { id: number; nama: strin
   );
 }
 
-function KartuSarana({ desa, awal }: { desa: { id: number; nama: string }; awal?: SaranaData }) {
+/** Kartu isian sarana satu desa. */
+export function KartuSarana({ desa, awal }: { desa: { id: number; nama: string }; awal?: SaranaData }) {
   const [nilai, setNilai] = useState<Record<string, string>>(() =>
     Object.fromEntries(SARANA.map((s) => [s.k, awal ? String(awal[s.k]) : ""])),
   );

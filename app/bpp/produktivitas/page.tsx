@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: "Produktivitas BPP — SMART LTT" };
 
 export default function HalamanProduktivitasBpp({ searchParams }: { searchParams: CariParam }) {
   return (
-    <KerangkaHalaman judul="SMART LTT · Produktivitas" role={["admin_bpp"]}>
+    <KerangkaHalaman judul="BPP" role={["admin_bpp"]} gaya="bpp">
       <Isi searchParams={searchParams} />
     </KerangkaHalaman>
   );

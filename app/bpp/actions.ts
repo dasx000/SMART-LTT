@@ -62,7 +62,7 @@ export async function simpanTargetKecamatanAction(formData: FormData): Promise<R
       return { sukses: false, pesan: `Gagal menyimpan target: ${error.message}` };
     }
 
-    revalidatePath("/bpp");
+    revalidatePath("/bpp", "layout");
     return { sukses: true, pesan: `Target ${komoditas} bulan ${bulan} berhasil disimpan!` };
   } catch (err: unknown) {
     const pesan = err instanceof Error ? err.message : "Terjadi kesalahan internal.";
@@ -136,7 +136,7 @@ export async function editLaporanBppAction(formData: FormData): Promise<ResponsA
       return { sukses: false, pesan: "Tidak ada data yang berubah. Laporan mungkin sudah dihapus atau di luar wilayah kewenangan Anda." };
     }
 
-    revalidatePath("/bpp");
+    revalidatePath("/bpp", "layout");
     return { sukses: true, pesan: "Laporan berhasil diperbarui oleh BPP!" };
   } catch (err: unknown) {
     const pesan = err instanceof Error ? err.message : "Terjadi kesalahan internal.";
@@ -188,7 +188,7 @@ export async function hapusLaporanBppAction(id: number): Promise<ResponsAksiBpp>
       return { sukses: false, pesan: "Tidak ada data yang berubah. Laporan mungkin sudah dihapus atau di luar wilayah kewenangan Anda." };
     }
 
-    revalidatePath("/bpp");
+    revalidatePath("/bpp", "layout");
     return { sukses: true, pesan: "Laporan berhasil dihapus oleh BPP." };
   } catch (err: unknown) {
     const pesan = err instanceof Error ? err.message : "Terjadi kesalahan internal.";

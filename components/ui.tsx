@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { Download } from "lucide-react";
 
 /** Komponen tampilan kecil tanpa JS (Server Component) — dipakai halaman-halaman fitur. */
@@ -7,8 +8,8 @@ export function JudulHalaman({ judul, sub, aksi }: { judul: string; sub?: string
   return (
     <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-xl font-black tracking-tight text-foreground">{judul}</h1>
-        {sub && <p className="mt-0.5 text-xs text-muted">{sub}</p>}
+        <h2 className="text-base font-bold tracking-wide text-gray-700 uppercase">{judul}</h2>
+        {sub && <p className="mt-0.5 text-xs text-gray-500">{sub}</p>}
       </div>
       {aksi}
     </div>
@@ -17,10 +18,10 @@ export function JudulHalaman({ judul, sub, aksi }: { judul: string; sub?: string
 
 export function Kartu({ judul, aksi, children, className = "" }: { judul?: string; aksi?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className={`rounded-2xl border border-border bg-surface p-4 shadow-xs ${className}`}>
+    <section className={`rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5 ${className}`}>
       {(judul || aksi) && (
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          {judul && <h2 className="text-sm font-bold text-foreground">{judul}</h2>}
+          {judul && <h3 className="text-sm font-bold text-gray-800">{judul}</h3>}
           {aksi}
         </div>
       )}
@@ -34,7 +35,7 @@ export function TombolUnduh({ href, label = "Unduh Excel" }: { href: string; lab
   return (
     <a
       href={href}
-      className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3.5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-primary-strong active:scale-95"
+      className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700 active:scale-95"
     >
       <Download className="h-4 w-4" aria-hidden /> {label}
     </a>
@@ -90,16 +91,16 @@ export function Tabel({ kepala, children, kaki }: { kepala: ReactNode[]; childre
     <div className="-mx-4 overflow-x-auto px-4">
       <table className="w-full min-w-max border-collapse text-xs">
         <thead>
-          <tr className="bg-primary text-white">
+          <tr className="bg-green-700 text-white">
             {kepala.map((k, i) => (
-              <th key={i} className="border border-primary-strong/40 px-2 py-2 text-center font-bold whitespace-nowrap">
+              <th key={i} className="border border-green-800/30 px-2 py-2 text-center font-bold whitespace-nowrap">
                 {k}
               </th>
             ))}
           </tr>
         </thead>
         <tbody className="[&_tr:nth-child(even)]:bg-background">{children}</tbody>
-        {kaki && <tfoot className="bg-primary-soft font-bold text-primary-strong">{kaki}</tfoot>}
+        {kaki && <tfoot className="bg-green-50 font-bold text-gray-800">{kaki}</tfoot>}
       </table>
     </div>
   );
@@ -118,4 +119,48 @@ export function Persen({ realisasi, target }: { realisasi: number; target: numbe
   const p = Math.round((realisasi / target) * 100);
   const w = p >= 85 ? "text-primary" : p >= 60 ? "text-warning" : "text-danger";
   return <span className={`font-bold ${w}`}>{p}%</span>;
+}
+
+/**
+ * Pilihan bulan (GET) + komoditas (tautan) untuk halaman target — semuanya URL, tanpa JS.
+ * `info` misalnya "Terisi 2 / 5 desa".
+ */
+export function PilihBulanKomoditas({
+  dasar, bulan, kom, info,
+}: {
+  dasar: string;
+  bulan: number;
+  kom: string;
+  info?: ReactNode;
+}) {
+  const BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+  return (
+    <div className="mb-3 space-y-2 rounded-2xl border border-gray-200 bg-white p-3">
+      <form method="get" action={dasar} className="flex items-end gap-2">
+        <input type="hidden" name="komoditas" value={kom} />
+        <label className="flex flex-1 flex-col gap-1 text-[11px] font-semibold text-gray-500">
+          Bulan
+          <select name="bulan" defaultValue={bulan} className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium">
+            {BULAN.map((n, i) => (
+              <option key={n} value={i + 1}>{n}</option>
+            ))}
+          </select>
+        </label>
+        <button type="submit" className="rounded-xl bg-green-600 px-4 py-2 text-xs font-bold text-white">Pilih</button>
+      </form>
+      <div className="flex gap-1 rounded-xl bg-gray-100 p-1">
+        {["Padi", "Jagung", "Ubi Kayu"].map((k) => (
+          <Link
+            key={k}
+            href={`${dasar}?bulan=${bulan}&komoditas=${encodeURIComponent(k)}`}
+            aria-current={kom === k ? "page" : undefined}
+            className={`flex-1 rounded-lg py-2 text-center text-xs font-bold transition-all ${kom === k ? "bg-green-600 text-white" : "text-gray-500 hover:bg-white"}`}
+          >
+            {k}
+          </Link>
+        ))}
+      </div>
+      {info && <p className="text-right text-xs text-gray-500">{info}</p>}
+    </div>
+  );
 }

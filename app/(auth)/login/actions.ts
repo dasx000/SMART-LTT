@@ -57,7 +57,8 @@ export async function login(_prev: HasilLogin, formData: FormData): Promise<Hasi
     return { pesan: "Akun Anda nonaktif, silakan hubungi admin." };
   }
 
-  if (p.wajib_ganti_password) redirect("/ganti-password");
+  // Ganti password BELUM diwajibkan (keputusan user 15 Nov 2026): setelah login langsung ke beranda.
+  // Penanda wajib_ganti_password tetap disimpan untuk dipakai nanti.
   redirect(BERANDA_ROLE[p.role as Role]);
 }
 

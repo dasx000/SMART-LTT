@@ -469,20 +469,21 @@ export type TargetDesaData = {
   rincian: { jenisId: number; tanam: number; panen: number }[];
 };
 
-export async function ambilTargetDesa(s: Supa, desaIds: number[]): Promise<TargetDesaData[]> {
+export async function ambilTargetDesa(s: Supa, desaIds: number[], f: { bulan?: number; komoditas?: Komoditas } = {}): Promise<TargetDesaData[]> {
   if (desaIds.length === 0) return [];
   type R = {
     desa_id: number; bulan: number; komoditas: Komoditas; target_tanam: number; target_panen: number; luas_baku: number | null;
     rincian: { jenis_ltt_id: number; target_tanam: number; target_panen: number }[] | null;
   };
-  const rows = await ambilSemua<R>((a, b) =>
-    s
+  const rows = await ambilSemua<R>((a, b) => {
+    let q = s
       .from("target_desa")
       .select("desa_id, bulan, komoditas, target_tanam, target_panen, luas_baku, rincian:target_desa_rincian(jenis_ltt_id, target_tanam, target_panen)")
-      .in("desa_id", desaIds)
-      .order("id")
-      .range(a, b) as unknown as PromiseLike<{ data: R[] | null; error: { message: string } | null }>,
-  );
+      .in("desa_id", desaIds);
+    if (f.bulan) q = q.eq("bulan", f.bulan);
+    if (f.komoditas) q = q.eq("komoditas", f.komoditas);
+    return q.order("id").range(a, b) as unknown as PromiseLike<{ data: R[] | null; error: { message: string } | null }>;
+  });
   return rows.map((r) => ({
     desaId: r.desa_id,
     bulan: r.bulan,
@@ -492,4 +493,209 @@ export async function ambilTargetDesa(s: Supa, desaIds: number[]): Promise<Targe
     luasBaku: Number(r.luas_baku) || 0,
     rincian: (r.rincian ?? []).map((x) => ({ jenisId: x.jenis_ltt_id, tanam: Number(x.target_tanam) || 0, panen: Number(x.target_panen) || 0 })),
   }));
+}
+
+// ─── Daftar laporan berhalaman (Kab & BPP) — filter & halaman lewat URL, diproses di server ───
+
+export const PER_HALAMAN = 50;
+
+/** Periode "YYYY-MM" dari URL; default bulan berjalan WIB. Pilihan = 12 bulan terakhir. */
+export function periodeDariParam(nilai: string | null, now: { tahun: number; bulan: number }) {
+  const m = /^(\d{4})-(\d{2})$/.exec(nilai ?? "");
+  const pilihan = Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(Date.UTC(now.tahun, now.bulan - 1 - i, 1));
+    return { tahun: d.getUTCFullYear(), bulan: d.getUTCMonth() + 1 };
+  });
+  const cocok = m && pilihan.find((p) => p.tahun === Number(m[1]) && p.bulan === Number(m[2]));
+  return { ...(cocok || pilihan[0]), pilihan };
+}
+
+export const kodePeriode = (p: { tahun: number; bulan: number }) => `${p.tahun}-${String(p.bulan).padStart(2, "0")}`;
+
+export type FilterLaporan = {
+  dari: string;
+  sampai: string;
+  komoditas?: Komoditas | null;
+  metode?: string | null;
+  /** batas wilayah (kecamatan/desa) — null = semua */
+  desaIds?: number[] | null;
+  /** kata cari: nama penyuluh, desa, atau kecamatan */
+  cari?: string | null;
+};
+
+/**
+ * Daftar laporan berhalaman + ringkasan (jumlah, total tanam/panen) untuk filter yang sama.
+ * Semua penyaringan di database; browser hanya menerima satu halaman.
+ */
+export async function cariLaporan(
+  s: Supa,
+  f: FilterLaporan & { hal: number; per?: number },
+  kecs: Kec[],
+  semuaDesa: DesaRef[],
+): Promise<{ baris: BarisLaporan[]; total: number; ringkas: { jumlah: number; tanam: number; panen: number } }> {
+  const per = f.per ?? PER_HALAMAN;
+  const kosong = { baris: [], total: 0, ringkas: { jumlah: 0, tanam: 0, panen: 0 } };
+  if (f.desaIds && f.desaIds.length === 0) return kosong;
+
+  // Kata cari → nama pelapor ATAU desa/kecamatan yang cocok
+  let orCari: string | null = null;
+  if (f.cari) {
+    const c = f.cari.toLowerCase();
+    const kecCocok = new Set(kecs.filter((k) => k.nama.toLowerCase().includes(c)).map((k) => k.id));
+    const desaCocok = semuaDesa.filter((d) => d.nama.toLowerCase().includes(c) || kecCocok.has(d.kecamatan_id)).map((d) => d.id);
+    const aman = f.cari.replace(/[,()*%]/g, " ").trim();
+    orCari = [`nama_pelapor.ilike.*${aman}*`, desaCocok.length ? `desa_id.in.(${desaCocok.join(",")})` : null].filter(Boolean).join(",");
+  }
+  type Saring = {
+    gte(k: string, v: string): Saring; lt(k: string, v: string): Saring; is(k: string, v: null): Saring;
+    eq(k: string, v: string): Saring; in(k: string, v: number[]): Saring; or(v: string): Saring;
+  };
+  /** Filter yang sama untuk query halaman & query ringkasan */
+  const terapkan = <T,>(q: T): T => {
+    let x = q as unknown as Saring;
+    x = x.gte("tanggal_lapor", f.dari).lt("tanggal_lapor", f.sampai).is("dihapus_pada", null);
+    if (f.komoditas) x = x.eq("komoditas", f.komoditas);
+    if (f.metode) x = x.eq("metode_penanaman", f.metode);
+    if (f.desaIds) x = x.in("desa_id", f.desaIds);
+    if (orCari) x = x.or(orCari);
+    return x as unknown as T;
+  };
+
+  const dari = (f.hal - 1) * per;
+  const [{ data, error, count }, nilai] = await Promise.all([
+    terapkan(
+      s.from("laporan_ltt").select(
+        "id, tanggal_lapor, nama_pelapor, desa_id, komoditas, luas_bera, realisasi_olah, realisasi_tanam, realisasi_panen, metode_penanaman, keterangan, sumber, desa:desa_id(nama, kecamatan_id), jenis:jenis_ltt_id(nama)",
+        { count: "exact" },
+      ),
+    )
+      .order("tanggal_lapor", { ascending: false })
+      .order("id")
+      .range(dari, dari + per - 1),
+    // Ringkasan seluruh hasil filter (hanya 2 kolom angka)
+    ambilSemua<{ realisasi_tanam: number; realisasi_panen: number }>((a, b) =>
+      terapkan(s.from("laporan_ltt").select("realisasi_tanam, realisasi_panen")).order("id").range(a, b) as unknown as PromiseLike<{
+        data: { realisasi_tanam: number; realisasi_panen: number }[] | null;
+        error: { message: string } | null;
+      }>,
+    ),
+  ]);
+  const ringkas = {
+    jumlah: nilai.length,
+    tanam: nilai.reduce((a, r) => a + (Number(r.realisasi_tanam) || 0), 0),
+    panen: nilai.reduce((a, r) => a + (Number(r.realisasi_panen) || 0), 0),
+  };
+  // ?hal= melewati jumlah data (mis. URL lama / filter berubah): PostgREST menjawab 416 → tampilkan kosong
+  if (error?.code === "PGRST103") return { baris: [], total: ringkas.jumlah, ringkas };
+  if (error) throw new Error(error.message);
+
+  const namaKec = new Map(kecs.map((k) => [k.id, k.nama]));
+  const baris = (data ?? []).map((r) => {
+    const d = r.desa as unknown as { nama: string; kecamatan_id: number } | null;
+    const j = r.jenis as unknown as { nama: string } | null;
+    return {
+      id: r.id as number,
+      waktu: r.tanggal_lapor as string,
+      pelapor: (r.nama_pelapor as string | null) ?? (r.sumber === "epusluh" ? "e-Pusluh" : "-"),
+      kecamatanId: d?.kecamatan_id ?? 0,
+      kecamatan: namaKec.get(d?.kecamatan_id ?? 0) ?? "-",
+      desaId: r.desa_id as number,
+      desa: d?.nama ?? "-",
+      komoditas: r.komoditas as Komoditas,
+      jenis: r.komoditas === "Padi" ? (j?.nama ?? "LTT Reguler") : null,
+      bera: Number(r.luas_bera) || 0,
+      olah: Number(r.realisasi_olah) || 0,
+      tanam: Number(r.realisasi_tanam) || 0,
+      panen: Number(r.realisasi_panen) || 0,
+      metode: r.metode_penanaman as string | null,
+      keterangan: r.keterangan as string | null,
+      sumber: r.sumber as string,
+    };
+  });
+  return { baris, total: count ?? ringkas.jumlah, ringkas };
+}
+
+/** Satu laporan (untuk form edit lewat ?edit=ID). RLS menentukan boleh terlihat atau tidak. */
+export async function satuLaporan(s: Supa, id: number) {
+  const { data } = await s
+    .from("laporan_ltt")
+    .select("id, desa_id, komoditas, luas_bera, realisasi_olah, realisasi_tanam, realisasi_panen, metode_penanaman, keterangan, sumber, desa:desa_id(nama, kecamatan_id)")
+    .eq("id", id)
+    .is("dihapus_pada", null)
+    .maybeSingle();
+  return data;
+}
+
+// ─── Ringkasan dashboard (Kab & BPP) — dihitung di server, browser hanya menerima angka ───
+
+export type TanamPanen = { tanam: number; panen: number };
+export type RingkasanWilayah = {
+  total: Record<Komoditas, TanamPanen>;
+  pmAas: TanamPanen;
+  target: Record<Komoditas, TanamPanen>;
+  /** per kecamatan (Kab) atau per desa (BPP) */
+  baris: { id: number; nama: string; tanam: Record<Komoditas, number>; panen: number; target: number; pmAas: TanamPanen }[];
+  /** baris laporan mentah (server saja — jangan dikirim ke browser) */
+  laporan: BarisLaporan[];
+  kecs: Kec[];
+};
+
+const kosongTP = (): TanamPanen => ({ tanam: 0, panen: 0 });
+const perKom = <T,>(f: () => T) => ({ Padi: f(), Jagung: f(), "Ubi Kayu": f() }) as Record<Komoditas, T>;
+
+/**
+ * Kab: baris = kecamatan, target = target_kecamatan (diisi BPP).
+ * BPP: kecamatanId diisi → baris = desa di kecamatan itu, target = target kecamatannya.
+ */
+export async function ringkasanWilayah(s: Supa, tahun: number, bulan: number, kecamatanId?: number | null): Promise<RingkasanWilayah> {
+  const kecs = await daftarKecamatan(s);
+  const desa = kecamatanId ? await daftarDesa(s, kecamatanId) : null;
+  const { dari, sampai } = rentangBulanWIB(tahun, bulan);
+  let qt = s.from("target_kecamatan").select("kecamatan_id, komoditas, target_tanam, target_panen").eq("bulan", bulan);
+  if (kecamatanId) qt = qt.eq("kecamatan_id", kecamatanId);
+  const [lap, { data: tgt, error }] = await Promise.all([
+    ambilLaporan(s, { dari, sampai, desaIds: desa ? desa.map((d) => d.id) : null }, kecs),
+    qt,
+  ]);
+  if (error) throw new Error(error.message);
+
+  const total = perKom(kosongTP);
+  const target = perKom(kosongTP);
+  const pmAas = kosongTP();
+  const unit = desa ? desa.map((d) => ({ id: d.id, nama: d.nama })) : kecs;
+  const baris = unit.map((u) => ({ id: u.id, nama: u.nama, tanam: perKom(() => 0), panen: 0, target: 0, pmAas: kosongTP() }));
+  const idx = new Map(baris.map((b) => [b.id, b]));
+
+  for (const t of tgt ?? []) {
+    const k = t.komoditas as Komoditas;
+    target[k].tanam += Number(t.target_tanam) || 0;
+    target[k].panen += Number(t.target_panen) || 0;
+    const b = !desa ? idx.get(t.kecamatan_id) : undefined;
+    if (b) b.target += Number(t.target_tanam) || 0;
+  }
+  for (const l of lap) {
+    total[l.komoditas].tanam += l.tanam;
+    total[l.komoditas].panen += l.panen;
+    const pm = l.komoditas === "Padi" && l.metode === "PM AAS";
+    if (pm) {
+      pmAas.tanam += l.tanam;
+      pmAas.panen += l.panen;
+    }
+    const b = idx.get(desa ? l.desaId : l.kecamatanId);
+    if (!b) continue;
+    b.tanam[l.komoditas] += l.tanam;
+    b.panen += l.panen;
+    if (pm) {
+      b.pmAas.tanam += l.tanam;
+      b.pmAas.panen += l.panen;
+    }
+  }
+  return { total, pmAas, target, baris, laporan: lap, kecs };
+}
+
+/** Target PM AAS kabupaten (tahun, bulan). 0 bila belum diatur / tabel belum dibuat (migrasi 0006). */
+export async function ambilTargetPmAas(s: Supa, tahun: number, bulan: number): Promise<number> {
+  const { data, error } = await s.from("target_pm_aas").select("target_tanam").eq("tahun", tahun).eq("bulan", bulan).maybeSingle();
+  if (error) return 0;
+  return Number(data?.target_tanam) || 0;
 }

@@ -3,33 +3,40 @@ import { wajibRole } from "@/lib/auth";
 import { KerangkaHalaman } from "@/components/kerangka-halaman";
 import { supabaseServer } from "@/lib/supabase/server";
 import { bulanTahunWIB } from "@/lib/format";
-import { ambilTargetDesa, desaBinaanSaya, jenisPadi } from "@/lib/data";
+import { KOMODITAS, ambilTargetDesa, desaBinaanSaya, jenisPadi, type Komoditas } from "@/lib/data";
+import { angkaParam, teksParam, type CariParam } from "@/lib/param";
 import { FormTarget } from "@/components/form-target";
-import { JudulHalaman, Kosong } from "@/components/ui";
+import { Kosong, PilihBulanKomoditas } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Target Desa — SMART LTT" };
 
-export default function HalamanTargetPpl() {
+export default function HalamanTargetPpl({ searchParams }: { searchParams: CariParam }) {
   return (
-    <KerangkaHalaman judul="SMART LTT · Target" role={["penyuluh", "admin_bpp"]}>
-      <Isi />
+    <KerangkaHalaman judul="Target" role={["penyuluh", "admin_bpp"]} panel={{ judul: "Target Bulanan", sub: "Desa binaan — berlaku per bulan, mengisi ulang menimpa", warna: "text-cyan-700" }}>
+      <Isi searchParams={searchParams} />
     </KerangkaHalaman>
   );
 }
 
-async function Isi() {
+async function Isi({ searchParams }: { searchParams: CariParam }) {
   const p = await wajibRole("penyuluh", "admin_bpp");
+  const q = await searchParams;
+  const bulan = angkaParam(q, "bulan", 1, 12, bulanTahunWIB().bulan);
+  const kom = ((KOMODITAS as string[]).includes(teksParam(q, "komoditas") ?? "") ? teksParam(q, "komoditas") : "Padi") as Komoditas;
   const s = await supabaseServer();
   const desa = await desaBinaanSaya(s, p.id);
-  const [jenis, target] = await Promise.all([jenisPadi(s), ambilTargetDesa(s, desa.map((d) => d.id))]);
+  const [jenis, semua] = await Promise.all([jenisPadi(s), ambilTargetDesa(s, desa.map((d) => d.id), { bulan, komoditas: kom })]);
+  const target = semua;
 
   return (
     <>
-      <JudulHalaman judul="Target Desa Binaan" sub="Target berlaku per bulan (tanpa tahun) — mengisi ulang akan menimpa." />
       {desa.length === 0 ? (
         <Kosong teks="Belum ada desa binaan. Hubungi Admin BPP." />
       ) : (
-        <FormTarget desa={desa} jenis={jenis} target={target} bulanAwal={bulanTahunWIB().bulan} />
+        <>
+          <PilihBulanKomoditas dasar="/ppl/target" bulan={bulan} kom={kom} info={<>Terisi <b>{target.length}</b> / {desa.length} desa</>} />
+          <FormTarget desa={desa} jenis={jenis} target={target} bulan={bulan} kom={kom} />
+        </>
       )}
     </>
   );

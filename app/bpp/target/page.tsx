@@ -6,14 +6,14 @@ import { NAMA_BULAN, bulanTahunWIB, formatAngka } from "@/lib/format";
 import { KOMODITAS, ambilTargetDesa, daftarDesa, jenisPadi, type Komoditas } from "@/lib/data";
 import { daftarAnggota } from "@/lib/pengguna";
 import { FormTarget } from "@/components/form-target";
-import { FormFilter, JudulHalaman, Kartu, Kosong, Pilihan, Tabel, sel, selAngka } from "@/components/ui";
+import { JudulHalaman, Kartu, Kosong, PilihBulanKomoditas, Tabel, sel, selAngka } from "@/components/ui";
 import { angkaParam, teksParam, type CariParam } from "@/lib/param";
 
 export const metadata: Metadata = { title: "Target BPP — SMART LTT" };
 
 export default function HalamanTargetBpp({ searchParams }: { searchParams: CariParam }) {
   return (
-    <KerangkaHalaman judul="SMART LTT · Target" role={["admin_bpp"]}>
+    <KerangkaHalaman judul="BPP" role={["admin_bpp"]} gaya="bpp">
       <Isi searchParams={searchParams} />
     </KerangkaHalaman>
   );
@@ -32,7 +32,7 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
     jenisPadi(s),
     daftarAnggota({ kecamatanId: p.kecamatanId, role: ["penyuluh", "admin_bpp"] }),
   ]);
-  const target = await ambilTargetDesa(s, desa.map((d) => d.id));
+  const target = await ambilTargetDesa(s, desa.map((d) => d.id), { bulan, komoditas: kom });
   const aktif = ppl.filter((x) => x.aktif);
 
   // Target per PPL = jumlah target desa binaannya (logika-bisnis §10)
@@ -54,11 +54,8 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
     <>
       <JudulHalaman judul="Target Desa Kecamatan" sub="Isi atau perbaiki target desa untuk PPL di kecamatan Anda. Target kecamatan diisi di Dashboard BPP." />
 
+      <PilihBulanKomoditas dasar="/bpp/target" bulan={bulan} kom={kom} />
       <Kartu judul={`Rekap target per PPL — ${kom}, ${NAMA_BULAN[bulan - 1]}`} className="mb-4">
-        <FormFilter>
-          <Pilihan label="Bulan" name="bulan" nilai={bulan} opsi={NAMA_BULAN.map((n, i) => ({ v: i + 1, t: n }))} />
-          <Pilihan label="Komoditas" name="komoditas" nilai={kom} opsi={KOMODITAS.map((k) => ({ v: k, t: k }))} />
-        </FormFilter>
         {ringkas.length === 0 ? (
           <Kosong teks="Belum ada PPL aktif di kecamatan ini." />
         ) : (
@@ -95,8 +92,9 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
       <FormTarget
         desa={desa.map((d) => ({ id: d.id, nama: d.nama, label: `PPL: ${namaPpl(d.id)}` }))}
         jenis={jenis}
-        target={target}
-        bulanAwal={bulan}
+        target={target.filter((t) => t.bulan === bulan && t.komoditas === kom)}
+        bulan={bulan}
+        kom={kom}
       />
     </>
   );

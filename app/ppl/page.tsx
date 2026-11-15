@@ -1,136 +1,82 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
+import Link from "next/link";
+import { Carrot, Goal, Leaf, LogOut, Scale, Shuffle, TableProperties, UserCog, Warehouse, Wheat } from "lucide-react";
 import { wajibRole } from "@/lib/auth";
 import { KerangkaHalaman } from "@/components/kerangka-halaman";
 import { supabaseServer } from "@/lib/supabase/server";
-import { supabaseSiap } from "@/lib/env";
-import { awalHariWIB } from "@/lib/format";
-import {
-  TampilanPPL,
-  type ItemDesa,
-  type ItemLaporanHariIni,
-  type ItemStatusPadi,
-} from "./tampilan-ppl";
+import { desaBinaanSaya } from "@/lib/data";
+import { logout } from "@/app/(auth)/login/actions";
 
-export const metadata: Metadata = {
-  title: "Penyuluh — SMART LTT",
-};
+export const metadata: Metadata = { title: "Penyuluh — SMART LTT" };
 
-export default async function HalamanPPL() {
+/**
+ * Beranda PPL — tampilan dari aplikasi lama (File_HTML_PPL.html), tetapi setiap menu adalah URL
+ * sungguhan (/ppl/lapor/jagung, /ppl/target, ...). Server Component: tanpa JS di browser,
+ * hanya mengambil nama + desa binaan.
+ */
+export default function HalamanPPL() {
   return (
-    <KerangkaHalaman judul="SMART LTT" role={["penyuluh", "admin_bpp"]}>
-      <MuatKontenPPL />
+    <KerangkaHalaman judul="SMART LTT" role={["penyuluh", "admin_bpp"]} gaya="ppl">
+      <Isi />
     </KerangkaHalaman>
   );
 }
 
-async function MuatKontenPPL() {
-  const pengguna = await wajibRole("penyuluh", "admin_bpp");
-
-  let daftarDesa: ItemDesa[] = [];
-  let kecamatanNama = "Way Kanan";
-  let laporanHariIni: ItemLaporanHariIni[] = [];
-  let statusPadiHariIni: ItemStatusPadi[] = [];
-
-  if (supabaseSiap()) {
-    try {
-      const supabase = await supabaseServer();
-
-      // 1. Ambil nama kecamatan
-      if (pengguna.kecamatanId) {
-        const { data: kec } = await supabase
-          .from("kecamatan")
-          .select("nama")
-          .eq("id", pengguna.kecamatanId)
-          .single();
-        if (kec?.nama) kecamatanNama = kec.nama;
-      }
-
-      // 2. Desa binaan sendiri (ltt.anggota_desa). Berlaku juga untuk admin_bpp: di tampilan PPL
-      //    ia melapor sebagai penyuluh untuk desa binaannya (aturan lama, logika-bisnis §23a).
-      //    Melihat se-kecamatan dilakukan di halaman /bpp.
-      const { data: relasi } = await supabase
-        .from("anggota_desa")
-        .select("desa:desa_id(id, nama)")
-        .eq("user_id", pengguna.id);
-
-      if (relasi) {
-        daftarDesa = relasi
-          .map((r: { desa: unknown }) => {
-            const d = r.desa as { id: number; nama: string } | null;
-            return d ? { id: d.id, nama: d.nama } : null;
-          })
-          .filter((d): d is ItemDesa => d !== null)
-          .sort((a, b) => a.nama.localeCompare(b.nama, "id"));
-      }
-
-      const idDesaList = daftarDesa.map((d) => d.id);
-
-      // 3. Ambil laporan hari ini (WIB) jika ada desa binaan
-      if (idDesaList.length > 0) {
-        // Batas "hari ini" = 00:00 WIB (server Vercel berjalan dalam UTC)
-        const { data: laps } = await supabase
-          .from("laporan_ltt")
-          .select("id, desa_id, komoditas, realisasi_tanam, realisasi_panen, keterangan, tanggal_lapor, sumber, desa:desa_id(nama)")
-          .in("desa_id", idDesaList)
-          .gte("tanggal_lapor", awalHariWIB())
-          .is("dihapus_pada", null)
-          .order("tanggal_lapor", { ascending: false });
-
-        if (laps) {
-          laporanHariIni = laps.map((l: {
-            id: number;
-            desa_id: number;
-            komoditas: string;
-            realisasi_tanam: number;
-            realisasi_panen: number;
-            keterangan: string | null;
-            tanggal_lapor: string;
-            sumber: string;
-            desa: unknown;
-          }) => {
-            const d = l.desa as { nama: string } | null;
-            return {
-              id: l.id,
-              desa_id: l.desa_id,
-              nama_desa: d?.nama ?? "Desa",
-              komoditas: l.komoditas as "Padi" | "Jagung" | "Ubi Kayu",
-              realisasi_tanam: Number(l.realisasi_tanam) || 0,
-              realisasi_panen: Number(l.realisasi_panen) || 0,
-              keterangan: l.keterangan,
-              waktu: l.tanggal_lapor,
-              sumber: l.sumber as "manual" | "epusluh",
-            };
-          });
-
-          // 4. Susun status Padi hari ini per desa binaan
-          const laporanPadi = laporanHariIni.filter((l) => l.komoditas === "Padi");
-          // Satu desa bisa punya beberapa baris padi (per jenis LTT / per pelapor) → dijumlah.
-          statusPadiHariIni = daftarDesa.map((desa) => {
-            const baris = laporanPadi.filter((lp) => lp.desa_id === desa.id);
-            return {
-              desa_id: desa.id,
-              nama_desa: desa.nama,
-              realisasi_tanam: baris.reduce((s, b) => s + b.realisasi_tanam, 0),
-              realisasi_panen: baris.reduce((s, b) => s + b.realisasi_panen, 0),
-              sudah_lapor: baris.length > 0,
-              waktu_tarik: baris[0]?.waktu ?? null,
-            };
-          });
-        }
-      }
-    } catch {
-      // Database belum diisi / error jaringan: biarkan array kosong, halaman tetap tampil anggun
-    }
-  }
+async function Isi() {
+  const p = await wajibRole("penyuluh", "admin_bpp");
+  const desa = await desaBinaanSaya(await supabaseServer(), p.id);
 
   return (
-    <TampilanPPL
-      namaPenyuluh={pengguna.nama}
-      nip={pengguna.nip}
-      kecamatanNama={kecamatanNama}
-      daftarDesa={daftarDesa}
-      laporanHariIni={laporanHariIni}
-      statusPadiHariIni={statusPadiHariIni}
-    />
+    <>
+      <div className="rounded-b-[2rem] bg-green-600 px-5 pt-8 pb-6 shadow-md">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold tracking-wider text-green-100">PPL KEMENTAN RI</p>
+            <h1 className="mt-1 text-xl font-bold text-white uppercase">{p.nama}</h1>
+            <p className="mt-1 text-xs text-green-200">WKPP: {desa.length ? desa.map((d) => d.nama).join(", ") : "Belum ditentukan"}</p>
+          </div>
+          <form action={logout}>
+            <button
+              type="submit"
+              aria-label="Keluar"
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-lg transition hover:scale-105 active:scale-95"
+            >
+              <LogOut size={18} className="text-red-500" />
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <div className="mt-6 px-5 pb-10">
+        <h2 className="mb-4 border-b border-gray-200 pb-2 text-sm font-bold text-gray-800">Menu Laporan LTT</h2>
+        <div className="grid grid-cols-4 gap-3">
+          <Ikon href="/ppl/lapor/padi" label="Padi" warna="bg-blue-100 text-blue-600 border-blue-200"><Wheat size={30} /></Ikon>
+          <Ikon href="/ppl/lapor/jagung" label="Jagung" warna="bg-yellow-100 text-yellow-600 border-yellow-200"><Leaf size={30} /></Ikon>
+          <Ikon href="/ppl/lapor/ubi-kayu" label="Ubi Kayu" warna="bg-orange-100 text-orange-600 border-orange-200"><Carrot size={30} /></Ikon>
+        </div>
+
+        <h2 className="mt-8 mb-4 border-b border-gray-200 pb-2 text-sm font-bold text-gray-800">Menu Lainnya</h2>
+        <div className="grid grid-cols-4 gap-3">
+          <Ikon href="/ppl/produktivitas" label={<>Produk-<br />tivitas</>} warna="bg-lime-100 text-lime-700 border-lime-200"><Scale size={30} /></Ikon>
+          <Ikon href="/ppl/produktivitas?tab=sarana" label={<>Sarana<br />Desa</>} warna="bg-orange-100 text-orange-600 border-orange-200"><Warehouse size={30} /></Ikon>
+          <Ikon href="/ppl/target" label={<>Target<br />Bulanan</>} warna="bg-cyan-100 text-cyan-600 border-cyan-200"><Goal size={30} /></Ikon>
+          <Ikon href="/ppl/rekap" label={<>Rekap<br />Saya</>} warna="bg-purple-100 text-purple-600 border-purple-200"><TableProperties size={30} /></Ikon>
+          {p.role === "admin_bpp" && (
+            <Ikon href="/bpp" label={<>Mode<br />BPP</>} warna="bg-emerald-100 text-emerald-600 border-emerald-200"><Shuffle size={30} /></Ikon>
+          )}
+          <Ikon href="/ganti-password" label={<>Ubah<br />Password</>} warna="bg-amber-100 text-amber-600 border-amber-200"><UserCog size={30} /></Ikon>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function Ikon({ href, label, warna, children }: { href: string; label: ReactNode; warna: string; children: ReactNode }) {
+  return (
+    <Link href={href} className="flex flex-col items-center transition hover:scale-105 active:scale-95">
+      <div className={`mb-2 flex h-16 w-16 items-center justify-center rounded-2xl border shadow ${warna}`}>{children}</div>
+      <span className="text-center text-[11px] leading-tight font-bold text-gray-700">{label}</span>
+    </Link>
   );
 }

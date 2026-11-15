@@ -38,13 +38,8 @@ export async function simpanLaporanAction(formData: FormData): Promise<ResponsAk
 
   const { desaId, komoditas, realisasiTanam, realisasiPanen, keterangan } = parse.data;
 
-  // Jika luas tanam dan panen keduanya 0, ingatkan pengguna sesuai aturan bisnis lama
-  if (realisasiTanam === 0 && realisasiPanen === 0) {
-    return {
-      sukses: false,
-      pesan: "Luas tanam atau luas panen harus lebih dari 0. Jika nihil, tidak perlu mengisi laporan.",
-    };
-  }
+  // Laporan bernilai 0 (tanam & panen) tetap DITERIMA (keputusan user 15 Nov 2026).
+  // Teks "Apabila nilai 0 semua, tidak perlu mengisi" di form hanya anjuran, bukan larangan.
 
   try {
     const supabase = await supabaseServer();
@@ -87,7 +82,7 @@ export async function simpanLaporanAction(formData: FormData): Promise<ResponsAk
       return { sukses: false, pesan: `Gagal menyimpan: ${errInsert.message}` };
     }
 
-    revalidatePath("/ppl");
+    revalidatePath("/ppl/lapor/[komoditas]", "page");
     return { sukses: true, pesan: `Laporan ${komoditas} desa ${desa.nama} berhasil disimpan!` };
   } catch (err: unknown) {
     const pesan = err instanceof Error ? err.message : "Terjadi kesalahan internal.";
@@ -163,7 +158,7 @@ export async function editLaporanAction(formData: FormData): Promise<ResponsAksi
       return { sukses: false, pesan: "Tidak ada data yang berubah. Laporan mungkin sudah dihapus atau di luar wilayah kewenangan Anda." };
     }
 
-    revalidatePath("/ppl");
+    revalidatePath("/ppl/lapor/[komoditas]", "page");
     return { sukses: true, pesan: "Laporan berhasil diperbarui!" };
   } catch (err: unknown) {
     const pesan = err instanceof Error ? err.message : "Terjadi kesalahan internal.";
@@ -214,7 +209,7 @@ export async function hapusLaporanAction(id: number): Promise<ResponsAksi> {
       return { sukses: false, pesan: "Tidak ada data yang berubah. Laporan mungkin sudah dihapus atau di luar wilayah kewenangan Anda." };
     }
 
-    revalidatePath("/ppl");
+    revalidatePath("/ppl/lapor/[komoditas]", "page");
     return { sukses: true, pesan: "Laporan berhasil dihapus." };
   } catch (err: unknown) {
     const pesan = err instanceof Error ? err.message : "Terjadi kesalahan internal.";

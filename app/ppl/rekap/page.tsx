@@ -1,17 +1,18 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { wajibRole } from "@/lib/auth";
 import { KerangkaHalaman } from "@/components/kerangka-halaman";
 import { supabaseServer } from "@/lib/supabase/server";
 import { NAMA_BULAN, bulanTahunWIB, formatAngka, tanggalIsoWIB } from "@/lib/format";
 import { KOMODITAS, desaRekapPpl, limaBulanTerakhir, rekapBulananPpl, rekapHarianPpl } from "@/lib/data";
-import { FormFilter, JudulHalaman, Kartu, Kosong, Persen, Pilihan, Tabel, Tanggal, TombolUnduh, sel, selAngka } from "@/components/ui";
+import { FormFilter, Kartu, Kosong, Persen, Pilihan, Tabel, Tanggal, TombolUnduh, sel, selAngka } from "@/components/ui";
 import { teksParam, type CariParam } from "@/lib/param";
 
 export const metadata: Metadata = { title: "Rekap — SMART LTT" };
 
 export default function HalamanRekapPpl({ searchParams }: { searchParams: CariParam }) {
   return (
-    <KerangkaHalaman judul="SMART LTT · Rekap" role={["penyuluh", "admin_bpp"]}>
+    <KerangkaHalaman judul="Rekap" role={["penyuluh", "admin_bpp"]} panel={{ judul: "Rekap Saya", sub: "Rekap LTT desa", warna: "text-purple-700" }}>
       <Isi searchParams={searchParams} />
     </KerangkaHalaman>
   );
@@ -29,12 +30,12 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
   const cakupan = p.role === "admin_bpp" ? "Semua desa di kecamatan Anda" : "Desa binaan Anda";
 
   const tab = (m: "bulanan" | "harian", label: string) => (
-    <a
+    <Link
       href={`/ppl/rekap?mode=${m}`}
-      className={`rounded-xl px-4 py-2 text-xs font-bold ${mode === m ? "bg-primary text-white" : "border border-border bg-surface"}`}
+      className={`flex-1 rounded-lg py-2 text-center text-xs font-bold transition-all ${mode === m ? "bg-green-600 text-white" : "text-gray-500 hover:bg-white"}`}
     >
       {label}
-    </a>
+    </Link>
   );
 
   if (mode === "harian") {
@@ -47,8 +48,8 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
 
     return (
       <>
-        <JudulHalaman judul="Rekap Harian" sub={cakupan} aksi={<TombolUnduh href={`/api/unduh/rekap-ppl?mode=harian&tanggal=${tanggal}`} />} />
-        <div className="mb-3 flex gap-2">{tab("bulanan", "Bulanan")}{tab("harian", "Harian")}</div>
+        <div className="mb-3 flex items-center justify-between gap-2"><p className="text-xs text-gray-500">{cakupan}</p><TombolUnduh href={`/api/unduh/rekap-ppl?mode=harian&tanggal=${tanggal}`} /></div>
+        <div className="mb-4 flex gap-1 rounded-xl bg-gray-100 p-1">{tab("bulanan", "Bulanan")}{tab("harian", "Harian")}</div>
         <FormFilter>
           <input type="hidden" name="mode" value="harian" />
           <Tanggal label="Tanggal" name="tanggal" nilai={tanggal} min={awalBulan} max={hariIni} />
@@ -97,12 +98,8 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
 
   return (
     <>
-      <JudulHalaman
-        judul="Rekap Bulanan"
-        sub={cakupan}
-        aksi={<TombolUnduh href={`/api/unduh/rekap-ppl?mode=bulanan&tahun=${terpilih.tahun}&bulan=${terpilih.bulan}`} />}
-      />
-      <div className="mb-3 flex gap-2">{tab("bulanan", "Bulanan")}{tab("harian", "Harian")}</div>
+      <div className="mb-3 flex items-center justify-between gap-2"><p className="text-xs text-gray-500">{cakupan}</p><TombolUnduh href={`/api/unduh/rekap-ppl?mode=bulanan&tahun=${terpilih.tahun}&bulan=${terpilih.bulan}`} /></div>
+      <div className="mb-4 flex gap-1 rounded-xl bg-gray-100 p-1">{tab("bulanan", "Bulanan")}{tab("harian", "Harian")}</div>
       <FormFilter>
         <input type="hidden" name="mode" value="bulanan" />
         <Pilihan

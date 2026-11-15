@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { gagal, konfirmasi, sukses } from "@/lib/swal";
 import { resetPasswordAction, tambahPenggunaAction, ubahPenggunaAction } from "@/app/kab/pengguna/actions";
 import type { Role } from "@/lib/auth";
@@ -20,112 +21,15 @@ type Desa = { id: number; nama: string; kecamatan_id: number };
 type Kec = { id: number; nama: string };
 
 const LABEL_ROLE: Record<Role, string> = { penyuluh: "Penyuluh", admin_bpp: "Koordinator BPP", admin_kab: "Admin Kabupaten", viewer: "Viewer" };
-const kelasIn = "w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-hidden";
-const kelasLbl = "flex flex-col gap-1 text-[11px] font-semibold text-muted";
+const kelasIn = "w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-green-500";
+const kelasLbl = "flex flex-col gap-1 text-[11px] font-semibold text-gray-500";
 
 /**
- * Daftar & kelola pengguna. mode "bpp": role/kecamatan terkunci (server juga memeriksa).
+ * Form tambah/ubah pengguna. Dibuka lewat URL (?edit=<id> atau ?edit=baru); selesai → kembali ke daftar.
+ * mode "bpp": role/kecamatan terkunci (server juga memeriksa).
  */
-export function KelolaPengguna({
-  mode,
-  pengguna,
-  desa,
-  kecamatan,
-  kecamatanSaya,
-  idSaya,
-}: {
-  mode: "bpp" | "kab";
-  pengguna: BarisPengguna[];
-  desa: Desa[];
-  kecamatan: Kec[];
-  kecamatanSaya: number | null;
-  idSaya: string;
-}) {
-  const [cari, setCari] = useState("");
-  const [filterRole, setFilterRole] = useState<string>("");
-  const [buka, setBuka] = useState<string | null>(null); // id atau "baru"
-  const namaKec = useMemo(() => new Map(kecamatan.map((k) => [k.id, k.nama])), [kecamatan]);
-  const namaDesa = useMemo(() => new Map(desa.map((d) => [d.id, d.nama])), [desa]);
-
-  const tampil = pengguna.filter(
-    (u) =>
-      (!filterRole || u.role === filterRole) &&
-      (!cari || u.nama.toLowerCase().includes(cari.toLowerCase()) || u.nip.includes(cari)),
-  );
-
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-end gap-2 rounded-2xl border border-border bg-surface p-3">
-        <label className={`${kelasLbl} flex-1`}>
-          Cari nama / NIP
-          <input value={cari} onChange={(e) => setCari(e.target.value)} className={kelasIn} placeholder="ketik..." />
-        </label>
-        {mode === "kab" && (
-          <label className={kelasLbl}>
-            Role
-            <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)} className={kelasIn}>
-              <option value="">Semua</option>
-              {Object.entries(LABEL_ROLE).map(([k, v]) => (
-                <option key={k} value={k}>{v}</option>
-              ))}
-            </select>
-          </label>
-        )}
-        <button type="button" onClick={() => setBuka(buka === "baru" ? null : "baru")} className="rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white">
-          {buka === "baru" ? "Tutup" : `+ Tambah ${mode === "bpp" ? "PPL" : "Pengguna"}`}
-        </button>
-      </div>
-
-      {buka === "baru" && (
-        <FormPengguna mode={mode} desa={desa} kecamatan={kecamatan} kecamatanSaya={kecamatanSaya} idSaya={idSaya} onSelesai={() => setBuka(null)} />
-      )}
-
-      <p className="text-xs text-muted">
-        {tampil.length} pengguna · {tampil.filter((u) => u.aktif).length} aktif
-      </p>
-
-      <ul className="space-y-2">
-        {tampil.map((u) => (
-          <li key={u.id} className={`rounded-2xl border border-border bg-surface p-3 ${u.aktif ? "" : "opacity-60"}`}>
-            <button type="button" onClick={() => setBuka(buka === u.id ? null : u.id)} className="flex w-full items-start justify-between gap-2 text-left">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-bold">{u.nama}</p>
-                <p className="text-[11px] text-muted">
-                  NIP {u.nip} · {LABEL_ROLE[u.role]}
-                  {u.kecamatanId ? ` · ${namaKec.get(u.kecamatanId) ?? ""}` : ""}
-                </p>
-                {u.desaIds.length > 0 && (
-                  <p className="mt-0.5 line-clamp-1 text-[11px] text-muted">Desa: {u.desaIds.map((i) => namaDesa.get(i) ?? i).join(", ")}</p>
-                )}
-              </div>
-              <div className="flex shrink-0 flex-col items-end gap-1">
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${u.aktif ? "bg-primary-soft text-primary-strong" : "bg-background text-danger"}`}>
-                  {u.aktif ? "Aktif" : "Nonaktif"}
-                </span>
-                {u.wajibGanti && <span className="text-[10px] text-warning">Belum ganti password</span>}
-              </div>
-            </button>
-            {buka === u.id && (
-              <FormPengguna
-                key={u.id}
-                mode={mode}
-                awal={u}
-                desa={desa}
-                kecamatan={kecamatan}
-                kecamatanSaya={kecamatanSaya}
-                idSaya={idSaya}
-                onSelesai={() => setBuka(null)}
-              />
-            )}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function FormPengguna({
-  mode, awal, desa, kecamatan, kecamatanSaya, idSaya, onSelesai,
+export function FormPengguna({
+  mode, awal, desa, kecamatan, kecamatanSaya, idSaya, kembali,
 }: {
   mode: "bpp" | "kab";
   awal?: BarisPengguna;
@@ -133,7 +37,7 @@ function FormPengguna({
   kecamatan: Kec[];
   kecamatanSaya: number | null;
   idSaya: string;
-  onSelesai: () => void;
+  kembali: string;
 }) {
   const baru = !awal;
   const [nip, setNip] = useState(awal?.nip ?? "");
@@ -145,6 +49,7 @@ function FormPengguna({
   const [pilih, setPilih] = useState<number[]>(awal?.desaIds ?? []);
   const [pw, setPw] = useState("");
   const [proses, mulai] = useTransition();
+  const router = useRouter();
 
   const kecEfektif = mode === "bpp" ? kecamatanSaya : kec;
   const desaKec = desa.filter((d) => d.kecamatan_id === kecEfektif);
@@ -162,7 +67,7 @@ function FormPengguna({
           });
       if (h.sukses) {
         await sukses("Tersimpan", h.pesan);
-        onSelesai();
+        router.replace(kembali, { scroll: false });
       } else gagal("Gagal", h.pesan);
     });
   }
@@ -233,7 +138,7 @@ function FormPengguna({
 
       {pakaiDesa && (
         <fieldset>
-          <legend className="mb-1 text-[11px] font-semibold text-muted">Desa binaan {kecEfektif ? "" : "(pilih kecamatan dulu)"}</legend>
+          <legend className="mb-1 text-[11px] font-semibold text-gray-500">Desa binaan {kecEfektif ? "" : "(pilih kecamatan dulu)"}</legend>
           <div className="grid max-h-56 grid-cols-2 gap-1 overflow-y-auto sm:grid-cols-3">
             {desaKec.map((d) => (
               <label key={d.id} className="flex items-center gap-1.5 text-xs">

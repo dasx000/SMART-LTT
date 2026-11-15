@@ -1,74 +1,40 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { NAMA_BULAN, formatAngka, parseDesimal } from "@/lib/format";
+import { formatAngka, parseDesimal } from "@/lib/format";
 import { gagal, sukses } from "@/lib/swal";
 import { simpanTargetDesaAction } from "@/app/ppl/target/actions";
 import type { TargetDesaData, JenisRef, Komoditas } from "@/lib/data";
 
 type DesaForm = { id: number; nama: string; label?: string };
 
-const KOM: Komoditas[] = ["Padi", "Jagung", "Ubi Kayu"];
 const kelasIn =
-  "w-full rounded-lg border border-border bg-background px-2 py-1.5 text-right text-sm tabular-nums focus:border-primary focus:outline-hidden";
+  "w-full rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 text-right text-sm tabular-nums focus:border-primary focus:outline-hidden";
 const tampil = (n: number) => (n ? formatAngka(n) : "");
 
 /**
- * Input target per desa (logika-bisnis §23h): pilih bulan & komoditas, satu kartu per desa.
+ * Kartu input target per desa (logika-bisnis §23h) untuk SATU (bulan, komoditas) dari URL.
  * Padi: rincian per jenis LTT, total dihitung otomatis. Jagung/Ubi Kayu: total langsung.
+ * Pilihan bulan & komoditas = <PilihBulanKomoditas> (server, URL).
  */
 export function FormTarget({
   desa,
   jenis,
   target,
-  bulanAwal,
+  bulan,
+  kom,
 }: {
   desa: DesaForm[];
   jenis: JenisRef[];
+  /** target untuk (bulan, kom) ini saja */
   target: TargetDesaData[];
-  bulanAwal: number;
+  bulan: number;
+  kom: Komoditas;
 }) {
-  const [bulan, setBulan] = useState(bulanAwal);
-  const [kom, setKom] = useState<Komoditas>("Padi");
-  const cari = (desaId: number) => target.find((t) => t.desaId === desaId && t.bulan === bulan && t.komoditas === kom);
-  const sudah = desa.filter((d) => cari(d.id)).length;
-
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-end gap-2 rounded-2xl border border-border bg-surface p-3">
-        <label className="flex flex-col gap-1 text-[11px] font-semibold text-muted">
-          Bulan
-          <select
-            value={bulan}
-            onChange={(e) => setBulan(Number(e.target.value))}
-            className="rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium"
-          >
-            {NAMA_BULAN.map((n, i) => (
-              <option key={n} value={i + 1}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="flex gap-1.5">
-          {KOM.map((k) => (
-            <button
-              key={k}
-              type="button"
-              onClick={() => setKom(k)}
-              className={`rounded-xl px-3 py-2 text-xs font-bold ${kom === k ? "bg-primary text-white" : "border border-border bg-background"}`}
-            >
-              {k}
-            </button>
-          ))}
-        </div>
-        <p className="ml-auto text-xs text-muted">
-          Terisi <b className="text-foreground">{sudah}</b> / {desa.length} desa
-        </p>
-      </div>
-
       {desa.map((d) => (
-        <KartuDesa key={`${d.id}-${bulan}-${kom}`} desa={d} bulan={bulan} kom={kom} jenis={jenis} awal={cari(d.id)} />
+        <KartuDesa key={`${d.id}-${bulan}-${kom}`} desa={d} bulan={bulan} kom={kom} jenis={jenis} awal={target.find((t) => t.desaId === d.id)} />
       ))}
     </div>
   );

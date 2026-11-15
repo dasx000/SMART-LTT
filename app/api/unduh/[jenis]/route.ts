@@ -18,7 +18,7 @@ import {
 
 const HAK: Record<string, Role[]> = {
   "laporan": ["admin_bpp", "admin_kab"],
-  "rekap-kecamatan": ["admin_kab"],
+  "rekap-kecamatan": ["admin_kab", "viewer"],
   "rekap-dinas": ["admin_kab", "viewer"],
   "target-realisasi": ["admin_kab", "viewer"],
   "rekap-ppl": ["penyuluh", "admin_bpp"],
