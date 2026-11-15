@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { Check, Copy, KeyRound, ShieldOff, X } from "lucide-react";
+import { Check, Copy, KeyRound, ShieldOff, Trash2, X } from "lucide-react";
 import { gagal, konfirmasi, memuat, sukses } from "@/lib/swal";
 import type { HasilKunci } from "./actions";
 
@@ -21,6 +21,22 @@ export function FormKunci({
   const [proses, mulai] = useTransition();
   const [kunci, setKunci] = useState<string | null>(null);
   const [tersalin, setTersalin] = useState(false);
+  const kotak = useRef<HTMLTextAreaElement>(null);
+
+  /** Salin ke clipboard. Cadangan execCommand untuk halaman non-https (mis. dibuka lewat IP jaringan). */
+  async function salin(teks: string) {
+    try {
+      await navigator.clipboard.writeText(teks);
+    } catch {
+      kotak.current?.focus();
+      kotak.current?.select();
+      if (!document.execCommand("copy")) {
+        await gagal("Tidak bisa menyalin otomatis", "Kunci sudah diblok — tekan Ctrl+C (atau tahan lalu Salin di HP).");
+        return;
+      }
+    }
+    setTersalin(true);
+  }
 
   function kirim(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -50,19 +66,21 @@ export function FormKunci({
               <b>Salin dan simpan kunci ini sekarang</b> (mis. di file .env bot). Kunci tidak disimpan di server dan tidak bisa ditampilkan lagi.
               Jangan bagikan di grup atau commit ke GitHub.
             </p>
-            <div className="flex items-stretch gap-2">
-              <code className="flex-1 rounded-xl border border-gray-200 bg-gray-50 p-3 font-mono text-xs break-all text-gray-800">{kunci}</code>
-              <button
-                type="button"
-                onClick={async () => {
-                  await navigator.clipboard.writeText(kunci);
-                  setTersalin(true);
-                }}
-                className="flex items-center gap-1 rounded-xl bg-green-600 px-3 text-xs font-bold text-white hover:bg-green-700"
-              >
-                {tersalin ? <Check size={14} /> : <Copy size={14} />} {tersalin ? "Tersalin" : "Salin"}
-              </button>
-            </div>
+            <textarea
+              ref={kotak}
+              readOnly
+              rows={2}
+              value={kunci}
+              onFocus={(e) => e.currentTarget.select()}
+              className="w-full resize-none rounded-xl border border-gray-200 bg-gray-50 p-3 font-mono text-xs break-all text-gray-800 outline-none focus:border-green-500"
+            />
+            <button
+              type="button"
+              onClick={() => salin(kunci)}
+              className={`flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-white shadow ${tersalin ? "bg-emerald-700" : "bg-green-600 hover:bg-green-700"}`}
+            >
+              {tersalin ? <Check size={16} /> : <Copy size={16} />} {tersalin ? "Kunci Tersalin" : "Salin Kunci"}
+            </button>
             <div className="flex justify-end">
               <Link href={kembali} scroll={false} className="rounded-xl bg-gray-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-gray-800">
                 Selesai
@@ -102,6 +120,29 @@ export function FormKunci({
         )}
       </div>
     </div>
+  );
+}
+
+/** Tombol hapus kunci yang sudah dicabut (dengan konfirmasi). */
+export function TombolHapusKunci({ id, nama, aksi }: { id: string; nama: string; aksi: (id: string) => Promise<{ sukses: boolean; pesan: string }> }) {
+  const [proses, mulai] = useTransition();
+  return (
+    <button
+      type="button"
+      disabled={proses}
+      onClick={async () => {
+        if (!(await konfirmasi(`Hapus kunci "${nama}"?`, "Kunci dan catatan pemakaiannya dihapus permanen dari daftar.", "Ya, Hapus"))) return;
+        mulai(async () => {
+          memuat("Menghapus kunci...");
+          const r = await aksi(id);
+          if (r.sukses) await sukses("Dihapus", r.pesan);
+          else await gagal("Gagal", r.pesan);
+        });
+      }}
+      className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1 text-[11px] font-bold text-gray-500 hover:border-red-300 hover:text-red-600 disabled:opacity-50"
+    >
+      <Trash2 size={12} /> Hapus
+    </button>
   );
 }
 

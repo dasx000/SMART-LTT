@@ -29,6 +29,17 @@ export async function buatKunciAction(fd: FormData): Promise<HasilKunci> {
   return { sukses: true, pesan: "Kunci dibuat. Salin sekarang — kunci tidak bisa ditampilkan lagi.", kunci };
 }
 
+/** Hapus kunci yang SUDAH DICABUT beserta catatan pemakaiannya. Kunci aktif harus dicabut dulu. */
+export async function hapusKunciAction(id: string): Promise<{ sukses: boolean; pesan: string }> {
+  await wajibRole("admin_kab");
+  if (!z.uuid().safeParse(id).success) return { sukses: false, pesan: "ID tidak valid." };
+  const { data, error } = await supabaseAdmin().from("api_klien").delete().eq("id", id).eq("aktif", false).select("id");
+  if (error) return { sukses: false, pesan: `Gagal menghapus: ${error.message}` };
+  if (!data?.length) return { sukses: false, pesan: "Kunci tidak ditemukan atau masih aktif (cabut dulu)." };
+  revalidatePath("/kab/akses-api");
+  return { sukses: true, pesan: "Kunci dihapus." };
+}
+
 /** Cabut kunci: langsung tidak bisa dipakai. Tidak bisa diaktifkan lagi (buat kunci baru bila perlu). */
 export async function cabutKunciAction(id: string): Promise<{ sukses: boolean; pesan: string }> {
   await wajibRole("admin_kab");

@@ -7,8 +7,8 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { formatTanggalJam } from "@/lib/format";
 import { DAFTAR_IZIN, IZIN } from "@/lib/api";
 import { teksParam, urlDengan, type CariParam } from "@/lib/param";
-import { buatKunciAction, cabutKunciAction } from "./actions";
-import { FormKunci, TombolCabut } from "./form-kunci";
+import { buatKunciAction, cabutKunciAction, hapusKunciAction } from "./actions";
+import { FormKunci, TombolCabut, TombolHapusKunci } from "./form-kunci";
 
 export const metadata: Metadata = { title: "Akses API — SMART LTT" };
 
@@ -45,6 +45,9 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
         <div>
           <h2 className="flex items-center gap-2 text-xl font-bold text-gray-800"><KeyRound size={20} className="text-green-600" /> Akses API</h2>
           <p className="text-[11px] text-gray-500">Kunci untuk aplikasi luar (bot, dll.). Satu kunci per klien, izin seperlunya, bisa dicabut kapan saja.</p>
+          <p className="mt-1 text-[11px] text-amber-700">
+            Kunci lengkap hanya tampil <b>sekali</b> saat dibuat (yang disimpan hanya sidiknya). Lupa menyalin? Cabut kunci lama lalu buat kunci baru.
+          </p>
         </div>
         <Link href={urlDengan(DASAR, q, { buat: "1" })} scroll={false} className="flex items-center gap-1.5 rounded-xl bg-green-600 px-4 py-2 text-sm font-bold text-white shadow hover:bg-green-700">
           <Plus size={16} /> Buat Kunci
@@ -90,7 +93,13 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
                         {k.aktif ? "Aktif" : "Dicabut"}
                       </span>
                     </td>
-                    <td className="p-3 text-center">{k.aktif && <TombolCabut id={k.id} nama={k.nama} aksi={cabutKunciAction} />}</td>
+                    <td className="p-3 text-center">
+                      {k.aktif ? (
+                        <TombolCabut id={k.id} nama={k.nama} aksi={cabutKunciAction} />
+                      ) : (
+                        <TombolHapusKunci id={k.id} nama={k.nama} aksi={hapusKunciAction} />
+                      )}
+                    </td>
                   </tr>
                 ))
               )}
