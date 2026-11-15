@@ -353,9 +353,9 @@ export function TampilanPPL({
                     </label>
                     <input
                       name="realisasiTanam"
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
                       placeholder="0,00"
                       required
                       className="w-full rounded-xl border border-border bg-background p-3 text-sm font-medium focus:border-primary focus:outline-hidden"
@@ -368,9 +368,9 @@ export function TampilanPPL({
                     </label>
                     <input
                       name="realisasiPanen"
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
                       placeholder="0,00"
                       required
                       className="w-full rounded-xl border border-border bg-background p-3 text-sm font-medium focus:border-primary focus:outline-hidden"
@@ -523,10 +523,10 @@ export function TampilanPPL({
                   </label>
                   <input
                     name="realisasiTanam"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    defaultValue={modalEdit.realisasi_tanam}
+                    type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    defaultValue={String(modalEdit.realisasi_tanam ?? 0).replace(".", ",")}
                     required
                     className="w-full rounded-xl border border-border bg-background p-3 text-sm font-medium focus:border-primary focus:outline-hidden"
                   />
@@ -538,10 +538,10 @@ export function TampilanPPL({
                   </label>
                   <input
                     name="realisasiPanen"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    defaultValue={modalEdit.realisasi_panen}
+                    type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    defaultValue={String(modalEdit.realisasi_panen ?? 0).replace(".", ",")}
                     required
                     className="w-full rounded-xl border border-border bg-background p-3 text-sm font-medium focus:border-primary focus:outline-hidden"
                   />

@@ -45,7 +45,7 @@ export async function editLaporanKabAction(formData: FormData): Promise<ResponsA
   try {
     const supabase = await supabaseServer();
 
-    const { error: errUpdate } = await supabase
+    const { data: berubahUpdate, error: errUpdate } = await supabase
       .from("laporan_ltt")
       .update({
         desa_id: desaId,
@@ -57,10 +57,16 @@ export async function editLaporanKabAction(formData: FormData): Promise<ResponsA
         keterangan: keterangan || null,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", id);
+      .eq("id", id)
+      .select("id");
 
     if (errUpdate) {
       return { sukses: false, pesan: `Gagal memperbarui: ${errUpdate.message}` };
+    }
+
+    // RLS menolak diam-diam (0 baris) → jangan laporkan "berhasil"
+    if (!berubahUpdate?.length) {
+      return { sukses: false, pesan: "Tidak ada data yang berubah. Laporan mungkin sudah dihapus atau di luar wilayah kewenangan Anda." };
     }
 
     revalidatePath("/kab");
@@ -84,13 +90,19 @@ export async function hapusLaporanKabAction(id: number): Promise<ResponsAksiKab>
   try {
     const supabase = await supabaseServer();
 
-    const { error: errDel } = await supabase
+    const { data: berubahDel, error: errDel } = await supabase
       .from("laporan_ltt")
       .update({ dihapus_pada: new Date().toISOString() })
-      .eq("id", id);
+      .eq("id", id)
+      .select("id");
 
     if (errDel) {
       return { sukses: false, pesan: `Gagal menghapus: ${errDel.message}` };
+    }
+
+    // RLS menolak diam-diam (0 baris) → jangan laporkan "berhasil"
+    if (!berubahDel?.length) {
+      return { sukses: false, pesan: "Tidak ada data yang berubah. Laporan mungkin sudah dihapus atau di luar wilayah kewenangan Anda." };
     }
 
     revalidatePath("/kab");

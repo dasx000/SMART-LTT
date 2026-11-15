@@ -131,3 +131,90 @@ Membangun antarmuka Admin Kabupaten dan Dinas TPHP di `app/kab/` (menggantikan `
 * `npm run build` -> **Lolos (Turbopack build 100% sukses, 10 route ter-generate)**.
 
 ---
+
+## [2026-11-13 14:00 - 14:10 WIB] Jalur 2: Eksekusi Database Supabase Live & Persiapan Impor
+
+### Yang Dilakukan User:
+1. SQL `0001_ltt_auth.sql` dijalankan di Supabase SQL Editor ✅
+2. SQL `0002_ltt_data.sql` dijalankan di Supabase SQL Editor ✅
+3. Schema `ltt` ditambahkan ke Exposed Schemas di Data API Settings ✅
+4. `SUPABASE_SERVICE_ROLE_KEY` diisi di `.env.local` ✅
+
+### Verifikasi Status Database Live (Terkoneksi via Service Role):
+| Tabel | Status | Jumlah Baris |
+|---|---|---|
+| `ltt.kecamatan` | Kosong, siap impor | 0 |
+| `ltt.desa` | Kosong, siap impor | 0 |
+| `ltt.laporan_ltt` | Kosong, siap impor | 0 |
+| `ltt.anggota` | Kosong, siap impor | 0 |
+| `core.profiles` | Sudah ada (pengguna lain) | 97 |
+| `core.memberships` | Sudah ada (bukan LTT) | 97 |
+| `core.apps` | slug `ltt` terdaftar ✅ | — |
+
+### Matching Pengguna LTT vs core.profiles:
+- 104 pengguna LTT di Excel
+- **94 sudah ada** di `core.profiles` (NIP cocok) → hanya insert ke `ltt.anggota` + `core.memberships`
+- **10 belum ada** → perlu buat `auth.users` baru via admin API, lalu insert ke `core.profiles` + `ltt.anggota` + `core.memberships`
+
+### Distribusi Data Laporan:
+- Total: **15.517 baris**
+- **Sebelum 2026-11-13: 15.493 baris** → AKAN DIIMPOR
+- **Tanggal 2026-11-13: 23 baris** → DILEWATI (data belum lengkap per permintaan user)
+- Future: 1 baris → DILEWATI
+
+### Berkas Baru yang Dibuat:
+1. `scripts/etl/impor_ke_supabase.py` — Skrip impor data historis ke Supabase Live
+
+---
+
+## [2026-11-15] Review & Perbaikan Hasil Fase 2–6 (belum di-deploy, database belum diisi)
+
+### Status migrasi saat review
+**Migrasi BELUM selesai.** Database live: tabel `ltt.*` masih kosong (hanya 9 baris `jenis_ltt`), impor belum pernah dijalankan, belum deploy ke Vercel, belum uji paralel/cutover. Bagian "Jalur 2" sebelumnya tertulis 5 kali di log ini → dirapikan jadi satu, urut waktu.
+
+### Koreksi atas klaim di entri sebelumnya
+| Entri | Klaim | Kenyataan saat dicek |
+|---|---|---|
+| 11:40 Fase 2 | `transform_data.py` memproses "100% data tanpa selisih" | 1.261 baris padi bertanggal **"Agt"** (Agustus) tidak dikenali → diam-diam dianggap **Januari**. Jenis LTT padi (Reguler/Gogo/Oplah…) **dibuang**, rincian target padi per jenis **dibuang**, kecamatan & desa binaan **104 user kosong** (kolom `Kecamatan` dibaca sebagai `Nama_Kecamatan`), `parse_num("1.5")` = 15 |
+| 11:40 Fase 2 | `0002` memuat "RLS lengkap untuk 4 role" | View melewati RLS (akun aplikasi lain di project bersama bisa membaca rekap LTT); Penyuluh bisa menulis produktivitas/sarana/target **semua desa sekecamatan**, bukan hanya desa binaan; produktivitas tanpa **tahun**; unique target desa tidak efektif (NULL) |
+| 11:50 Fase 3.5 | Simpan laporan "dengan validasi wilayah binaan" | Hanya mengecek desa ada, tidak mengecek binaan. "Hari ini" dihitung dengan jam server UTC (laporan 00:00–07:00 WIB tidak tampil). Input `type=number` menolak koma |
+| 12:53 / 13:10 | Edit/hapus "berhasil" | Bila ditolak RLS, Supabase mengubah 0 baris tanpa error → aplikasi tetap menampilkan "berhasil" |
+| 13:10 Fase 6 | Endpoint sinkron padi siap | Token cadangan tertulis di kode (`smartltt-epusluh-secret-token`); tanggal "Mei/Agt/Okt d, yyyy" gagal dibaca → diganti **waktu sekarang**; jenis LTT & nama pelapor tidak disimpan; hapus + sisip tidak satu transaksi; baris desa tak cocok dibuang diam-diam |
+| 13:10 Fase 6 | Dashboard Kab menghitung total kabupaten | Supabase membatasi 1.000 baris/permintaan; laporan se-kabupaten 2.000–3.300/bulan → **total terpotong diam-diam**. Data laporan + nama pelapor juga dikirim ke browser role Dinas |
+| 14:00 Jalur 2 | `impor_ke_supabase.py` siap | Tidak akan jalan: nama kolom tidak cocok dengan skema (`profile_id`, `produktivitas_ton_ha`, `jenis_sarana`, tanpa `komoditas`), `sumber` ditolak CHECK, tanpa `id_lama` (impor ulang = duplikat). **10 akun baru diberi password seragam yang tertulis di kode**, dan tanpa email di `core.profiles` → tidak bisa login |
+
+### Perubahan yang dibuat
+1. `supabase/migrations/0003_perbaikan.sql` (BARU — **belum dijalankan**, perlu dijalankan user di SQL Editor):
+   - `target_desa` 1 baris per (bulan, desa, komoditas) + tabel `target_desa_rincian` (per jenis LTT padi).
+   - `produktivitas_desa` + kolom `tahun` (PK tahun+bulan+desa+komoditas).
+   - CHECK angka ≥ 0 di laporan & target.
+   - View `security_invoker = true` (ikut RLS pemanggil).
+   - RLS diperketat (laporan: input hanya desa binaan & pelapor sendiri; produktivitas/sarana: desa binaan; WITH CHECK eksplisit).
+   - Fungsi `ltt.sinkron_padi(jsonb)`: timpa per tanggal **dalam satu transaksi**, jenis LTT baru otomatis didaftarkan; hanya service role.
+   - `updated_at` otomatis + tabel `ltt.log_perubahan` (jejak perubahan oleh user).
+   - `ltt.setel_ulang_sequence()` untuk dipanggil setelah impor.
+2. `scripts/etl/transform_data.py`: bulan "Agt", jam dari teks tanggal, tanggal tak terbaca **dilaporkan** (bukan diganti hari ini), `parse_num` koma/titik, jenis LTT dinormalkan, rincian target padi per jenis, target kecamatan = jumlah desa **ditimpa target provinsi** (aturan lama), produktivitas + tahun, kecamatan & desa binaan user diperbaiki, hitungan baris dibuang dicetak. Hasil: **15.517/15.517 laporan, 0 dibuang**, sebaran April–November benar, 231 desa binaan, 95 PPL/BPP punya kecamatan.
+3. `scripts/etl/impor_ke_supabase.py`: ditulis ulang. **Default simulasi** (`--jalankan` untuk menulis), upsert pada kunci unik (aman diulang), akun lama di core **tidak diubah**, akun baru memakai **PIN lama masing-masing** (dibaca dari Excel saat impor, tidak disimpan) + `wajib_ganti_password`, email diisi di `core.profiles`, `--sampai` untuk batas tanggal (default hari ini WIB). Simulasi: 15 kec, 227 desa, 94 akun lama + 10 baru, 227 desa binaan, 15.516 laporan, 1.263 target desa + 511 rincian, 137 target kec, 102 produktivitas, 9 sarana.
+4. `app/api/epusluh/sinkron-padi/route.ts`: ditulis ulang — token wajib dari env (min. 24 karakter, perbandingan waktu-konstan), validasi Zod, `lib/tanggal-epusluh.ts` (format e-Pusluh + "Agt", WIB), jenis LTT/pelapor/metode tersimpan, transaksi via `ltt.sinkron_padi`, desa tak cocok & tanggal gagal dilaporkan di respons + `logs_sinkron`. Data kosong → tidak menyentuh database.
+5. `lib/format.ts`: `bulanTahunWIB`, `awalHariWIB`, `rentangBulanWIB`. `lib/supabase/ambil-semua.ts`: ambil bertahap melewati batas 1.000 baris. `lib/validasi.ts`: `angkaHa` (terima koma).
+6. PPL: "hari ini" WIB; Admin_BPP di tampilan PPL hanya desa binaannya (aturan lama); status padi menjumlah semua baris per desa; simpan laporan mengecek desa binaan + jenis `LTT`.
+7. BPP: halaman & action hanya `Admin_BPP` (sebelumnya Admin_Kab masuk dengan kecamatan cadangan id 1); bulan WIB; laporan diambil bertahap.
+8. Kab: bulan WIB; laporan diambil bertahap (total tidak terpotong); Dinas tidak lagi menerima daftar laporan/desa.
+9. Semua action edit/hapus: cek baris yang benar-benar berubah; 12 input angka → `type=text inputMode=decimal`.
+10. `lib/supabase/types.ts` disesuaikan dengan `0003`.
+
+### Insiden kecil saat pengujian
+Uji endpoint dengan `{"data": []}` sempat menulis **1 baris** ke `ltt.logs_sinkron` di database live (id 1). Baris itu sudah dihapus (tabel kembali 0 baris) dan kode diubah agar data kosong tidak menyentuh database.
+
+### Status pengujian
+- `npx tsc --noEmit` → bersih. `npm run lint` → bersih. `npm run build` → sukses.
+- Uji parser tanggal e-Pusluh: 10/10 kasus lulus (termasuk "Agt", "Mei", "Okt", format angka, teks tak dikenal → null).
+- Uji endpoint: tanpa token 401, token lama GAS 401, body rusak 400.
+- `impor_ke_supabase.py` simulasi: lihat angka di poin 3.
+- **Belum diuji:** RLS per role dengan akun sungguhan, alur login, `ltt.sinkron_padi` (menunggu `0003` dijalankan).
+
+### Langkah berikutnya (urut)
+1. User menjalankan `0003_perbaikan.sql` di SQL Editor.
+2. Putuskan password untuk 94 akun lama (lihat plan §11 no. 28).
+3. `python scripts/etl/impor_ke_supabase.py --jalankan` → cek "SEMUA COCOK".
+4. Uji login & RLS tiap role, deploy staging Vercel, isi `EPUSLUH_INGEST_TOKEN`, arahkan bot DASBOT (uji paralel).

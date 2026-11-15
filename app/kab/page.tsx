@@ -3,6 +3,8 @@ import { wajibRole } from "@/lib/auth";
 import { KerangkaHalaman } from "@/components/kerangka-halaman";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseSiap } from "@/lib/env";
+import { bulanTahunWIB, rentangBulanWIB } from "@/lib/format";
+import { ambilSemua } from "@/lib/supabase/ambil-semua";
 import {
   TampilanKab,
   type ItemKecamatanCapaian,
@@ -25,9 +27,8 @@ export default async function HalamanKab() {
 async function MuatKontenKab() {
   const pengguna = await wajibRole("Admin_Kab", "Dinas");
 
-  const now = new Date();
-  const bulanAktif = now.getMonth() + 1; // 1 - 12
-  const tahunAktif = now.getFullYear();
+  // Bulan berjalan menurut WIB (server Vercel = UTC)
+  const { bulan: bulanAktif, tahun: tahunAktif } = bulanTahunWIB();
 
   const totalPadi = { tanam: 0, panen: 0 };
   const totalJagung = { tanam: 0, panen: 0 };
@@ -85,19 +86,26 @@ async function MuatKontenKab() {
       }
 
       // 4. Ambil seluruh laporan LTT bulan berjalan se-Kabupaten
-      const awalBulan = new Date(tahunAktif, bulanAktif - 1, 1).toISOString();
+      const { dari, sampai } = rentangBulanWIB(tahunAktif, bulanAktif);
 
-      const { data: laps } = await supabase
-        .from("laporan_ltt")
-        .select(`
-          id, desa_id, komoditas, realisasi_tanam, realisasi_panen,
-          luas_bera, realisasi_olah, metode_penanaman, keterangan,
-          tanggal_lapor, sumber, nama_pelapor,
-          desa:desa_id(id, nama, kecamatan_id, kecamatan:kecamatan_id(id, nama))
-        `)
-        .gte("tanggal_lapor", awalBulan)
-        .is("dihapus_pada", null)
-        .order("tanggal_lapor", { ascending: false });
+      // Se-kabupaten bisa > 3.000 baris/bulan; batas 1.000 baris/permintaan tidak boleh
+      // memotong total → diambil bertahap.
+      const laps = await ambilSemua((a, b) =>
+        supabase
+          .from("laporan_ltt")
+          .select(`
+            id, desa_id, komoditas, realisasi_tanam, realisasi_panen,
+            luas_bera, realisasi_olah, metode_penanaman, keterangan,
+            tanggal_lapor, sumber, nama_pelapor,
+            desa:desa_id(id, nama, kecamatan_id, kecamatan:kecamatan_id(id, nama))
+          `)
+          .gte("tanggal_lapor", dari)
+          .lt("tanggal_lapor", sampai)
+          .is("dihapus_pada", null)
+          .order("tanggal_lapor", { ascending: false })
+          .order("id")
+          .range(a, b),
+      );
 
       if (laps) {
         laporanKabupaten = laps.map((l: {
@@ -220,8 +228,9 @@ async function MuatKontenKab() {
       targetKabupaten={targetKabupaten}
       rekapKecamatan={rekapKecamatan}
       rekapPmAas={rekapPmAas}
-      laporanKabupaten={laporanKabupaten}
-      daftarDesaSemua={daftarDesaSemua}
+      // Dinas tidak punya tab laporan (aturan lama): jangan kirim ribuan baris + nama pelapor ke browser.
+      laporanKabupaten={pengguna.role === "Admin_Kab" ? laporanKabupaten : []}
+      daftarDesaSemua={pengguna.role === "Admin_Kab" ? daftarDesaSemua : []}
     />
   );
 }

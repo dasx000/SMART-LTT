@@ -3,6 +3,7 @@ import { wajibRole } from "@/lib/auth";
 import { KerangkaHalaman } from "@/components/kerangka-halaman";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseSiap } from "@/lib/env";
+import { awalHariWIB } from "@/lib/format";
 import {
   TampilanPPL,
   type ItemDesa,
@@ -44,45 +45,34 @@ async function MuatKontenPPL() {
         if (kec?.nama) kecamatanNama = kec.nama;
       }
 
-      // 2. Ambil desa binaan
-      if (pengguna.role === "Admin_BPP" && pengguna.kecamatanId) {
-        // Admin BPP bisa melihat semua desa di kecamatannya
-        const { data: desas } = await supabase
-          .from("desa")
-          .select("id, nama")
-          .eq("kecamatan_id", pengguna.kecamatanId)
-          .order("nama");
-        if (desas) daftarDesa = desas;
-      } else {
-        // Penyuluh mengambil desa binaannya dari ltt.anggota_desa
-        const { data: relasi } = await supabase
-          .from("anggota_desa")
-          .select("desa:desa_id(id, nama)")
-          .eq("user_id", pengguna.id);
+      // 2. Desa binaan sendiri (ltt.anggota_desa). Berlaku juga untuk Admin_BPP: di tampilan PPL
+      //    ia melapor sebagai penyuluh untuk desa binaannya (aturan lama, logika-bisnis §23a).
+      //    Melihat se-kecamatan dilakukan di halaman /bpp.
+      const { data: relasi } = await supabase
+        .from("anggota_desa")
+        .select("desa:desa_id(id, nama)")
+        .eq("user_id", pengguna.id);
 
-        if (relasi) {
-          daftarDesa = relasi
-            .map((r: { desa: unknown }) => {
-              const d = r.desa as { id: number; nama: string } | null;
-              return d ? { id: d.id, nama: d.nama } : null;
-            })
-            .filter((d): d is ItemDesa => d !== null);
-        }
+      if (relasi) {
+        daftarDesa = relasi
+          .map((r: { desa: unknown }) => {
+            const d = r.desa as { id: number; nama: string } | null;
+            return d ? { id: d.id, nama: d.nama } : null;
+          })
+          .filter((d): d is ItemDesa => d !== null)
+          .sort((a, b) => a.nama.localeCompare(b.nama, "id"));
       }
 
       const idDesaList = daftarDesa.map((d) => d.id);
 
       // 3. Ambil laporan hari ini (WIB) jika ada desa binaan
       if (idDesaList.length > 0) {
-        // Batas hari ini WIB
-        const awalHariIni = new Date();
-        awalHariIni.setHours(0, 0, 0, 0);
-
+        // Batas "hari ini" = 00:00 WIB (server Vercel berjalan dalam UTC)
         const { data: laps } = await supabase
           .from("laporan_ltt")
           .select("id, desa_id, komoditas, realisasi_tanam, realisasi_panen, keterangan, tanggal_lapor, sumber, desa:desa_id(nama)")
           .in("desa_id", idDesaList)
-          .gte("tanggal_lapor", awalHariIni.toISOString())
+          .gte("tanggal_lapor", awalHariWIB())
           .is("dihapus_pada", null)
           .order("tanggal_lapor", { ascending: false });
 
@@ -114,15 +104,16 @@ async function MuatKontenPPL() {
 
           // 4. Susun status Padi hari ini per desa binaan
           const laporanPadi = laporanHariIni.filter((l) => l.komoditas === "Padi");
+          // Satu desa bisa punya beberapa baris padi (per jenis LTT / per pelapor) → dijumlah.
           statusPadiHariIni = daftarDesa.map((desa) => {
-            const lapPadi = laporanPadi.find((lp) => lp.desa_id === desa.id);
+            const baris = laporanPadi.filter((lp) => lp.desa_id === desa.id);
             return {
               desa_id: desa.id,
               nama_desa: desa.nama,
-              realisasi_tanam: lapPadi?.realisasi_tanam ?? 0,
-              realisasi_panen: lapPadi?.realisasi_panen ?? 0,
-              sudah_lapor: Boolean(lapPadi),
-              waktu_tarik: lapPadi?.waktu ?? null,
+              realisasi_tanam: baris.reduce((s, b) => s + b.realisasi_tanam, 0),
+              realisasi_panen: baris.reduce((s, b) => s + b.realisasi_panen, 0),
+              sudah_lapor: baris.length > 0,
+              waktu_tarik: baris[0]?.waktu ?? null,
             };
           });
         }

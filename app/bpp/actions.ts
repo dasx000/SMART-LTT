@@ -15,7 +15,7 @@ export type ResponsAksiBpp = {
  * Simpan / perbarui target kecamatan (diisi oleh Admin BPP)
  */
 export async function simpanTargetKecamatanAction(formData: FormData): Promise<ResponsAksiBpp> {
-  const pengguna = await wajibRole("Admin_BPP", "Admin_Kab");
+  const pengguna = await wajibRole("Admin_BPP");
 
   if (!supabaseSiap()) {
     return { sukses: false, pesan: "Koneksi Supabase belum aktif." };
@@ -74,7 +74,7 @@ export async function simpanTargetKecamatanAction(formData: FormData): Promise<R
  * Edit laporan LTT oleh Koordinator BPP
  */
 export async function editLaporanBppAction(formData: FormData): Promise<ResponsAksiBpp> {
-  const pengguna = await wajibRole("Admin_BPP", "Admin_Kab");
+  const pengguna = await wajibRole("Admin_BPP");
 
   if (!supabaseSiap()) {
     return { sukses: false, pesan: "Koneksi Supabase belum aktif." };
@@ -115,7 +115,7 @@ export async function editLaporanBppAction(formData: FormData): Promise<ResponsA
       return { sukses: false, pesan: "Anda hanya berwenang mengubah laporan di kecamatan Anda." };
     }
 
-    const { error: errUpdate } = await supabase
+    const { data: berubahUpdate, error: errUpdate } = await supabase
       .from("laporan_ltt")
       .update({
         desa_id: desaId,
@@ -124,10 +124,16 @@ export async function editLaporanBppAction(formData: FormData): Promise<ResponsA
         keterangan: keterangan || null,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", id);
+      .eq("id", id)
+      .select("id");
 
     if (errUpdate) {
       return { sukses: false, pesan: `Gagal memperbarui: ${errUpdate.message}` };
+    }
+
+    // RLS menolak diam-diam (0 baris) → jangan laporkan "berhasil"
+    if (!berubahUpdate?.length) {
+      return { sukses: false, pesan: "Tidak ada data yang berubah. Laporan mungkin sudah dihapus atau di luar wilayah kewenangan Anda." };
     }
 
     revalidatePath("/bpp");
@@ -142,7 +148,7 @@ export async function editLaporanBppAction(formData: FormData): Promise<ResponsA
  * Hapus laporan LTT oleh Koordinator BPP (soft-delete)
  */
 export async function hapusLaporanBppAction(id: number): Promise<ResponsAksiBpp> {
-  const pengguna = await wajibRole("Admin_BPP", "Admin_Kab");
+  const pengguna = await wajibRole("Admin_BPP");
 
   if (!supabaseSiap()) {
     return { sukses: false, pesan: "Koneksi Supabase belum aktif." };
@@ -167,13 +173,19 @@ export async function hapusLaporanBppAction(id: number): Promise<ResponsAksiBpp>
       return { sukses: false, pesan: "Anda hanya berwenang menghapus laporan di kecamatan Anda." };
     }
 
-    const { error: errDel } = await supabase
+    const { data: berubahDel, error: errDel } = await supabase
       .from("laporan_ltt")
       .update({ dihapus_pada: new Date().toISOString() })
-      .eq("id", id);
+      .eq("id", id)
+      .select("id");
 
     if (errDel) {
       return { sukses: false, pesan: `Gagal menghapus: ${errDel.message}` };
+    }
+
+    // RLS menolak diam-diam (0 baris) → jangan laporkan "berhasil"
+    if (!berubahDel?.length) {
+      return { sukses: false, pesan: "Tidak ada data yang berubah. Laporan mungkin sudah dihapus atau di luar wilayah kewenangan Anda." };
     }
 
     revalidatePath("/bpp");

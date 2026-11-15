@@ -1,6 +1,6 @@
 # Plan: Migrasi SMART LTT ke Next.js + Vercel + Supabase
 
-> Status: **RANCANGAN — keputusan utama sudah diambil (§11)**. Belum ada kode yang diubah. Kode GAS lama tetap jalan sampai cutover (Fase 7).
+> Status (15 Nov 2026): **MIGRASI BELUM SELESAI.** Kode Fase 1–6 sebagian besar ditulis & sudah direview (lihat `LOG_PERUBAHAN.md` entri 15 Nov). Database live masih kosong (impor belum dijalankan), `0003` belum dijalankan, belum deploy. Aplikasi GAS lama masih dipakai.
 > **Jangan push ke GitHub dulu** sampai ada keputusan baru.
 > Plan lama "Produktivitas & Sarana per Desa" ada di git (`git show 7fc650a:plan.md`). Fiturnya ikut dimigrasi (lihat §4, §6).
 
@@ -370,10 +370,10 @@ Aturan: satu util `lib/excel.ts` (ExcelJS, dimuat dinamis saat tombol ditekan), 
 - [ ] Putuskan pertanyaan terbuka di §11.
 - [ ] Buat project Supabase Free (region **Singapore** `ap-southeast-1`) dan project Vercel Hobby (deploy via CLI, belum terhubung GitHub).
 - [ ] Pakai URL `*.vercel.app` dulu; domain sendiri menyusul (tinggal tambah record DNS di Vercel).
-- [ ] Buat service account Google (Cloud Console) → unduh `credentials.json` (masuk `.gitignore`) → bagikan spreadsheet ke email service account sebagai *Viewer*.
+- [x] ~~Service account Google~~ → tidak diperlukan; sumber data = ekspor `MASTER DATABASE LTT.xlsx` (keputusan 26).
 - [x] Pindahkan file GAS ke `_gas_lama/` (tetap dilacak git sebagai rujukan) + tag `gas-final`.
-- [ ] Siapkan env: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `EPUSLUH_INGEST_TOKEN`, `VPS_WEBHOOK_URL`, `VPS_WEBHOOK_SECRET`, `CRON_SECRET`.
-- [ ] **Ekspor awal (keputusan C):** skrip `scripts/etl/ekspor.ts` tarik semua sheet → JSON lokal (`data_lama/`, di `.gitignore`) + `laporan-isi-data.md`: jumlah baris per sheet, nilai unik status/komoditas/jenis, desa yang tidak cocok dengan `Data_Geografi`, tanggal berformat teks, sel kosong. Skema §4 direvisi berdasarkan laporan ini.
+- [~] Env: URL, anon key, service role key **terisi** di `.env.local`. **Belum:** `EPUSLUH_INGEST_TOKEN` (min. 24 karakter acak), `VPS_WEBHOOK_SECRET`.
+- [x] **Ekspor awal (keputusan C)** — selesai via xlsx: `docs/laporan-isi-data.md`. Rincian lama: skrip `scripts/etl/ekspor.ts` tarik semua sheet → JSON lokal (`data_lama/`, di `.gitignore`) + `laporan-isi-data.md`: jumlah baris per sheet, nilai unik status/komoditas/jenis, desa yang tidak cocok dengan `Data_Geografi`, tanggal berformat teks, sel kosong. Skema §4 direvisi berdasarkan laporan ini.
 
 ### Fase 0.5 — Audit logika (1–2 hari) *(keputusan A)*
 - [x] Baca seluruh `Database.gs`, `Code.gs`, `LoaderTuyul.gs`, dan bagian terkait di `File_Javascript.html`.
@@ -398,20 +398,20 @@ Aturan: satu util `lib/excel.ts` (ExcelJS, dimuat dinamis saat tombol ditekan), 
 **Anggapan sementara (bisa diubah sebelum Fase 2):** PPL boleh edit laporannya sendiri **kapan saja** (tercatat di `log_perubahan`); target desa tetap ada dan target kecamatan diisi **bebas** oleh Admin BPP (tidak dijumlah dari desa), isinya mengikuti format target desa.
 
 ### Fase 2 — Skema & RLS (1–2 hari)
-- [ ] Migration SQL §4 di `supabase/migrations`.
-- [ ] Fungsi helper RLS + policy semua tabel.
-- [ ] View & RPC rekap.
+- [x] Migration SQL: `0001` (auth) & `0002` (data) **sudah dijalankan user**; `0003_perbaikan.sql` (hasil review) **BELUM dijalankan**.
+- [x] Fungsi helper RLS + policy semua tabel (diperketat di `0003`).
+- [~] View rekap ada (`v_ringkasan_harian`, `v_rekap_bulanan_kecamatan`, `v_target_kabupaten`); RPC `sinkron_padi` di `0003`. Rekap lengkap (padi per jenis, palawija, target vs realisasi per kategori) belum.
 - [ ] Tes RLS (login sebagai tiap role, pastikan tidak bisa baca/tulis di luar wilayah).
 
 ### Fase 3 — ETL & data uji (1–2 hari)
-- [ ] Skrip ekspor/transform/muat/cek (§8).
-- [ ] Jalankan ke Supabase **staging**; perbaiki data yang gagal cocok.
+- [x] `scripts/etl/transform_data.py` + `impor_ke_supabase.py` (simulasi OK, cek jumlah otomatis).
+- [ ] Jalankan impor (`--jalankan`) — **menunggu `0003` + keputusan 28.** Catatan: tidak ada project staging terpisah (project Supabase dipakai bersama, keputusan 24).
 
 ### Fase 3.5 — Irisan tipis ujung ke ujung (2–3 hari) *(keputusan B)*
-- [ ] Login NIP + paksa ganti password pertama kali.
-- [ ] PPL: input 1 laporan LTT (Jagung/Ubi Kayu) + daftar laporan hari ini.
-- [ ] BPP: antrean verifikasi + verifikasi massal.
-- [ ] Kab: dashboard ringkas (total tanam/panen hari ini & bulan ini per komoditas).
+- [~] Login NIP (resolve email di server) ada. **Form `/ganti-password` belum dibuat** (halaman masih placeholder).
+- [x] PPL: input laporan Jagung/Ubi Kayu + daftar laporan hari ini + status padi (kode ada, belum diuji dengan data).
+- [x] ~~BPP: antrean verifikasi~~ → fitur verifikasi dihapus (keputusan 23). BPP: capaian kecamatan, laporan, target kecamatan.
+- [x] Kab: dashboard bulan berjalan per komoditas + PM AAS + tabel 15 kecamatan (kode ada).
 - [ ] Deploy ke Vercel (staging), **2–3 PPL + 1 koordinator BPP mencoba di HP sendiri**; catat keluhan (kecepatan, alur, tampilan).
 - [ ] Ukur anggaran §2c (bundle, Lighthouse) di irisan ini; perbaiki sebelum melebar.
 - [ ] Baru lanjut Fase 4–6, dengan pola yang sudah terbukti.
@@ -509,6 +509,7 @@ Aturan: satu util `lib/excel.ts` (ExcelJS, dimuat dinamis saat tombol ditekan), 
 | 25 | Login | NIP → email dicari di **server** (`ltt.resolve_login_email`, hanya service role) — tidak dibuka ke anon seperti di CWS, agar NIP tidak bisa dipakai menebak email. Boleh juga login pakai email. Akun tanpa membership `ltt` ditolak ("belum terdaftar di SMART LTT") |
 | 26 | Sumber data migrasi | **File ekspor `MASTER DATABASE LTT.xlsx`** di folder proyek (di-`.gitignore`). Service account Google **tidak diperlukan** untuk tahap ini. Saat cutover cukup ekspor ulang file yang sama. Hasil cek kualitas: `docs/laporan-isi-data.md` |
 | 27 | Repo | Remote diganti ke **`https://github.com/dasx000/SMART-LTT.git`** (repo baru, masih kosong). Repo lama `dasx000/LTT` tidak dipakai lagi. **Belum di-push** |
+| 28 | **Password 94 akun lama** (TERBUKA) | NIP mereka sudah ada di project bersama (92 terdaftar di aplikasi Alsintan, email Gmail asli). Skrip impor **tidak mengubah** akun ini → mereka login SMART LTT dengan **password akun bersama (Alsintan)**, bukan PIN LTT lama. Alternatif: reset ke PIN LTT lama (mengubah password Alsintan juga). **Perlu keputusan user sebelum impor.** |
 
 > ⚠️ Karena keputusan 23, bagian plan yang menyebut verifikasi (§4c status, §4g RLS, Fase 3.5, Fase 5–6), bookmarklet/endpoint e-Pusluh (§7, §6 baris `doPost`/`doGet`), dan `target_kecamatan_provinsi` akan direvisi setelah pertanyaan lanjutan §26 dijawab.
 

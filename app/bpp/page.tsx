@@ -3,6 +3,8 @@ import { wajibRole } from "@/lib/auth";
 import { KerangkaHalaman } from "@/components/kerangka-halaman";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseSiap } from "@/lib/env";
+import { bulanTahunWIB, rentangBulanWIB } from "@/lib/format";
+import { ambilSemua } from "@/lib/supabase/ambil-semua";
 import {
   TampilanBPP,
   type CapaianKomoditas,
@@ -17,21 +19,27 @@ export const metadata: Metadata = {
 
 export default async function HalamanBPP() {
   return (
-    <KerangkaHalaman judul="SMART LTT · BPP" role={["Admin_BPP", "Admin_Kab"]}>
+    <KerangkaHalaman judul="SMART LTT · BPP" role={["Admin_BPP"]}>
       <MuatKontenBPP />
     </KerangkaHalaman>
   );
 }
 
 async function MuatKontenBPP() {
-  const pengguna = await wajibRole("Admin_BPP", "Admin_Kab");
+  const pengguna = await wajibRole("Admin_BPP");
 
-  const now = new Date();
-  const bulanAktif = now.getMonth() + 1; // 1 - 12
-  const tahunAktif = now.getFullYear();
+  // Bulan berjalan menurut WIB (server Vercel = UTC)
+  const { bulan: bulanAktif, tahun: tahunAktif } = bulanTahunWIB();
 
   let kecamatanNama = "Way Kanan";
-  const kecamatanId = pengguna.kecamatanId ?? 1;
+  const kecamatanId = pengguna.kecamatanId;
+  if (!kecamatanId) {
+    return (
+      <div className="rounded-2xl border border-border bg-surface p-6 text-center text-sm text-muted">
+        Akun Anda belum terhubung ke kecamatan. Hubungi Admin Kabupaten.
+      </div>
+    );
+  }
 
   let daftarDesa: { id: number; nama: string }[] = [];
   const rekapKomoditas: {
@@ -117,15 +125,21 @@ async function MuatKontenBPP() {
 
       // 4. Ambil laporan LTT bulan berjalan di kecamatan ini
       if (idDesaList.length > 0) {
-        const awalBulan = new Date(tahunAktif, bulanAktif - 1, 1).toISOString();
+        const { dari, sampai } = rentangBulanWIB(tahunAktif, bulanAktif);
 
-        const { data: laps } = await supabase
-          .from("laporan_ltt")
-          .select("id, desa_id, komoditas, realisasi_tanam, realisasi_panen, keterangan, tanggal_lapor, sumber, nama_pelapor, desa:desa_id(nama)")
-          .in("desa_id", idDesaList)
-          .gte("tanggal_lapor", awalBulan)
-          .is("dihapus_pada", null)
-          .order("tanggal_lapor", { ascending: false });
+        // Diambil bertahap: batas 1.000 baris/permintaan tidak boleh memotong total
+        const laps = await ambilSemua((a, b) =>
+          supabase
+            .from("laporan_ltt")
+            .select("id, desa_id, komoditas, realisasi_tanam, realisasi_panen, keterangan, tanggal_lapor, sumber, nama_pelapor, desa:desa_id(nama)")
+            .in("desa_id", idDesaList)
+            .gte("tanggal_lapor", dari)
+            .lt("tanggal_lapor", sampai)
+            .is("dihapus_pada", null)
+            .order("tanggal_lapor", { ascending: false })
+            .order("id")
+            .range(a, b),
+        );
 
         if (laps) {
           laporanKecamatan = laps.map((l: {

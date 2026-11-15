@@ -19,15 +19,30 @@ def norm(s):
     return re.sub(r"\s+", " ", str(s or "").strip())
 
 def parse_num(v):
+    """Angka dari sel: 12 / 12.5 / "12,5" / "1.234,5" → float. Gagal → 0.0."""
     if v is None or v == "":
         return 0.0
     if isinstance(v, (int, float)):
         return round(float(v), 2)
-    s = str(v).replace(".", "").replace(",", ".").strip()
+    s = re.sub(r"\s+", "", str(v))
+    if "," in s and "." in s:
+        s = s.replace(".", "")          # titik = pemisah ribuan
+    s = s.replace(",", ".")
     try:
         return round(float(s), 2)
-    except:
+    except ValueError:
         return 0.0
+
+
+def norm_jenis(jenis, komoditas):
+    """Samakan penulisan jenis LTT (spasi ganda, 'Rehap' → 'Rehab'). Palawija selalu 'LTT'."""
+    if komoditas != "Padi":
+        return "LTT"
+    j = re.sub(r"\s+", " ", str(jenis or "").strip())
+    j = re.sub(r"(?i)rehap", "Rehab", j)
+    if not j or j.upper() in ("LTT", "PADI"):
+        return "LTT Reguler"
+    return j
 
 def parse_tgl(v):
     if isinstance(v, dt.datetime):
@@ -44,27 +59,34 @@ def parse_tgl(v):
         "mei": 5, "may": 5,
         "juni": 6, "june": 6, "jun": 6,
         "juli": 7, "july": 7, "jul": 7,
-        "agustus": 8, "august": 8, "agu": 8, "ags": 8, "aug": 8,
+        "agustus": 8, "august": 8, "agu": 8, "ags": 8, "agt": 8, "aug": 8,
         "september": 9, "sept": 9, "sep": 9,
         "oktober": 10, "october": 10, "okt": 10, "oct": 10,
         "november": 11, "nov": 11,
         "desember": 12, "december": 12, "des": 12, "dec": 12
     }
+    # Jam opsional di belakang tanggal, mis. "November 3, 2026 06:50:10"
+    jam_m = re.search(r"(\d{1,2}):(\d{2})(?::(\d{2}))?\s*$", s)
+    jam = f"{int(jam_m.group(1)):02d}:{jam_m.group(2)}:{jam_m.group(3) or '00'}" if jam_m else "00:00:00"
+
     m = re.match(r"^([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})", s)
     if m:
-        b_str, d_str, y_str = m.group(1).lower(), int(m.group(2)), int(m.group(3))
-        b_num = bln_map.get(b_str, 1)
-        return f"{y_str:04d}-{b_num:02d}-{d_str:02d} 00:00:00+07"
-    
+        b_num = bln_map.get(m.group(1).lower())
+        if not b_num:
+            return None                      # nama bulan tak dikenal → dilaporkan, bukan ditebak
+        return f"{int(m.group(3)):04d}-{b_num:02d}-{int(m.group(2)):02d} {jam}+07"
+
     m2 = re.match(r"^(\d{1,2})[/-](\d{1,2})[/-](\d{4})", s)
     if m2:
-        return f"{int(m2.group(3)):04d}-{int(m2.group(2)):02d}-{int(m2.group(1)):02d} 00:00:00+07"
-    
+        a, b, y = int(m2.group(1)), int(m2.group(2)), int(m2.group(3))
+        hari, bulan = (b, a) if b > 12 else (a, b)   # sama dengan parseTanggalEPusluh_ lama
+        return f"{y:04d}-{bulan:02d}-{hari:02d} {jam}+07"
+
     m3 = re.match(r"^(\d{4})-(\d{2})-(\d{2})", s)
     if m3:
-        return f"{m3.group(0)} 00:00:00+07"
-    
-    return dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S+07")
+        return f"{m3.group(0)} {jam}+07"
+
+    return None                              # tidak terbaca → dilaporkan
 
 def main():
     print(f"Membaca {EXCEL_FILE}...")
@@ -113,6 +135,9 @@ def main():
             })
             desa_counter += 1
 
+    kec_id_lower = {k.lower(): v for k, v in kec_id_map.items()}
+    dibuang = defaultdict(int)   # alasan → jumlah baris yang tidak ikut / tidak cocok
+
     # 2. PENGGUNA (Data_User)
     print("2. Memproses Pengguna (Data_User)...")
     ws_user = wb["Data_User"]
@@ -127,20 +152,28 @@ def main():
         nama = norm(d.get("Nama_Penyuluh"))
         nip = norm(d.get("NIP"))
         role = norm(d.get("Role"))
-        kec = norm(d.get("Nama_Kecamatan"))
+        # Sheet Data_User memakai kolom "Kecamatan" (bukan "Nama_Kecamatan")
+        kec = norm(d.get("Kecamatan") or d.get("Nama_Kecamatan"))
         desa_binaan_raw = norm(d.get("Desa_Binaan"))
         aktif = norm(d.get("Status_Aktif")).lower() == "aktif"
         wa = norm(d.get("WhatsApp"))
 
-        kec_id = kec_id_map.get(kec)
-        
+        kec_id = kec_id_lower.get(kec.lower())
+        if kec and not kec_id and role in ("Penyuluh", "Admin_BPP"):
+            dibuang["pengguna: kecamatan tidak cocok"] += 1
+
         desa_binaan_ids = []
         if desa_binaan_raw and desa_binaan_raw != "-":
-            for dn in desa_binaan_raw.split(","):
+            for dn in re.split(r"[,;]", desa_binaan_raw):
                 dn_clean = norm(dn)
+                if not dn_clean:
+                    continue
                 k_key = f"{kec}___{dn_clean}".lower()
                 if k_key in desa_id_map:
-                    desa_binaan_ids.append(desa_id_map[k_key])
+                    if desa_id_map[k_key] not in desa_binaan_ids:
+                        desa_binaan_ids.append(desa_id_map[k_key])
+                else:
+                    dibuang[f"desa binaan tidak cocok: {kec} / {dn_clean}"] += 1
 
         user_list.append({
             "id_lama": id_lama,
@@ -186,7 +219,11 @@ def main():
             if not any(r): continue
             d = dict(zip(header, r))
             id_laporan = norm(d.get("ID_Laporan"))
-            if not id_laporan or id_laporan in seen_ids:
+            if not id_laporan:
+                dibuang["laporan: ID kosong"] += 1
+                continue
+            if id_laporan in seen_ids:
+                dibuang["laporan: ID dobel"] += 1
                 continue
             seen_ids.add(id_laporan)
 
@@ -195,6 +232,7 @@ def main():
             k_key = f"{kec}___{desa}".lower()
             desa_id = desa_id_map.get(k_key)
             if not desa_id:
+                dibuang["laporan: desa tidak cocok"] += 1
                 continue
 
             komoditas_raw = norm(d.get("Komoditas")).upper()
@@ -206,6 +244,9 @@ def main():
                 komoditas = "Padi"
 
             tgl_lapor = parse_tgl(d.get("Waktu_Lapor"))
+            if not tgl_lapor:
+                dibuang["laporan: tanggal tidak terbaca"] += 1
+                continue
             pelapor = norm(d.get("Pelapor"))
             nip = norm(d.get("NIP_Pelapor") or "")
             metode = norm(d.get("Metode_Penanaman") or "")
@@ -217,6 +258,7 @@ def main():
                 "nip_pelapor": nip if nip else None,
                 "desa_id": desa_id,
                 "komoditas": komoditas,
+                "jenis_ltt": norm_jenis(d.get("Jenis_LTT"), komoditas),
                 "target_tanam": parse_num(d.get("Target_Tanam_Bln_Ini")),
                 "target_panen": parse_num(d.get("Target_Panen_Bln_Ini")),
                 "luas_bera": parse_num(d.get("Luas_Lahan_Bera")),
@@ -247,6 +289,19 @@ def main():
             if not desa_id: continue
             
             bln = int(float(d.get("Bulan") or 1))
+            # Rincian per jenis (kolom tanam & panen per jenis di sheet lama)
+            rincian = []
+            for jenis, k_tanam, k_panen in (
+                ("LTT Reguler", "LTT_Reguler", "Panen_Reguler"),
+                ("LTT Padi Gogo", "Padi_Gogo", "Panen_Padi_Gogo"),
+                ("LTT Oplah 2024", "Oplah_2024", "Panen_Oplah_2024"),
+                ("LTT Oplah 2025", "Oplah_2025", "Panen_Oplah_2025"),
+                ("LTT CSR", "CSR", "Panen_CSR"),
+                ("LTT Rehab Bencana", "Rehab_Bencana", "Panen_Rehab_Bencana"),
+            ):
+                t, p = parse_num(d.get(k_tanam)), parse_num(d.get(k_panen))
+                if t > 0 or p > 0:
+                    rincian.append({"jenis_ltt": jenis, "target_tanam": t, "target_panen": p})
             target_desa_list.append({
                 "bulan": bln,
                 "desa_id": desa_id,
@@ -255,7 +310,8 @@ def main():
                 "target_panen": parse_num(d.get("Total_Target_Panen")),
                 "ip_eksisting": parse_num(d.get("IP_Eksisting")),
                 "luas_baku": parse_num(d.get("Luas_Baku_Sawah")),
-                "luas_standing_crop": parse_num(d.get("Luas_Standing_Crop"))
+                "luas_standing_crop": parse_num(d.get("Luas_Standing_Crop")),
+                "rincian": rincian,
             })
 
     # Target Jagung & Ubi Kayu
@@ -313,6 +369,31 @@ def main():
                 "target_panen": parse_num(d.get("Total_Target_Panen"))
             })
 
+    # Target provinsi per kecamatan MENIMPA target tanam hasil jumlah desa (aturan lama,
+    # logika-bisnis §17a). Di sistem baru angka kecamatan diisi Admin BPP.
+    if "Target_Kecamatan_Provinsi" in wb.sheetnames:
+        idx_tk = {(t["bulan"], t["kecamatan_id"], t["komoditas"]): t for t in target_kec_list}
+        rows_tp = list(wb["Target_Kecamatan_Provinsi"].iter_rows(values_only=True))
+        h_tp = [norm(h) for h in rows_tp[0]]
+        for r in rows_tp[1:]:
+            if not any(r): continue
+            d = dict(zip(h_tp, r))
+            kec_id = kec_id_map.get(norm(d.get("Nama_Kecamatan")))
+            if not kec_id:
+                dibuang["target provinsi: kecamatan tidak cocok"] += 1
+                continue
+            kom = norm(d.get("Komoditas"))
+            kom = "Jagung" if "JAGUNG" in kom.upper() else ("Ubi Kayu" if "UBI" in kom.upper() else "Padi")
+            kunci = (int(float(d.get("Bulan") or 1)), kec_id, kom)
+            tanam = parse_num(d.get("Total_Target_Tanam"))
+            if kunci in idx_tk:
+                idx_tk[kunci]["target_tanam"] = tanam
+            else:
+                baris = {"bulan": kunci[0], "kecamatan_id": kec_id, "komoditas": kom,
+                         "target_tanam": tanam, "target_panen": 0.0}
+                target_kec_list.append(baris)
+                idx_tk[kunci] = baris
+
     # 6. PRODUKTIVITAS & SARANA DESA
     print("6. Memproses Produktivitas & Sarana Desa...")
     produktivitas_list = []
@@ -335,10 +416,15 @@ def main():
             elif "UBI" in kom.upper(): kom = "Ubi Kayu"
             else: kom = "Padi"
 
+            tahun = int(float(d.get("Tahun") or 0))
+            if not 2000 <= tahun <= 2100:
+                dibuang["produktivitas: tahun tidak valid"] += 1
+                continue
             for idx, b_name in enumerate(bln_cols, start=1):
                 nilai = parse_num(d.get(b_name))
-                if nilai > 0:
+                if nilai > 0:                  # 0 / kosong = belum diisi (aturan lama)
                     produktivitas_list.append({
+                        "tahun": tahun,
                         "bulan": idx,
                         "desa_id": desa_id,
                         "komoditas": kom,
@@ -391,11 +477,12 @@ def main():
     print(f"- Kecamatan        : {len(kecamatan_set)} kecamatan")
     print(f"- Desa             : {len(desa_list)} desa")
     print(f"- Pengguna         : {len(user_list)} orang")
-    print(f"- Laporan LTT      : {len(laporan_list)} baris (100% cocok dari 15.517 baris Excel)")
+    print(f"- Laporan LTT      : {len(laporan_list)} baris")
     print(f"- Target Desa      : {len(target_desa_list)} baris")
     print(f"- Target Kecamatan : {len(target_kec_list)} baris")
     print(f"- Produktivitas    : {len(produktivitas_list)} baris")
     print(f"- Sarana Desa      : {len(sarana_list)} baris")
+    print(f"- Baris dibuang    : {sum(dibuang.values())}" + ("" if not dibuang else " → " + "; ".join(f"{k} {v}" for k, v in sorted(dibuang.items()))))
     print(f"Lokasi file bersih : {OUTPUT_DIR}/")
     print(f"Catatan            : TIDAK ada data yang dikirim/dimasukkan ke Supabase.")
     print(f"==========================================")

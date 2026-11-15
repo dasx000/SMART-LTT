@@ -71,3 +71,21 @@ export function formatTanggalJam(t: Date | string | number): string {
 export function tanggalIsoWIB(t: Date | string | number = new Date()): string {
   return fmtIso.format(new Date(t));
 }
+
+/** Bulan (1–12) dan tahun saat ini menurut WIB — jangan pakai `new Date().getMonth()` di server (UTC). */
+export function bulanTahunWIB(t: Date | string | number = new Date()): { tahun: number; bulan: number } {
+  const [y, m] = tanggalIsoWIB(t).split("-");
+  return { tahun: Number(y), bulan: Number(m) };
+}
+
+/** Awal hari WIB (00:00 WIB) sebagai ISO, untuk filter `tanggal_lapor >= ...`. */
+export function awalHariWIB(t: Date | string | number = new Date()): string {
+  return `${tanggalIsoWIB(t)}T00:00:00+07:00`;
+}
+
+/** Rentang satu bulan WIB: [awal, awalBulanBerikutnya) sebagai ISO. */
+export function rentangBulanWIB(tahun: number, bulan: number): { dari: string; sampai: string } {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const [ty, tb] = bulan === 12 ? [tahun + 1, 1] : [tahun, bulan + 1];
+  return { dari: `${tahun}-${pad(bulan)}-01T00:00:00+07:00`, sampai: `${ty}-${pad(tb)}-01T00:00:00+07:00` };
+}

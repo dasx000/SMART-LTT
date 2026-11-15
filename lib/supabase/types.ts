@@ -66,8 +66,7 @@ export interface TargetDesa {
   bulan: number; // 1 - 12
   desa_id: number;
   komoditas: Komoditas;
-  jenis_ltt_id: number | null;
-  target_tanam: number;
+  target_tanam: number; // total; untuk padi = jumlah rincian per jenis
   target_panen: number;
   ip_eksisting: number | null;
   luas_baku: number | null;
@@ -76,6 +75,15 @@ export interface TargetDesa {
   created_at: string;
   updated_at: string;
   desa?: Desa;
+  rincian?: TargetDesaRincian[];
+}
+
+/** Rincian target padi per jenis LTT (migrasi 0003). */
+export interface TargetDesaRincian {
+  target_desa_id: number;
+  jenis_ltt_id: number;
+  target_tanam: number;
+  target_panen: number;
 }
 
 export interface TargetKecamatan {
@@ -100,6 +108,7 @@ export interface TargetKabupatenView {
 }
 
 export interface ProduktivitasDesa {
+  tahun: number; // migrasi 0003: produktivitas berbeda tiap tahun
   bulan: number;
   desa_id: number;
   komoditas: Komoditas;
@@ -145,3 +154,15 @@ export interface RekapBulananKecamatanView {
   jumlah_laporan: number;
 }
 
+
+/** Jejak perubahan oleh user (migrasi 0003). */
+export interface LogPerubahan {
+  id: number;
+  waktu: string;
+  user_id: string | null;
+  tabel: string;
+  aksi: "INSERT" | "UPDATE" | "DELETE";
+  kunci: unknown;
+  data_lama: Record<string, unknown> | null;
+  data_baru: Record<string, unknown> | null;
+}

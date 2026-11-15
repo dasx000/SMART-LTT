@@ -674,10 +674,10 @@ export function TampilanKab({
                   </label>
                   <input
                     name="realisasiTanam"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    defaultValue={modalEdit.realisasi_tanam}
+                    type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    defaultValue={String(modalEdit.realisasi_tanam ?? 0).replace(".", ",")}
                     required
                     className="w-full rounded-xl border border-border bg-background p-3 text-sm font-medium focus:outline-hidden"
                   />
@@ -689,10 +689,10 @@ export function TampilanKab({
                   </label>
                   <input
                     name="realisasiPanen"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    defaultValue={modalEdit.realisasi_panen}
+                    type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    defaultValue={String(modalEdit.realisasi_panen ?? 0).replace(".", ",")}
                     required
                     className="w-full rounded-xl border border-border bg-background p-3 text-sm font-medium focus:outline-hidden"
                   />
@@ -706,10 +706,10 @@ export function TampilanKab({
                   </label>
                   <input
                     name="luasBera"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    defaultValue={modalEdit.luas_bera}
+                    type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    defaultValue={String(modalEdit.luas_bera ?? 0).replace(".", ",")}
                     className="w-full rounded-xl border border-border bg-background p-3 text-sm font-medium focus:outline-hidden"
                   />
                 </div>
@@ -720,10 +720,10 @@ export function TampilanKab({
                   </label>
                   <input
                     name="realisasiOlah"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    defaultValue={modalEdit.realisasi_olah}
+                    type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    defaultValue={String(modalEdit.realisasi_olah ?? 0).replace(".", ",")}
                     className="w-full rounded-xl border border-border bg-background p-3 text-sm font-medium focus:outline-hidden"
                   />
                 </div>
