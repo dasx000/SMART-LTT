@@ -35,7 +35,7 @@ const MENU_KAB: Item[] = [
   { href: "/kab/master/kecamatan", label: "Kecamatan", ikon: <Peta size={18} />, role: ["admin_kab"], grup: "Master Data" },
   { href: "/kab/master/desa", label: "Desa", ikon: <House size={18} />, role: ["admin_kab"] },
   { href: "/kab/master/jenis-ltt", label: "Jenis LTT", ikon: <Tags size={18} />, role: ["admin_kab"] },
-  { href: "/kab/akses-api", label: "Akses API", ikon: <KeyRound size={18} />, role: ["admin_kab"], grup: "Integrasi" },
+  { href: "/kab/akses-api", label: "Akses API", ikon: <KeyRound size={18} />, role: ["admin_kab"], grup: "Integrasi", awalan: "/kab/akses-api" },
 ];
 
 const MENU_BPP: Item[] = [

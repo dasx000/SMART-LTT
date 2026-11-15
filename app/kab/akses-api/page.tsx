@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { KeyRound, Plus } from "lucide-react";
+import { BookOpen, KeyRound, Plus } from "lucide-react";
 import { wajibRole } from "@/lib/auth";
 import { KerangkaHalaman } from "@/components/kerangka-halaman";
 import { supabaseAdmin } from "@/lib/supabase/admin";
@@ -23,7 +23,7 @@ export default function HalamanAksesApi({ searchParams }: { searchParams: CariPa
 const DASAR = "/kab/akses-api";
 
 const ENDPOINT = [
-  { m: "GET", jalur: "/api/v1/pengguna", izin: "pengguna:baca", ket: "Semua PPL/BPP/Admin: NIP, nama, desa binaan, no WA, role (format ppl.json) + geography. Opsi: role, kecamatan, nip, aktif=semua" },
+  { m: "GET", jalur: "/api/v1/pengguna", izin: "pengguna:baca", ket: "Semua PPL/BPP/Admin: NIP, nama, desa binaan, no WA, role, kecamatan. Opsi: role, kecamatan, nip, aktif=semua" },
   { m: "GET", jalur: "/api/v1/wilayah", izin: "wilayah:baca", ket: "Kecamatan & desa dengan kode Kemendagri (format master_desa.json)" },
   { m: "GET", jalur: "/api/v1/laporan", izin: "laporan:baca", ket: "Laporan LTT. Opsi: dari, sampai (YYYY-MM-DD, maks. 92 hari), komoditas, kecamatan, desa, sumber, nip, halaman, per (maks. 1000)" },
   { m: "POST", jalur: "/api/v1/laporan", izin: "laporan:tulis", ket: "Kirim laporan Jagung/Ubi Kayu: { nip, desa, komoditas, realisasi_tanam, realisasi_panen, keterangan?, id_kirim? }" },
@@ -49,9 +49,14 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
             Kunci lengkap hanya tampil <b>sekali</b> saat dibuat (yang disimpan hanya sidiknya). Lupa menyalin? Cabut kunci lama lalu buat kunci baru.
           </p>
         </div>
-        <Link href={urlDengan(DASAR, q, { buat: "1" })} scroll={false} className="flex items-center gap-1.5 rounded-xl bg-green-600 px-4 py-2 text-sm font-bold text-white shadow hover:bg-green-700">
-          <Plus size={16} /> Buat Kunci
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/kab/akses-api/dokumentasi" className="flex items-center gap-1.5 rounded-xl border border-green-200 bg-white px-4 py-2 text-sm font-bold text-green-700 shadow-sm hover:bg-green-50">
+            <BookOpen size={16} /> Dokumentasi
+          </Link>
+          <Link href={urlDengan(DASAR, q, { buat: "1" })} scroll={false} className="flex items-center gap-1.5 rounded-xl bg-green-600 px-4 py-2 text-sm font-bold text-white shadow hover:bg-green-700">
+            <Plus size={16} /> Buat Kunci
+          </Link>
+        </div>
       </div>
 
       <div className="mb-6 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
@@ -109,7 +114,10 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
       </div>
 
       <div className="mb-6 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-        <h3 className="mb-1 text-sm font-bold text-gray-800">Endpoint Tersedia</h3>
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <h3 className="text-sm font-bold text-gray-800">Endpoint Tersedia</h3>
+          <Link href="/kab/akses-api/dokumentasi" className="text-xs font-bold text-green-700 hover:underline">Dokumentasi lengkap →</Link>
+        </div>
         <p className="mb-3 text-[11px] text-gray-500">
           Header: <code className="rounded bg-gray-100 px-1">Authorization: Bearer &lt;kunci&gt;</code>. Balasan JSON:{" "}
           <code className="rounded bg-gray-100 px-1">{`{ "status": "success", ... }`}</code> atau{" "}

@@ -100,7 +100,7 @@ export async function GET(req: NextRequest) {
       desaIds = (data ?? [])
         .filter((x) => !kodeKec || (x.kecamatan as unknown as { kode: string } | null)?.kode === kodeKec)
         .map((x) => x.id as number);
-      if (desaIds.length === 0) return sukses({ halaman, per, total: 0, data: [] });
+      if (desaIds.length === 0) return sukses({ dari, sampai, halaman, per, total: 0, jumlah_halaman: 1, data: [] });
     }
 
     let q = a
@@ -118,7 +118,9 @@ export async function GET(req: NextRequest) {
     if (p.get("nip")) q = q.eq("nip_pelapor", p.get("nip")!.trim());
 
     const { data, count, error } = await q;
-    if (error?.code === "PGRST103") return sukses({ dari, sampai, halaman, per, total: count ?? 0, data: [] });
+    if (error?.code === "PGRST103") {
+      return sukses({ dari, sampai, halaman, per, total: count ?? 0, jumlah_halaman: Math.max(1, Math.ceil((count ?? 0) / per)), data: [] });
+    }
     if (error) throw new Error(error.message);
     const total = count ?? 0;
     return sukses({
