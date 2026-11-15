@@ -27,7 +27,7 @@ function noWa(v: string | null): string {
  * Data kecamatan & desa ada di /api/v1/wilayah (tidak diulang di sini).
  *
  * Parameter (opsional):
- *   role=penyuluh,admin_bpp,admin_kab,viewer   (bawaan: semua kecuali viewer, sama dengan ppl.json)
+ *   role=penyuluh,admin_bpp,admin_kab,viewer   (bawaan: semua role)
  *   kecamatan=180801                            kode Kemendagri
  *   aktif=semua                                  (bawaan: hanya akun aktif)
  *   nip=1979…                                    satu orang
@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
     const p = req.nextUrl.searchParams;
     const roleParam = (p.get("role") ?? "").split(",").map((r) => r.trim()).filter(Boolean);
     if (roleParam.some((r) => !SEMUA_ROLE.includes(r as Role))) return galat(400, `role harus salah satu dari: ${SEMUA_ROLE.join(", ")}.`);
-    const roles = (roleParam.length ? roleParam : SEMUA_ROLE.filter((r) => r !== "viewer")) as Role[];
+    const roles = (roleParam.length ? roleParam : SEMUA_ROLE) as Role[];
     const kodeKec = p.get("kecamatan");
     if (kodeKec && !/^\d{6}$/.test(kodeKec)) return galat(400, "kecamatan harus kode 6 angka (mis. 180801).");
     const nip = p.get("nip")?.trim() || null;

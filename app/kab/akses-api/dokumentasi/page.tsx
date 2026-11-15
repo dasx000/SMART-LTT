@@ -176,12 +176,12 @@ async function Isi() {
           <Bagian id="pengguna" judul="Data Pengguna">
             <Endpoint metode="GET" jalur="/api/v1/pengguna" izin="pengguna:baca" />
             <p>
-              Daftar akun PPL, Admin BPP, dan Admin Kab beserta desa binaan dan nomor WA. Data kecamatan &amp; desa lengkap ada di{" "}
+              Daftar akun PPL, Admin BPP, Admin Kab, dan Viewer beserta desa binaan dan nomor WA. Data kecamatan &amp; desa lengkap ada di{" "}
               <a href="#wilayah" className="font-semibold text-green-700 hover:underline">GET /wilayah</a>.
             </p>
             <TabelParam
               baris={[
-                ["role", "tidak", <>Satu atau beberapa, dipisah koma: <K>penyuluh</K>, <K>admin_bpp</K>, <K>admin_kab</K>, <K>viewer</K>. Bawaan: semua kecuali viewer.</>],
+                ["role", "tidak", <>Satu atau beberapa, dipisah koma: <K>penyuluh</K>, <K>admin_bpp</K>, <K>admin_kab</K>, <K>viewer</K>. Bawaan: semua role. Mis. hanya PPL &amp; BPP: <K>role=penyuluh,admin_bpp</K>.</>],
                 ["kecamatan", "tidak", <>Kode Kemendagri 6 angka, mis. <K>180801</K>.</>],
                 ["nip", "tidak", "Ambil satu orang saja."],
                 ["aktif", "tidak", <>Isi <K>semua</K> untuk ikut menampilkan akun nonaktif. Bawaan: hanya aktif.</>],
