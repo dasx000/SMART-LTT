@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Filter, FileSpreadsheet, ListChecks, Pencil, RotateCw, Search, SearchCheck, Sprout, Wheat, X } from "lucide-react";
+import { Filter, FileSpreadsheet, FileUp, ListChecks, Pencil, RotateCw, Search, SearchCheck, Sprout, Wheat, X } from "lucide-react";
 import { formatAngka, formatTanggal } from "@/lib/format";
 import { KOMODITAS, type BarisLaporan, type DesaRef, type Kec } from "@/lib/data";
 import { urlDengan } from "@/lib/param";
@@ -20,7 +20,7 @@ export const PILIHAN_PER = [10, 25, 50, 100];
  * Filter/cari/halaman/edit semuanya di URL dan diproses di server (hanya satu halaman dikirim).
  */
 export function DaftarLaporan({
-  dasar, q, baris, total, ringkas, hal, per, dari, sampai, kecs, desaPilihan, kecamatanTerkunci, unduh, aksiHapus,
+  dasar, q, baris, total, ringkas, hal, per, dari, sampai, kecs, desaPilihan, kecamatanTerkunci, unduh, impor, aksiHapus,
 }: {
   dasar: string;
   q: Record<string, string | string[] | undefined>;
@@ -37,6 +37,8 @@ export function DaftarLaporan({
   /** BPP: kecamatan dikunci (pilihan kecamatan disembunyikan) */
   kecamatanTerkunci: boolean;
   unduh: string;
+  /** Admin Kab: tautan jendela Impor Excel e-Pusluh (?impor=1) */
+  impor?: string;
   aksiHapus: (id: number) => Promise<{ sukses: boolean; pesan: string }>;
 }) {
   const ambil = (k: string) => {
@@ -53,7 +55,12 @@ export function DaftarLaporan({
           <h2 className="text-2xl font-bold text-gray-800">Laporan LTT</h2>
           <p className="text-sm text-gray-500">Data lengkap laporan Padi, Jagung &amp; Ubi Kayu dari seluruh PPL</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {impor && (
+            <Link href={impor} scroll={false} className="flex items-center gap-2 rounded-xl border border-green-200 bg-white px-4 py-2.5 text-sm font-bold text-green-700 shadow-sm hover:bg-green-50">
+              <FileUp size={16} /> Impor Excel
+            </Link>
+          )}
           <a href={unduh} className="flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 text-sm font-bold text-white shadow hover:bg-green-700">
             <FileSpreadsheet size={16} /> Unduh Excel
           </a>

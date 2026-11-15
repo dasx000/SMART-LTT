@@ -37,7 +37,7 @@ export interface JenisLtt {
 
 export interface LaporanLtt {
   id: number;
-  id_lama: string | null;
+  id_sumber: string | null;
   tanggal_lapor: string;
   pelapor_id: string | null;
   nama_pelapor: string | null;

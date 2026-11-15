@@ -16,6 +16,10 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // ExcelJS hanya dipakai di server (route /api/unduh) — tidak dibundel, tidak dikirim ke HP.
   serverExternalPackages: ["exceljs"],
+  // Impor Excel e-Pusluh (Admin Kab) dikirim lewat Server Action: file maks. 5 MB + overhead multipart.
+  experimental: {
+    serverActions: { bodySizeLimit: "6mb" },
+  },
   turbopack: {
     rules: {
       "*.css": {

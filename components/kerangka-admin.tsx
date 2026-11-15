@@ -5,13 +5,22 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  ArrowLeft, Goal, ChartLine, ChartPie, FileText, History, Leaf, Menu, Power,
-  Scale, Shuffle, Sprout, UserCog, Users, Warehouse, X, Shield, Target,
+  ArrowLeft, Goal, ChartLine, ChartPie, FileText, History, House, KeyRound, Leaf, Map as Peta, Menu, Power,
+  Scale, Shuffle, Sprout, Tags, UserCog, Users, Warehouse, X, Shield, Target,
 } from "lucide-react";
 import { logout } from "@/app/(auth)/login/actions";
 import type { Role } from "@/lib/auth";
 
-type Item = { href: string; label: string; ikon: ReactNode; role?: Role[]; /** sub-halaman yang juga menandai menu ini aktif */ awalan?: string };
+type Item = {
+  href: string;
+  label: string;
+  ikon: ReactNode;
+  role?: Role[];
+  /** sub-halaman yang juga menandai menu ini aktif */
+  awalan?: string;
+  /** judul kelompok yang ditampilkan di atas item ini */
+  grup?: string;
+};
 
 /** Menu sidebar — urutan & label mengikuti aplikasi lama. Verifikasi & Pemeliharaan dihapus (keputusan §25). */
 const MENU_KAB: Item[] = [
@@ -23,6 +32,10 @@ const MENU_KAB: Item[] = [
   { href: "/kab/pengguna", label: "Manajemen Penyuluh", ikon: <UserCog size={18} />, role: ["admin_kab"] },
   { href: "/kab/target", label: "Target Komoditas", ikon: <Goal size={18} />, role: ["admin_kab"] },
   { href: "/kab/logs", label: "Log Sinkronisasi", ikon: <History size={18} />, role: ["admin_kab"] },
+  { href: "/kab/master/kecamatan", label: "Kecamatan", ikon: <Peta size={18} />, role: ["admin_kab"], grup: "Master Data" },
+  { href: "/kab/master/desa", label: "Desa", ikon: <House size={18} />, role: ["admin_kab"] },
+  { href: "/kab/master/jenis-ltt", label: "Jenis LTT", ikon: <Tags size={18} />, role: ["admin_kab"] },
+  { href: "/kab/akses-api", label: "Akses API", ikon: <KeyRound size={18} />, role: ["admin_kab"], grup: "Integrasi" },
 ];
 
 const MENU_BPP: Item[] = [
@@ -95,8 +108,11 @@ export function KerangkaAdmin({
           {menu.map((m) => {
             const aktif = path === m.href || Boolean(m.awalan && path.startsWith(m.awalan));
             return (
+              <div key={m.href}>
+                {m.grup && (
+                  <p className="mt-5 mb-1 border-t border-green-700 px-4 pt-4 text-[10px] font-bold tracking-widest text-green-300 uppercase">{m.grup}</p>
+                )}
               <Link
-                key={m.href}
                 href={m.href}
                 onClick={() => setBuka(false)}
                 aria-current={aktif ? "page" : undefined}
@@ -108,6 +124,7 @@ export function KerangkaAdmin({
               >
                 <span className="w-5 shrink-0">{m.ikon}</span> {m.label}
               </Link>
+              </div>
             );
           })}
         </nav>

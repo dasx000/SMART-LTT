@@ -37,6 +37,19 @@ def parse_num(v):
         return 0.0
 
 
+def no_wa(v):
+    """Nomor WA dari sel Excel: buang akhiran .0 (sel angka), sisakan angka, awalan 62."""
+    s = norm(v)
+    if s.endswith(".0"):
+        s = s[:-2]
+    s = "".join(c for c in s if c.isdigit())
+    if s.startswith("0"):
+        s = "62" + s[1:]
+    elif s.startswith("8"):
+        s = "62" + s
+    return s or None
+
+
 def norm_jenis(jenis, komoditas):
     """Samakan penulisan jenis LTT (spasi ganda, 'Rehap' → 'Rehab'). Palawija selalu 'LTT'."""
     if komoditas != "Padi":
@@ -164,7 +177,7 @@ def main():
         kec = norm(d.get("Kecamatan") or d.get("Nama_Kecamatan"))
         desa_binaan_raw = norm(d.get("Desa_Binaan"))
         aktif = norm(d.get("Status_Aktif")).lower() == "aktif"
-        wa = norm(d.get("WhatsApp"))
+        wa = no_wa(d.get("WhatsApp"))
 
         kec_id = kec_id_lower.get(kec.lower())
         if kec and not kec_id and role in ("penyuluh", "admin_bpp"):

@@ -2,7 +2,7 @@
 impor_ke_supabase.py — impor data spreadsheet lama ke Supabase (schema ltt + core).
 
 PRASYARAT
-  1. supabase/migrations/0001 s.d. 0004 sudah dijalankan di SQL Editor.
+  1. supabase/migrations/0001 s.d. 0007 sudah dijalankan di SQL Editor.
   2. python scripts/etl/transform_data.py   (menghasilkan scripts/etl/data_bersih/*.json)
   3. .env.local berisi NEXT_PUBLIC_SUPABASE_URL & SUPABASE_SERVICE_ROLE_KEY.
 
@@ -24,8 +24,13 @@ ATURAN AKUN (project Supabase dipakai bersama aplikasi lain)
   - Tidak ada password seragam / default di skrip ini.
 
 AMAN DIJALANKAN ULANG
-  Semua tabel di-upsert pada kunci unik (id, id_lama, bulan+desa+komoditas, dst.), jadi skrip yang
-  sama dipakai lagi saat cutover tanpa membuat duplikat.
+  Semua tabel di-upsert pada kunci unik (kode wilayah, sumber+id_sumber, bulan+desa+komoditas, dst.),
+  jadi skrip yang sama dipakai lagi saat cutover tanpa membuat duplikat.
+
+WILAYAH (keputusan desa_id opsi B)
+  Kecamatan & desa dicocokkan lewat KODE KEMENDAGRI, bukan nomor urut dari transform_data.py.
+  ID di database tidak pernah berubah walau urutan sheet Data_Geografi berubah; nomor urut di JSON
+  hanya dipakai untuk menghubungkan baris JSON, lalu diterjemahkan ke ID database (KEC / DESA).
 """
 
 import argparse
@@ -146,12 +151,36 @@ def nip_bersih(v) -> str:
 
 
 # ─── Langkah impor ─────────────────────────────────────────────────────────────
+# ID JSON (nomor urut transform_data.py) → ID database, dicocokkan lewat kode Kemendagri.
+KEC: dict = {}
+DESA: dict = {}
+
+
+def peta_kode(tabel: str) -> dict:
+    return {r["kode"]: r["id"] for r in ambil(tabel, "id,kode")}
+
+
 def impor_wilayah():
-    print("\n[1] Wilayah")
-    upsert("ltt.kecamatan", "kecamatan", [{"id": r["id"], "kode": r["kode"], "nama": r["nama"]} for r in muat("kecamatan.json")], "id")
-    upsert("ltt.desa", "desa", [{"id": r["id"], "kode": r.get("kode"), "kecamatan_id": r["kecamatan_id"], "nama": r["nama"]} for r in muat("desa.json")], "id")
-    if TULIS:
-        http("POST", "/rest/v1/rpc/setel_ulang_sequence", body={})
+    print("\n[1] Wilayah (dicocokkan lewat kode Kemendagri)")
+    kec, desa = muat("kecamatan.json"), muat("desa.json")
+    tanpa_kode = [r["nama"] for r in kec + desa if not r.get("kode")]
+    if tanpa_kode:
+        sys.exit(f"[ERROR] Wilayah tanpa kode Kemendagri di Data_Geografi: {tanpa_kode[:10]}")
+
+    ada = peta_kode("kecamatan")
+    print(f"  - kecamatan baru (kode belum ada di database): {sum(1 for r in kec if r['kode'] not in ada)}")
+    # Hanya wilayah BARU yang ditulis; nama wilayah yang sudah ada tidak ditimpa
+    # (database = acuan ejaan, mis. "Kiling-kiling" mengikuti e-Pusluh).
+    upsert("ltt.kecamatan (baru)", "kecamatan", [{"kode": r["kode"], "nama": r["nama"]} for r in kec if r["kode"] not in ada], "kode")
+    ada = peta_kode("kecamatan") if TULIS else ada
+    KEC.update({r["id"]: ada.get(r["kode"]) for r in kec})
+
+    ada = peta_kode("desa")
+    print(f"  - desa baru (kode belum ada di database): {sum(1 for r in desa if r['kode'] not in ada)}")
+    upsert("ltt.desa (baru)", "desa", [{"kode": r["kode"], "kecamatan_id": KEC.get(r["kecamatan_id"]), "nama": r["nama"]}
+                                       for r in desa if r["kode"] not in ada and KEC.get(r["kecamatan_id"])], "kode")
+    ada = peta_kode("desa") if TULIS else ada
+    DESA.update({r["id"]: ada.get(r["kode"]) for r in desa})
 
 
 def impor_pengguna() -> dict:
@@ -205,23 +234,27 @@ def impor_pengguna() -> dict:
 
     # Dua kelompok upsert: yang baru diset passwordnya (wajib_ganti_password = true) dan sisanya
     # (kolom wajib_ganti_password tidak dikirim, jadi nilai di database tidak tertimpa saat run ulang).
-    anggota_wajib, anggota_lain, membership, desa_binaan = [], [], [], []
+    anggota_wajib, anggota_lain, membership, desa_binaan, wa_sheet = [], [], [], [], []
     for u in pengguna:
         nip = nip_bersih(u["nip"])
         uid = nip_ke_id.get(nip)
         if not uid:
             continue  # simulasi (akun baru belum dibuat) atau gagal dibuat
+        # whatsapp TIDAK dikirim di upsert (database = acuan; lihat impor_wa_dari_ppl.py);
+        # nomor dari sheet hanya mengisi yang masih kosong, di bawah.
         baris = {
-            "user_id": uid, "kecamatan_id": u.get("kecamatan_id"), "whatsapp": u.get("whatsapp") or None,
+            "user_id": uid, "kecamatan_id": KEC.get(u.get("kecamatan_id")),
             "aktif": bool(u.get("aktif", True)), "id_lama": str(u["id_lama"]),
         }
+        if u.get("whatsapp"):
+            wa_sheet.append((uid, u["whatsapp"]))
         if nip in wajib_ganti:
             anggota_wajib.append({**baris, "wajib_ganti_password": True})
         else:
             anggota_lain.append(baris)
         if uid not in sudah_ltt:
             membership.append({"user_id": uid, "app_slug": "ltt", "role": u["role"]})
-        desa_binaan += [{"user_id": uid, "desa_id": d} for d in u.get("desa_binaan_ids", [])]
+        desa_binaan += [{"user_id": uid, "desa_id": DESA[d]} for d in u.get("desa_binaan_ids", []) if DESA.get(d)]
 
     if not TULIS:
         print(f"  - (simulasi) anggota {len(pengguna)}, desa binaan {sum(len(u.get('desa_binaan_ids', [])) for u in pengguna)}")
@@ -233,6 +266,12 @@ def impor_pengguna() -> dict:
             http("POST", "/rest/v1/memberships", skema="core", body=membership[i:i + BATCH], prefer="return=minimal")
         print(f"  - core.memberships (ltt): {len(membership)} ✓")
     upsert("ltt.anggota_desa", "anggota_desa", desa_binaan, "user_id,desa_id")
+    # Nomor WA dari sheet: hanya mengisi yang masih kosong di database
+    if TULIS:
+        for uid, wa in wa_sheet:
+            http("PATCH", "/rest/v1/anggota", body={"whatsapp": wa}, prefer="return=minimal",
+                 params={"user_id": f"eq.{uid}", "or": "(whatsapp.is.null,whatsapp.eq.)"})
+    print(f"  - ltt.anggota.whatsapp: {len(wa_sheet)} nomor dari sheet (hanya mengisi yang kosong)")
     return nip_ke_id
 
 
@@ -256,13 +295,15 @@ def impor_laporan(nip_ke_id: dict):
         if dt.date.fromisoformat(r["tanggal_lapor"][:10]) >= BATAS:
             lewat += 1
             continue
+        if not DESA.get(r["desa_id"]):
+            continue  # simulasi: desa baru belum punya ID database
         baris.append({
-            "id_lama": r["id_lama"],
+            "id_sumber": r["id_lama"],
             "tanggal_lapor": r["tanggal_lapor"].replace(" ", "T", 1).replace("+07", "+07:00", 1),
             "pelapor_id": nip_ke_id.get(nip_bersih(r.get("nip_pelapor"))),
             "nama_pelapor": r.get("nama_pelapor"),
             "nip_pelapor": nip_bersih(r.get("nip_pelapor")) or None,
-            "desa_id": r["desa_id"],
+            "desa_id": DESA[r["desa_id"]],
             "komoditas": r["komoditas"],
             "jenis_ltt_id": jenis.get((r["jenis_ltt"], r["komoditas"])),
             "target_tanam": r["target_tanam"], "target_panen": r["target_panen"],
@@ -272,13 +313,13 @@ def impor_laporan(nip_ke_id: dict):
             "sumber": r["sumber"],
         })
     print(f"  - dilewati (tanggal >= {BATAS}): {lewat}")
-    upsert("ltt.laporan_ltt", "laporan_ltt", baris, "id_lama")
+    upsert("ltt.laporan_ltt", "laporan_ltt", baris, "sumber,id_sumber")
     return len(baris)
 
 
 def impor_target():
     print("\n[4] Target")
-    target = muat("target_desa.json")
+    target = [{**t, "desa_id": DESA[t["desa_id"]]} for t in muat("target_desa.json") if DESA.get(t["desa_id"])]
     kolom = ("bulan", "desa_id", "komoditas", "target_tanam", "target_panen", "ip_eksisting", "luas_baku", "luas_standing_crop")
     hasil = upsert("ltt.target_desa", "target_desa", [{k: t.get(k) for k in kolom} for t in target],
                    "bulan,desa_id,komoditas", kembalikan=True)
@@ -295,13 +336,16 @@ def impor_target():
         upsert("ltt.target_desa_rincian", "target_desa_rincian", rincian, "target_desa_id,jenis_ltt_id")
     else:
         print(f"  - ltt.target_desa_rincian: {rincian_n} baris (simulasi, tidak ditulis)")
-    upsert("ltt.target_kecamatan", "target_kecamatan", muat("target_kecamatan.json"), "bulan,kecamatan_id,komoditas")
+    tk = [{**t, "kecamatan_id": KEC[t["kecamatan_id"]]} for t in muat("target_kecamatan.json") if KEC.get(t["kecamatan_id"])]
+    upsert("ltt.target_kecamatan", "target_kecamatan", tk, "bulan,kecamatan_id,komoditas")
 
 
 def impor_prod_sarana():
     print("\n[5] Produktivitas & sarana")
-    upsert("ltt.produktivitas_desa", "produktivitas_desa", muat("produktivitas_desa.json"), "tahun,bulan,desa_id,komoditas")
-    upsert("ltt.sarana_desa", "sarana_desa", muat("sarana_desa.json"), "desa_id")
+    def ganti_desa(baris: list) -> list:
+        return [{**b, "desa_id": DESA[b["desa_id"]]} for b in baris if DESA.get(b["desa_id"])]
+    upsert("ltt.produktivitas_desa", "produktivitas_desa", ganti_desa(muat("produktivitas_desa.json")), "tahun,bulan,desa_id,komoditas")
+    upsert("ltt.sarana_desa", "sarana_desa", ganti_desa(muat("sarana_desa.json")), "desa_id")
 
 
 def cek(jml_laporan: int):
