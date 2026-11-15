@@ -4,7 +4,7 @@ import { cacheLife } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseSiap } from "@/lib/env";
 
-export type Role = "Penyuluh" | "Admin_BPP" | "Admin_Kab" | "Dinas";
+export type Role = "penyuluh" | "admin_bpp" | "admin_kab" | "viewer";
 
 export type Pengguna = {
   id: string;
@@ -17,10 +17,10 @@ export type Pengguna = {
 
 /** Halaman awal tiap role. */
 export const BERANDA_ROLE: Record<Role, string> = {
-  Penyuluh: "/ppl",
-  Admin_BPP: "/bpp",
-  Admin_Kab: "/kab",
-  Dinas: "/kab",
+  penyuluh: "/ppl",
+  admin_bpp: "/bpp",
+  admin_kab: "/kab",
+  viewer: "/kab",
 };
 
 /**
@@ -34,7 +34,13 @@ export async function getPenggunaOpsional(): Promise<Pengguna | null> {
   // Disimpan di memori browser maks. 60 detik (pindah halaman instan).
   // Server Action tetap memeriksa ulang sesi sendiri, jadi aman.
   cacheLife({ stale: 60 });
+  return bacaPengguna();
+}
 
+/**
+ * Versi TANPA cache — untuk Route Handler (unduh Excel) dan pemeriksaan ulang yang harus segar.
+ */
+export async function bacaPengguna(): Promise<Pengguna | null> {
   if (!supabaseSiap()) return null; // belum dikonfigurasi → perlakukan sebagai belum login
 
   const supabase = await supabaseServer();

@@ -1,7 +1,9 @@
 import { Suspense, type ReactNode } from "react";
+import { connection } from "next/server";
 import type { Role } from "@/lib/auth";
 import { wajibRole } from "@/lib/auth";
 import { KepalaAplikasi } from "./kepala-aplikasi";
+import { MenuPeran } from "./menu-peran";
 
 /**
  * Kerangka halaman yang wajib login + role tertentu.
@@ -29,8 +31,16 @@ export function KerangkaHalaman({
 }
 
 async function Penjaga({ role, children }: { role: Role[]; children: ReactNode }) {
-  await wajibRole(...role);
-  return <>{children}</>;
+  const pengguna = await wajibRole(...role);
+  // Isi halaman memakai waktu sekarang (bulan/hari WIB) → harus dirender per request,
+  // bukan saat prerender (Next 16: blocking-prerender-current-time).
+  await connection();
+  return (
+    <>
+      <MenuPeran role={pengguna.role} />
+      {children}
+    </>
+  );
 }
 
 /** Skeleton umum saat isi halaman dimuat. */

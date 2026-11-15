@@ -11,6 +11,9 @@ import datetime as dt
 from collections import defaultdict
 import openpyxl
 
+# Role SMART LTT (disepakati 15 Nov 2026): huruf kecil, seragam dengan aplikasi lain di project CWS
+PETA_ROLE = {"penyuluh": "penyuluh", "admin_bpp": "admin_bpp", "admin_kab": "admin_kab", "dinas": "viewer"}
+
 EXCEL_FILE = "MASTER DATABASE LTT.xlsx"
 OUTPUT_DIR = os.path.join("scripts", "etl", "data_bersih")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -151,7 +154,12 @@ def main():
         id_lama = norm(d.get("ID_User"))
         nama = norm(d.get("Nama_Penyuluh"))
         nip = norm(d.get("NIP"))
-        role = norm(d.get("Role"))
+        # Role lama spreadsheet -> role baru (core.memberships, app 'ltt')
+        role_lama = norm(d.get("Role"))
+        role = PETA_ROLE.get(role_lama.lower())
+        if not role:
+            dibuang[f"pengguna: role tidak dikenal '{role_lama}'"] += 1
+            continue
         # Sheet Data_User memakai kolom "Kecamatan" (bukan "Nama_Kecamatan")
         kec = norm(d.get("Kecamatan") or d.get("Nama_Kecamatan"))
         desa_binaan_raw = norm(d.get("Desa_Binaan"))
@@ -159,7 +167,7 @@ def main():
         wa = norm(d.get("WhatsApp"))
 
         kec_id = kec_id_lower.get(kec.lower())
-        if kec and not kec_id and role in ("Penyuluh", "Admin_BPP"):
+        if kec and not kec_id and role in ("penyuluh", "admin_bpp"):
             dibuang["pengguna: kecamatan tidak cocok"] += 1
 
         desa_binaan_ids = []

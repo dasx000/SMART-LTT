@@ -278,16 +278,16 @@ create policy "laporan_ltt dibaca semua anggota" on ltt.laporan_ltt
 
 create policy "laporan_ltt ditulis sesuai hak wilayah" on ltt.laporan_ltt
   for insert to authenticated with check (
-    ltt.role_saya() in ('Admin_Kab')
-    or (ltt.role_saya() = 'Admin_BPP' and ltt.is_kecamatan_saya((select kecamatan_id from ltt.desa where id = desa_id)))
-    or (ltt.role_saya() = 'Penyuluh' and ltt.is_desa_binaan(desa_id))
+    ltt.role_saya() in ('admin_kab')
+    or (ltt.role_saya() = 'admin_bpp' and ltt.is_kecamatan_saya((select kecamatan_id from ltt.desa where id = desa_id)))
+    or (ltt.role_saya() = 'penyuluh' and ltt.is_desa_binaan(desa_id))
   );
 
 create policy "laporan_ltt diubah sesuai hak wilayah" on ltt.laporan_ltt
   for update to authenticated using (
-    ltt.role_saya() in ('Admin_Kab')
-    or (ltt.role_saya() = 'Admin_BPP' and ltt.is_kecamatan_saya((select kecamatan_id from ltt.desa where id = desa_id)))
-    or (ltt.role_saya() = 'Penyuluh' and ltt.is_desa_binaan(desa_id) and pelapor_id = auth.uid())
+    ltt.role_saya() in ('admin_kab')
+    or (ltt.role_saya() = 'admin_bpp' and ltt.is_kecamatan_saya((select kecamatan_id from ltt.desa where id = desa_id)))
+    or (ltt.role_saya() = 'penyuluh' and ltt.is_desa_binaan(desa_id) and pelapor_id = auth.uid())
   );
 
 -- Target Desa:
@@ -296,8 +296,8 @@ create policy "target_desa dibaca anggota" on ltt.target_desa
 
 create policy "target_desa dikelola bpp dan kab" on ltt.target_desa
   for all to authenticated using (
-    ltt.role_saya() in ('Admin_Kab')
-    or (ltt.role_saya() in ('Admin_BPP', 'Penyuluh') and ltt.is_kecamatan_saya((select kecamatan_id from ltt.desa where id = desa_id)))
+    ltt.role_saya() in ('admin_kab')
+    or (ltt.role_saya() in ('admin_bpp', 'penyuluh') and ltt.is_kecamatan_saya((select kecamatan_id from ltt.desa where id = desa_id)))
   );
 
 -- Target Kecamatan:
@@ -306,8 +306,8 @@ create policy "target_kecamatan dibaca anggota" on ltt.target_kecamatan
 
 create policy "target_kecamatan dikelola bpp dan kab" on ltt.target_kecamatan
   for all to authenticated using (
-    ltt.role_saya() in ('Admin_Kab')
-    or (ltt.role_saya() = 'Admin_BPP' and ltt.is_kecamatan_saya(kecamatan_id))
+    ltt.role_saya() in ('admin_kab')
+    or (ltt.role_saya() = 'admin_bpp' and ltt.is_kecamatan_saya(kecamatan_id))
   );
 
 -- Produktivitas & Sarana:
@@ -316,8 +316,8 @@ create policy "produktivitas dibaca anggota" on ltt.produktivitas_desa
 
 create policy "produktivitas ditulis sesuai wilayah" on ltt.produktivitas_desa
   for all to authenticated using (
-    ltt.role_saya() in ('Admin_Kab')
-    or (ltt.role_saya() in ('Admin_BPP', 'Penyuluh') and ltt.is_kecamatan_saya((select kecamatan_id from ltt.desa where id = desa_id)))
+    ltt.role_saya() in ('admin_kab')
+    or (ltt.role_saya() in ('admin_bpp', 'penyuluh') and ltt.is_kecamatan_saya((select kecamatan_id from ltt.desa where id = desa_id)))
   );
 
 create policy "sarana dibaca anggota" on ltt.sarana_desa
@@ -325,11 +325,11 @@ create policy "sarana dibaca anggota" on ltt.sarana_desa
 
 create policy "sarana ditulis sesuai wilayah" on ltt.sarana_desa
   for all to authenticated using (
-    ltt.role_saya() in ('Admin_Kab')
-    or (ltt.role_saya() in ('Admin_BPP', 'Penyuluh') and ltt.is_kecamatan_saya((select kecamatan_id from ltt.desa where id = desa_id)))
+    ltt.role_saya() in ('admin_kab')
+    or (ltt.role_saya() in ('admin_bpp', 'penyuluh') and ltt.is_kecamatan_saya((select kecamatan_id from ltt.desa where id = desa_id)))
   );
 
 -- Logs Sinkron:
 create policy "logs dibaca admin kab dan bpp" on ltt.logs_sinkron
-  for select to authenticated using (ltt.role_saya() in ('Admin_Kab', 'Admin_BPP'));
+  for select to authenticated using (ltt.role_saya() in ('admin_kab', 'admin_bpp'));
 

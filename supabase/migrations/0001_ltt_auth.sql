@@ -59,7 +59,7 @@ create table if not exists ltt.anggota_desa (
 
 -- ---------------------------------------------------------------------
 -- Role SMART LTT di core.memberships (app_slug = 'ltt'):
---   'Penyuluh' | 'Admin_BPP' | 'Admin_Kab' | 'Dinas'
+--   'penyuluh' | 'admin_bpp' | 'admin_kab' | 'viewer'
 -- ---------------------------------------------------------------------
 create or replace function ltt.role_saya()
 returns text

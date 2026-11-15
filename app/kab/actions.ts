@@ -16,7 +16,7 @@ export type ResponsAksiKab = {
  * Dapat mengedit luas tanam, panen, bera, olah, dan metode penanaman (Regular/PM AAS)
  */
 export async function editLaporanKabAction(formData: FormData): Promise<ResponsAksiKab> {
-  await wajibRole("Admin_Kab");
+  await wajibRole("admin_kab");
 
   if (!supabaseSiap()) {
     return { sukses: false, pesan: "Koneksi Supabase belum aktif." };
@@ -81,7 +81,7 @@ export async function editLaporanKabAction(formData: FormData): Promise<ResponsA
  * Hapus laporan LTT oleh Admin Kabupaten (soft-delete)
  */
 export async function hapusLaporanKabAction(id: number): Promise<ResponsAksiKab> {
-  await wajibRole("Admin_Kab");
+  await wajibRole("admin_kab");
 
   if (!supabaseSiap()) {
     return { sukses: false, pesan: "Koneksi Supabase belum aktif." };

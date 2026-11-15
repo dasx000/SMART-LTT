@@ -2,7 +2,7 @@
 impor_ke_supabase.py — impor data spreadsheet lama ke Supabase (schema ltt + core).
 
 PRASYARAT
-  1. supabase/migrations/0001, 0002, 0003 sudah dijalankan di SQL Editor.
+  1. supabase/migrations/0001 s.d. 0004 sudah dijalankan di SQL Editor.
   2. python scripts/etl/transform_data.py   (menghasilkan scripts/etl/data_bersih/*.json)
   3. .env.local berisi NEXT_PUBLIC_SUPABASE_URL & SUPABASE_SERVICE_ROLE_KEY.
 
@@ -14,8 +14,10 @@ PAKAI
                  karena data hari berjalan belum lengkap)
 
 ATURAN AKUN (project Supabase dipakai bersama aplikasi lain)
-  - NIP sudah ada di core.profiles  → akun TIDAK diubah (email & password tetap). Hanya ditambah
-    membership app 'ltt' + baris ltt.anggota. User login SMART LTT dengan password akun bersamanya.
+  - NIP sudah ada di core.profiles  → email tetap. Keputusan 28 (b): PASSWORD DI-RESET ke PIN LTT lama
+    (berlaku juga untuk aplikasi lain di project bersama), wajib_ganti_password = true.
+    Reset HANYA sekali: saat akun belum punya membership 'ltt'. Jalankan ulang skrip tidak akan
+    menimpa password yang sudah diganti user.
   - NIP belum ada                   → akun baru: email  <nip>@AUTH_EMAIL_DOMAIN,
     password = PIN lama orang itu (dibaca dari Excel saat impor, TIDAK disimpan ke file),
     wajib_ganti_password = true.
@@ -161,10 +163,27 @@ def impor_pengguna() -> dict:
 
     lama = [u for u in pengguna if nip_bersih(u["nip"]) in nip_ke_id]
     baru = [u for u in pengguna if nip_bersih(u["nip"]) not in nip_ke_id]
-    print(f"  - akun sudah ada di core (tidak diubah): {len(lama)}")
+    reset = [u for u in lama if nip_ke_id[nip_bersih(u["nip"])] not in sudah_ltt]
+    print(f"  - akun sudah ada di core: {len(lama)} (password di-reset ke PIN lama: {len(reset)}, "
+          f"sudah terdaftar di LTT, tidak diubah: {len(lama) - len(reset)})")
     print(f"  - akun baru dibuat: {len(baru)}")
 
-    pins = pin_lama() if baru else {}
+    pins = pin_lama() if (baru or reset) else {}
+    wajib_ganti = set()  # NIP yang password-nya diset/di-reset pada run ini
+
+    for u in reset:
+        nip = nip_bersih(u["nip"])
+        pin = pins.get(str(u["id_lama"]), "")
+        if len(pin) < 6:
+            print(f"  ! {u['id_lama']}: PIN lama < 6 karakter, password TIDAK di-reset (atur manual)")
+            continue
+        if TULIS:
+            try:
+                http("PUT", f"/auth/v1/admin/users/{nip_ke_id[nip]}", body={"password": pin})
+            except RuntimeError as e:
+                print(f"  ! {u['id_lama']}: gagal reset password ({str(e)[:120]})")
+                continue
+        wajib_ganti.add(nip)
     for u in baru:
         nip = nip_bersih(u["nip"])
         pin = pins.get(str(u["id_lama"]), "")
@@ -182,26 +201,32 @@ def impor_pengguna() -> dict:
         http("POST", "/rest/v1/profiles", skema="core", body=[{"id": akun["id"], "email": email, "nama": u["nama"], "nip": nip}],
              params={"on_conflict": "id"}, prefer="resolution=merge-duplicates,return=minimal")
         nip_ke_id[nip] = akun["id"]
+        wajib_ganti.add(nip)
 
-    anggota, membership, desa_binaan = [], [], []
-    akun_baru_nip = {nip_bersih(u["nip"]) for u in baru}
+    # Dua kelompok upsert: yang baru diset passwordnya (wajib_ganti_password = true) dan sisanya
+    # (kolom wajib_ganti_password tidak dikirim, jadi nilai di database tidak tertimpa saat run ulang).
+    anggota_wajib, anggota_lain, membership, desa_binaan = [], [], [], []
     for u in pengguna:
         nip = nip_bersih(u["nip"])
         uid = nip_ke_id.get(nip)
         if not uid:
             continue  # simulasi (akun baru belum dibuat) atau gagal dibuat
-        anggota.append({
+        baris = {
             "user_id": uid, "kecamatan_id": u.get("kecamatan_id"), "whatsapp": u.get("whatsapp") or None,
-            "aktif": bool(u.get("aktif", True)), "wajib_ganti_password": nip in akun_baru_nip,
-            "id_lama": str(u["id_lama"]),
-        })
+            "aktif": bool(u.get("aktif", True)), "id_lama": str(u["id_lama"]),
+        }
+        if nip in wajib_ganti:
+            anggota_wajib.append({**baris, "wajib_ganti_password": True})
+        else:
+            anggota_lain.append(baris)
         if uid not in sudah_ltt:
             membership.append({"user_id": uid, "app_slug": "ltt", "role": u["role"]})
         desa_binaan += [{"user_id": uid, "desa_id": d} for d in u.get("desa_binaan_ids", [])]
 
     if not TULIS:
         print(f"  - (simulasi) anggota {len(pengguna)}, desa binaan {sum(len(u.get('desa_binaan_ids', [])) for u in pengguna)}")
-    upsert("ltt.anggota", "anggota", anggota, "user_id")
+    upsert("ltt.anggota (wajib ganti password)", "anggota", anggota_wajib, "user_id")
+    upsert("ltt.anggota (lainnya)", "anggota", anggota_lain, "user_id")
     # memberships: hanya yang belum punya app 'ltt' (tabel bersama, tidak di-merge)
     if TULIS and membership:
         for i in range(0, len(membership), BATCH):

@@ -18,14 +18,14 @@ export const metadata: Metadata = {
 
 export default async function HalamanKab() {
   return (
-    <KerangkaHalaman judul="SMART LTT · Kabupaten" role={["Admin_Kab", "Dinas"]}>
+    <KerangkaHalaman judul="SMART LTT · Kabupaten" role={["admin_kab", "viewer"]}>
       <MuatKontenKab />
     </KerangkaHalaman>
   );
 }
 
 async function MuatKontenKab() {
-  const pengguna = await wajibRole("Admin_Kab", "Dinas");
+  const pengguna = await wajibRole("admin_kab", "viewer");
 
   // Bulan berjalan menurut WIB (server Vercel = UTC)
   const { bulan: bulanAktif, tahun: tahunAktif } = bulanTahunWIB();
@@ -218,7 +218,7 @@ async function MuatKontenKab() {
 
   return (
     <TampilanKab
-      rolePengguna={pengguna.role === "Dinas" ? "Dinas" : "Admin_Kab"}
+      rolePengguna={pengguna.role === "viewer" ? "viewer" : "admin_kab"}
       namaPengguna={pengguna.nama}
       bulanAktif={bulanAktif}
       totalPadi={totalPadi}
@@ -228,9 +228,9 @@ async function MuatKontenKab() {
       targetKabupaten={targetKabupaten}
       rekapKecamatan={rekapKecamatan}
       rekapPmAas={rekapPmAas}
-      // Dinas tidak punya tab laporan (aturan lama): jangan kirim ribuan baris + nama pelapor ke browser.
-      laporanKabupaten={pengguna.role === "Admin_Kab" ? laporanKabupaten : []}
-      daftarDesaSemua={pengguna.role === "Admin_Kab" ? daftarDesaSemua : []}
+      // Viewer (Dinas, penyuluh provinsi, dll) tidak punya tab laporan (aturan lama): jangan kirim ribuan baris + nama pelapor ke browser.
+      laporanKabupaten={pengguna.role === "admin_kab" ? laporanKabupaten : []}
+      daftarDesaSemua={pengguna.role === "admin_kab" ? daftarDesaSemua : []}
     />
   );
 }

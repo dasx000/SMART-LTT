@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import {
+  Download,
   Wheat,
   Sprout,
   Carrot,
@@ -15,7 +16,7 @@ import {
   MapPin,
   Sparkles,
 } from "lucide-react";
-import { formatAngka, NAMA_BULAN, formatTanggal } from "@/lib/format";
+import { formatAngka, NAMA_BULAN, formatTanggal, tanggalIsoWIB } from "@/lib/format";
 import { sukses, gagal, konfirmasi, memuat } from "@/lib/swal";
 import { editLaporanKabAction, hapusLaporanKabAction } from "./actions";
 
@@ -68,7 +69,7 @@ export function TampilanKab({
   laporanKabupaten,
   daftarDesaSemua,
 }: {
-  rolePengguna: "Admin_Kab" | "Dinas";
+  rolePengguna: "admin_kab" | "viewer";
   namaPengguna: string;
   bulanAktif: number;
   totalPadi: { tanam: number; panen: number };
@@ -92,7 +93,7 @@ export function TampilanKab({
   const [modalEdit, setModalEdit] = useState<ItemLaporanKab | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const isDinas = rolePengguna === "Dinas";
+  const isViewer = rolePengguna === "viewer";
 
   // Ambang warna capaian: < 60% merah, 60–84% kuning, >= 85% hijau (Keputusan 13 Nov 2026)
   const hitungPersen = (realisasi: number, target: number) => {
@@ -119,7 +120,7 @@ export function TampilanKab({
 
   const handleEditLaporan = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!modalEdit || isDinas) return;
+    if (!modalEdit || isViewer) return;
 
     const fd = new FormData(e.currentTarget);
     fd.set("id", String(modalEdit.id));
@@ -137,7 +138,7 @@ export function TampilanKab({
   };
 
   const handleHapusLaporan = async (id: number) => {
-    if (isDinas) return;
+    if (isViewer) return;
     const yakin = await konfirmasi(
       "Hapus Laporan Ini?",
       "Laporan yang dihapus akan dikeluarkan dari rekapitulasi kabupaten.",
@@ -175,7 +176,7 @@ export function TampilanKab({
           <div>
             <div className="flex items-center gap-2">
               <span className="rounded-full bg-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-green-100 backdrop-blur-xs">
-                {isDinas ? "Dinas TPHP" : "Admin Kabupaten"}
+                {isViewer ? "Viewer" : "Admin Kabupaten"}
               </span>
               <span className="text-xs text-green-200 flex items-center gap-1">
                 <Calendar className="h-3.5 w-3.5" />
@@ -217,7 +218,7 @@ export function TampilanKab({
             <Sparkles className="h-4 w-4" /> LTT PM AAS
           </button>
 
-          {!isDinas && (
+          {!isViewer && (
             <button
               type="button"
               onClick={() => setTabAktif("laporan")}
@@ -236,6 +237,21 @@ export function TampilanKab({
       {/* 2. KONTEN TAB: DASHBOARD KABUPATEN */}
       {tabAktif === "dashboard" && (
         <div className="space-y-6">
+          {/* Unduhan dashboard (juga untuk Viewer) — file dibuat di server */}
+          <div className="flex flex-wrap gap-2">
+            <a
+              href={`/api/unduh/rekap-dinas?bulan=${bulanAktif}&tahun=${tanggalIsoWIB().slice(0, 4)}`}
+              className="flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-bold text-white"
+            >
+              <Download className="h-3.5 w-3.5" /> Rekap LTT (format Dinas)
+            </a>
+            <a
+              href={`/api/unduh/target-realisasi?bulan=${bulanAktif}&tahun=${tanggalIsoWIB().slice(0, 4)}&kategori=LTTReguler&sisi=tanam`}
+              className="flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-bold"
+            >
+              <Download className="h-3.5 w-3.5" /> Target vs Realisasi
+            </a>
+          </div>
           {/* KPI Utama 4 Sektor */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Padi */}
@@ -495,8 +511,8 @@ export function TampilanKab({
         </div>
       )}
 
-      {/* 4. KONTEN TAB: LAPORAN LTT SE-KABUPATEN (Hanya Admin_Kab) */}
-      {tabAktif === "laporan" && !isDinas && (
+      {/* 4. KONTEN TAB: LAPORAN LTT SE-KABUPATEN (Hanya admin_kab) */}
+      {tabAktif === "laporan" && !isViewer && (
         <div className="rounded-3xl border border-border bg-surface p-5 shadow-xs space-y-4">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
             <div>
@@ -506,6 +522,15 @@ export function TampilanKab({
 
             {/* Filter Bar */}
             <div className="flex flex-wrap gap-2">
+              <a
+                href={`/api/unduh/laporan?dari=${tanggalIsoWIB().slice(0, 8)}01&sampai=${tanggalIsoWIB()}${filterKomoditas !== "Semua" ? `&komoditas=${encodeURIComponent(filterKomoditas)}` : ""}${(() => {
+                  const k = rekapKecamatan.find((x) => x.namaKecamatan === filterKecamatan);
+                  return k ? `&kecamatan=${k.kecamatanId}` : "";
+                })()}`}
+                className="flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-bold text-white"
+              >
+                <Download className="h-3.5 w-3.5" /> Unduh Excel
+              </a>
               <select
                 value={filterKecamatan}
                 onChange={(e) => setFilterKecamatan(e.target.value)}
@@ -632,7 +657,7 @@ export function TampilanKab({
       )}
 
       {/* MODAL EDIT LAPORAN KABUPATEN */}
-      {modalEdit && !isDinas && (
+      {modalEdit && !isViewer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
           <div className="w-full max-w-lg rounded-3xl bg-surface p-5 shadow-2xl">
             <div className="flex items-center justify-between border-b border-border pb-3">

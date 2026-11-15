@@ -17,14 +17,14 @@ export const metadata: Metadata = {
 
 export default async function HalamanPPL() {
   return (
-    <KerangkaHalaman judul="SMART LTT" role={["Penyuluh", "Admin_BPP"]}>
+    <KerangkaHalaman judul="SMART LTT" role={["penyuluh", "admin_bpp"]}>
       <MuatKontenPPL />
     </KerangkaHalaman>
   );
 }
 
 async function MuatKontenPPL() {
-  const pengguna = await wajibRole("Penyuluh", "Admin_BPP");
+  const pengguna = await wajibRole("penyuluh", "admin_bpp");
 
   let daftarDesa: ItemDesa[] = [];
   let kecamatanNama = "Way Kanan";
@@ -45,7 +45,7 @@ async function MuatKontenPPL() {
         if (kec?.nama) kecamatanNama = kec.nama;
       }
 
-      // 2. Desa binaan sendiri (ltt.anggota_desa). Berlaku juga untuk Admin_BPP: di tampilan PPL
+      // 2. Desa binaan sendiri (ltt.anggota_desa). Berlaku juga untuk admin_bpp: di tampilan PPL
       //    ia melapor sebagai penyuluh untuk desa binaannya (aturan lama, logika-bisnis §23a).
       //    Melihat se-kecamatan dilakukan di halaman /bpp.
       const { data: relasi } = await supabase

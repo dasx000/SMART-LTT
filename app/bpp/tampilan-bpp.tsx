@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import {
+  Download,
   Wheat,
   Sprout,
   Carrot,
@@ -17,7 +18,7 @@ import {
   X,
   MapPin,
 } from "lucide-react";
-import { formatAngka, NAMA_BULAN, formatTanggal } from "@/lib/format";
+import { formatAngka, NAMA_BULAN, formatTanggal, tanggalIsoWIB } from "@/lib/format";
 import { sukses, gagal, konfirmasi, memuat } from "@/lib/swal";
 import { simpanTargetKecamatanAction, editLaporanBppAction, hapusLaporanBppAction } from "./actions";
 
@@ -448,7 +449,13 @@ export function TampilanBPP({
             </div>
 
             {/* Filter Bar */}
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              <a
+                href={`/api/unduh/laporan?dari=${tanggalIsoWIB().slice(0, 8)}01&sampai=${tanggalIsoWIB()}${filterKomoditas !== "Semua" ? `&komoditas=${encodeURIComponent(filterKomoditas)}` : ""}`}
+                className="flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-bold text-white"
+              >
+                <Download className="h-3.5 w-3.5" /> Unduh Excel
+              </a>
               <select
                 value={filterKomoditas}
                 onChange={(e) => setFilterKomoditas(e.target.value)}

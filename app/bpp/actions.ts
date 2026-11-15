@@ -15,7 +15,7 @@ export type ResponsAksiBpp = {
  * Simpan / perbarui target kecamatan (diisi oleh Admin BPP)
  */
 export async function simpanTargetKecamatanAction(formData: FormData): Promise<ResponsAksiBpp> {
-  const pengguna = await wajibRole("Admin_BPP");
+  const pengguna = await wajibRole("admin_bpp");
 
   if (!supabaseSiap()) {
     return { sukses: false, pesan: "Koneksi Supabase belum aktif." };
@@ -74,7 +74,7 @@ export async function simpanTargetKecamatanAction(formData: FormData): Promise<R
  * Edit laporan LTT oleh Koordinator BPP
  */
 export async function editLaporanBppAction(formData: FormData): Promise<ResponsAksiBpp> {
-  const pengguna = await wajibRole("Admin_BPP");
+  const pengguna = await wajibRole("admin_bpp");
 
   if (!supabaseSiap()) {
     return { sukses: false, pesan: "Koneksi Supabase belum aktif." };
@@ -111,7 +111,7 @@ export async function editLaporanBppAction(formData: FormData): Promise<ResponsA
       return { sukses: false, pesan: "Desa tidak ditemukan." };
     }
 
-    if (pengguna.role === "Admin_BPP" && desa.kecamatan_id !== pengguna.kecamatanId) {
+    if (pengguna.role === "admin_bpp" && desa.kecamatan_id !== pengguna.kecamatanId) {
       return { sukses: false, pesan: "Anda hanya berwenang mengubah laporan di kecamatan Anda." };
     }
 
@@ -148,7 +148,7 @@ export async function editLaporanBppAction(formData: FormData): Promise<ResponsA
  * Hapus laporan LTT oleh Koordinator BPP (soft-delete)
  */
 export async function hapusLaporanBppAction(id: number): Promise<ResponsAksiBpp> {
-  const pengguna = await wajibRole("Admin_BPP");
+  const pengguna = await wajibRole("admin_bpp");
 
   if (!supabaseSiap()) {
     return { sukses: false, pesan: "Koneksi Supabase belum aktif." };
@@ -169,7 +169,7 @@ export async function hapusLaporanBppAction(id: number): Promise<ResponsAksiBpp>
     }
 
     const d = lap.desa as unknown as { kecamatan_id: number } | null;
-    if (pengguna.role === "Admin_BPP" && d?.kecamatan_id !== pengguna.kecamatanId) {
+    if (pengguna.role === "admin_bpp" && d?.kecamatan_id !== pengguna.kecamatanId) {
       return { sukses: false, pesan: "Anda hanya berwenang menghapus laporan di kecamatan Anda." };
     }
 

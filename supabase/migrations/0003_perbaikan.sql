@@ -2,6 +2,7 @@
 -- SMART LTT — 0003: Perbaikan hasil review 0002 (15 Nov 2026)
 -- Jalankan di Supabase → SQL Editor SETELAH 0001 & 0002.
 -- Aman karena tabel data ltt.* masih kosong (belum ada impor).
+-- Idempoten: boleh dijalankan ulang bila sebelumnya gagal di tengah.
 -- Tidak menyentuh schema core / cws / taniku / alsintan.
 --
 -- Isi:
@@ -81,38 +82,39 @@ as $$ select kecamatan_id from ltt.desa where id = p_desa_id $$;
 drop policy if exists "laporan_ltt ditulis sesuai hak wilayah" on ltt.laporan_ltt;
 create policy "laporan_ltt ditulis sesuai hak wilayah" on ltt.laporan_ltt
   for insert to authenticated with check (
-    ltt.role_saya() = 'Admin_Kab'
-    or (ltt.role_saya() in ('Penyuluh', 'Admin_BPP') and ltt.is_desa_binaan(desa_id) and pelapor_id = auth.uid())
+    ltt.role_saya() = 'admin_kab'
+    or (ltt.role_saya() in ('penyuluh', 'admin_bpp') and ltt.is_desa_binaan(desa_id) and pelapor_id = auth.uid())
   );
 
 drop policy if exists "laporan_ltt diubah sesuai hak wilayah" on ltt.laporan_ltt;
 create policy "laporan_ltt diubah sesuai hak wilayah" on ltt.laporan_ltt
   for update to authenticated
   using (
-    ltt.role_saya() = 'Admin_Kab'
-    or (ltt.role_saya() = 'Admin_BPP' and ltt.is_kecamatan_saya(ltt.kecamatan_desa(desa_id)))
-    or (ltt.role_saya() = 'Penyuluh' and pelapor_id = auth.uid())
+    ltt.role_saya() = 'admin_kab'
+    or (ltt.role_saya() = 'admin_bpp' and ltt.is_kecamatan_saya(ltt.kecamatan_desa(desa_id)))
+    or (ltt.role_saya() = 'penyuluh' and pelapor_id = auth.uid())
   )
   with check (
-    ltt.role_saya() = 'Admin_Kab'
-    or (ltt.role_saya() = 'Admin_BPP' and ltt.is_kecamatan_saya(ltt.kecamatan_desa(desa_id)))
-    or (ltt.role_saya() = 'Penyuluh' and pelapor_id = auth.uid() and ltt.is_desa_binaan(desa_id))
+    ltt.role_saya() = 'admin_kab'
+    or (ltt.role_saya() = 'admin_bpp' and ltt.is_kecamatan_saya(ltt.kecamatan_desa(desa_id)))
+    or (ltt.role_saya() = 'penyuluh' and pelapor_id = auth.uid() and ltt.is_desa_binaan(desa_id))
   );
 
 -- Target desa (+ rincian): Admin_Kab semua; Admin_BPP sekecamatan (isi target untuk PPL-nya);
 -- Penyuluh hanya desa binaannya.
 drop policy if exists "target_desa dikelola bpp dan kab" on ltt.target_desa;
+drop policy if exists "target_desa dikelola sesuai wilayah" on ltt.target_desa;
 create policy "target_desa dikelola sesuai wilayah" on ltt.target_desa
   for all to authenticated
   using (
-    ltt.role_saya() = 'Admin_Kab'
-    or (ltt.role_saya() = 'Admin_BPP' and ltt.is_kecamatan_saya(ltt.kecamatan_desa(desa_id)))
-    or (ltt.role_saya() = 'Penyuluh' and ltt.is_desa_binaan(desa_id))
+    ltt.role_saya() = 'admin_kab'
+    or (ltt.role_saya() = 'admin_bpp' and ltt.is_kecamatan_saya(ltt.kecamatan_desa(desa_id)))
+    or (ltt.role_saya() = 'penyuluh' and ltt.is_desa_binaan(desa_id))
   )
   with check (
-    ltt.role_saya() = 'Admin_Kab'
-    or (ltt.role_saya() = 'Admin_BPP' and ltt.is_kecamatan_saya(ltt.kecamatan_desa(desa_id)))
-    or (ltt.role_saya() = 'Penyuluh' and ltt.is_desa_binaan(desa_id))
+    ltt.role_saya() = 'admin_kab'
+    or (ltt.role_saya() = 'admin_bpp' and ltt.is_kecamatan_saya(ltt.kecamatan_desa(desa_id)))
+    or (ltt.role_saya() = 'penyuluh' and ltt.is_desa_binaan(desa_id))
   );
 
 alter table ltt.target_desa_rincian enable row level security;
@@ -129,21 +131,23 @@ create policy "rincian mengikuti target desa" on ltt.target_desa_rincian
 drop policy if exists "target_kecamatan dikelola bpp dan kab" on ltt.target_kecamatan;
 create policy "target_kecamatan dikelola bpp dan kab" on ltt.target_kecamatan
   for all to authenticated
-  using (ltt.role_saya() = 'Admin_Kab' or (ltt.role_saya() = 'Admin_BPP' and ltt.is_kecamatan_saya(kecamatan_id)))
-  with check (ltt.role_saya() = 'Admin_Kab' or (ltt.role_saya() = 'Admin_BPP' and ltt.is_kecamatan_saya(kecamatan_id)));
+  using (ltt.role_saya() = 'admin_kab' or (ltt.role_saya() = 'admin_bpp' and ltt.is_kecamatan_saya(kecamatan_id)))
+  with check (ltt.role_saya() = 'admin_kab' or (ltt.role_saya() = 'admin_bpp' and ltt.is_kecamatan_saya(kecamatan_id)));
 
 -- Produktivitas & sarana: hanya desa binaan sendiri (aturan lama logika-bisnis §20), Admin_Kab semua
 drop policy if exists "produktivitas ditulis sesuai wilayah" on ltt.produktivitas_desa;
+drop policy if exists "produktivitas ditulis desa binaan" on ltt.produktivitas_desa;
 create policy "produktivitas ditulis desa binaan" on ltt.produktivitas_desa
   for all to authenticated
-  using (ltt.role_saya() = 'Admin_Kab' or (ltt.role_saya() in ('Penyuluh', 'Admin_BPP') and ltt.is_desa_binaan(desa_id)))
-  with check (ltt.role_saya() = 'Admin_Kab' or (ltt.role_saya() in ('Penyuluh', 'Admin_BPP') and ltt.is_desa_binaan(desa_id)));
+  using (ltt.role_saya() = 'admin_kab' or (ltt.role_saya() in ('penyuluh', 'admin_bpp') and ltt.is_desa_binaan(desa_id)))
+  with check (ltt.role_saya() = 'admin_kab' or (ltt.role_saya() in ('penyuluh', 'admin_bpp') and ltt.is_desa_binaan(desa_id)));
 
 drop policy if exists "sarana ditulis sesuai wilayah" on ltt.sarana_desa;
+drop policy if exists "sarana ditulis desa binaan" on ltt.sarana_desa;
 create policy "sarana ditulis desa binaan" on ltt.sarana_desa
   for all to authenticated
-  using (ltt.role_saya() = 'Admin_Kab' or (ltt.role_saya() in ('Penyuluh', 'Admin_BPP') and ltt.is_desa_binaan(desa_id)))
-  with check (ltt.role_saya() = 'Admin_Kab' or (ltt.role_saya() in ('Penyuluh', 'Admin_BPP') and ltt.is_desa_binaan(desa_id)));
+  using (ltt.role_saya() = 'admin_kab' or (ltt.role_saya() in ('penyuluh', 'admin_bpp') and ltt.is_desa_binaan(desa_id)))
+  with check (ltt.role_saya() = 'admin_kab' or (ltt.role_saya() in ('penyuluh', 'admin_bpp') and ltt.is_desa_binaan(desa_id)));
 
 -- Hak akses tabel/fungsi
 grant select, insert, update, delete on ltt.target_desa_rincian to authenticated;
@@ -261,7 +265,7 @@ create index if not exists idx_log_perubahan_waktu on ltt.log_perubahan (waktu d
 alter table ltt.log_perubahan enable row level security;
 drop policy if exists "log dibaca admin kab" on ltt.log_perubahan;
 create policy "log dibaca admin kab" on ltt.log_perubahan
-  for select to authenticated using (ltt.role_saya() = 'Admin_Kab');
+  for select to authenticated using (ltt.role_saya() = 'admin_kab');
 grant select on ltt.log_perubahan to authenticated;
 grant all on ltt.log_perubahan to service_role;
 grant usage, select on sequence ltt.log_perubahan_id_seq to service_role;

@@ -15,7 +15,7 @@ export type ResponsAksi = {
  * Simpan laporan baru LTT Jagung / Ubi Kayu oleh PPL
  */
 export async function simpanLaporanAction(formData: FormData): Promise<ResponsAksi> {
-  const pengguna = await wajibRole("Penyuluh", "Admin_BPP");
+  const pengguna = await wajibRole("penyuluh", "admin_bpp");
 
   if (!supabaseSiap()) {
     return { sukses: false, pesan: "Koneksi Supabase belum aktif." };
@@ -99,7 +99,7 @@ export async function simpanLaporanAction(formData: FormData): Promise<ResponsAk
  * Edit laporan LTT oleh PPL (hanya laporan hari ini)
  */
 export async function editLaporanAction(formData: FormData): Promise<ResponsAksi> {
-  const pengguna = await wajibRole("Penyuluh", "Admin_BPP");
+  const pengguna = await wajibRole("penyuluh", "admin_bpp");
 
   if (!supabaseSiap()) {
     return { sukses: false, pesan: "Koneksi Supabase belum aktif." };
@@ -137,8 +137,8 @@ export async function editLaporanAction(formData: FormData): Promise<ResponsAksi
       return { sukses: false, pesan: "Laporan tidak ditemukan atau sudah dihapus." };
     }
 
-    // Hanya pelapor atau Admin_BPP yang bisa edit
-    if (pengguna.role === "Penyuluh" && lap.pelapor_id !== pengguna.id) {
+    // Hanya pelapor atau admin_bpp yang bisa edit
+    if (pengguna.role === "penyuluh" && lap.pelapor_id !== pengguna.id) {
       return { sukses: false, pesan: "Anda hanya dapat mengedit laporan yang Anda input sendiri." };
     }
 
@@ -175,7 +175,7 @@ export async function editLaporanAction(formData: FormData): Promise<ResponsAksi
  * Hapus laporan LTT (soft-delete)
  */
 export async function hapusLaporanAction(id: number): Promise<ResponsAksi> {
-  const pengguna = await wajibRole("Penyuluh", "Admin_BPP");
+  const pengguna = await wajibRole("penyuluh", "admin_bpp");
 
   if (!supabaseSiap()) {
     return { sukses: false, pesan: "Koneksi Supabase belum aktif." };
@@ -195,7 +195,7 @@ export async function hapusLaporanAction(id: number): Promise<ResponsAksi> {
       return { sukses: false, pesan: "Laporan tidak ditemukan." };
     }
 
-    if (pengguna.role === "Penyuluh" && lap.pelapor_id !== pengguna.id) {
+    if (pengguna.role === "penyuluh" && lap.pelapor_id !== pengguna.id) {
       return { sukses: false, pesan: "Anda hanya dapat menghapus laporan Anda sendiri." };
     }
 

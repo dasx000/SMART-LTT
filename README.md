@@ -24,7 +24,7 @@ Project Supabase ini juga dipakai aplikasi lain (CWS, TANIKU, ...). **Satu akun 
 | `core` | Bersama: `core.profiles` (nama, NIP, email), `core.apps`, `core.memberships` (role per aplikasi) |
 | `ltt` | Khusus SMART LTT: wilayah, anggota, laporan, target, produktivitas, sarana |
 
-Role SMART LTT disimpan di `core.memberships` dengan `app_slug = 'ltt'`: `Penyuluh`, `Admin_BPP`, `Admin_Kab`, `Dinas`.
+Role SMART LTT disimpan di `core.memberships` dengan `app_slug = 'ltt'`: `penyuluh`, `admin_bpp`, `admin_kab`, `viewer` (hanya melihat: Dinas, penyuluh provinsi, dll).
 Jangan mengubah tabel schema `core`, `cws`, atau `taniku` dari proyek ini.
 
 ## Menjalankan di laptop

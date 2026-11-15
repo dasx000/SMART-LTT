@@ -1,13 +1,14 @@
 import { Suspense } from "react";
-import { LogOut, Sprout } from "lucide-react";
+import Image from "next/image";
+import { LogOut } from "lucide-react";
 import { getPengguna } from "@/lib/auth";
 import { logout } from "@/app/(auth)/login/actions";
 
 const LABEL_ROLE = {
-  Penyuluh: "Penyuluh",
-  Admin_BPP: "Koordinator BPP",
-  Admin_Kab: "Admin Kabupaten",
-  Dinas: "Dinas",
+  penyuluh: "Penyuluh",
+  admin_bpp: "Koordinator BPP",
+  admin_kab: "Admin Kabupaten",
+  viewer: "Viewer",
 } as const;
 
 /** Kepala halaman. Bagian statis tampil instan; nama user menyusul (Suspense). */
@@ -15,9 +16,7 @@ export function KepalaAplikasi({ judul }: { judul: string }) {
   return (
     <header className="sticky top-0 z-10 border-b border-border bg-surface/95 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-5xl items-center gap-3 px-4">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-white">
-          <Sprout size={20} aria-hidden />
-        </div>
+        <Image src="/logo.webp" alt="SMART LTT" width={36} height={36} priority className="h-9 w-9 shrink-0" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-black leading-tight">{judul}</p>
           <Suspense fallback={<p className="h-4 w-24 animate-pulse rounded bg-border" />}>

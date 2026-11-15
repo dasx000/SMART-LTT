@@ -4,29 +4,33 @@ import { useActionState, useState } from "react";
 import { Eye, EyeOff, LoaderCircle } from "lucide-react";
 import { login, type HasilLogin } from "./actions";
 
+const kelasInput =
+  "w-full rounded-lg border border-gray-300 py-3 outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-200";
+
 export function FormLogin() {
   const [hasil, aksi, sedangProses] = useActionState<HasilLogin, FormData>(login, null);
   const [lihat, setLihat] = useState(false);
 
   return (
-    <form action={aksi} className="space-y-4">
-      <div>
-        <label htmlFor="nip" className="mb-1 block text-sm font-semibold">
-          NIP / Username
+    <form action={aksi}>
+      <div className="mb-4">
+        <label htmlFor="nip" className="mb-1 block text-sm font-semibold text-gray-700">
+          NIP (Nomor Induk Pegawai)
         </label>
         <input
           id="nip"
           name="nip"
           inputMode="numeric"
           autoComplete="username"
+          placeholder="Masukkan NIP Anda"
           required
-          className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-base outline-none focus:border-primary focus:ring-2 focus:ring-primary-soft"
+          className={`${kelasInput} px-4`}
         />
       </div>
 
-      <div>
-        <label htmlFor="password" className="mb-1 block text-sm font-semibold">
-          Password
+      <div className="mb-6">
+        <label htmlFor="password" className="mb-1 block text-sm font-semibold text-gray-700">
+          Password Rahasia
         </label>
         <div className="relative">
           <input
@@ -34,22 +38,23 @@ export function FormLogin() {
             name="password"
             type={lihat ? "text" : "password"}
             autoComplete="current-password"
+            placeholder="******"
             required
-            className="w-full rounded-xl border border-border bg-surface px-4 py-3 pr-12 text-base outline-none focus:border-primary focus:ring-2 focus:ring-primary-soft"
+            className={`${kelasInput} pr-10 pl-4`}
           />
           <button
             type="button"
             onClick={() => setLihat((v) => !v)}
             aria-label={lihat ? "Sembunyikan password" : "Tampilkan password"}
-            className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-muted"
+            className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 active:scale-95"
           >
-            {lihat ? <EyeOff size={20} /> : <Eye size={20} />}
+            {lihat ? <EyeOff size={16} /> : <Eye size={16} />}
           </button>
         </div>
       </div>
 
       {hasil?.pesan && (
-        <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-danger">
+        <p role="alert" className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
           {hasil.pesan}
         </p>
       )}
@@ -57,10 +62,10 @@ export function FormLogin() {
       <button
         type="submit"
         disabled={sedangProses}
-        className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 font-bold text-white transition active:scale-[0.99] disabled:opacity-70"
+        className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-3 font-bold text-white transition hover:bg-green-700 disabled:opacity-70"
       >
-        {sedangProses && <LoaderCircle size={18} className="animate-spin" />}
-        {sedangProses ? "Memeriksa..." : "Masuk"}
+        {sedangProses ? "Memeriksa..." : "Masuk Sekarang"}
+        {sedangProses && <LoaderCircle size={16} className="animate-spin" />}
       </button>
     </form>
   );

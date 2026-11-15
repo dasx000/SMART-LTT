@@ -19,14 +19,14 @@ export const metadata: Metadata = {
 
 export default async function HalamanBPP() {
   return (
-    <KerangkaHalaman judul="SMART LTT · BPP" role={["Admin_BPP"]}>
+    <KerangkaHalaman judul="SMART LTT · BPP" role={["admin_bpp"]}>
       <MuatKontenBPP />
     </KerangkaHalaman>
   );
 }
 
 async function MuatKontenBPP() {
-  const pengguna = await wajibRole("Admin_BPP");
+  const pengguna = await wajibRole("admin_bpp");
 
   // Bulan berjalan menurut WIB (server Vercel = UTC)
   const { bulan: bulanAktif, tahun: tahunAktif } = bulanTahunWIB();

@@ -14,7 +14,7 @@
 | Frontend | `Index.html`, `File_HTML_Login/PPL/BPP/Admin.html`, `File_Javascript.html` (~9.300 baris, 1 file), `File_CSS.html` | Tailwind CDN + SweetAlert2 + ApexCharts + ExcelJS (CDN) |
 | Database | Google Sheets (±20 sheet): `Data_User`, `Data_LTT`, `Data_LTT_Padi`, `Data_LTT_<bulan>` (arsip), `Ringkasan_Harian`, `Data_Geografi`, `Jenis_LTT`, `Target_*` (8 sheet), `Logs_Sinkron`, `Data_Produktivitas_Desa`, `Data_Sarana_Desa` | Tanggal kadang teks, kadang Date (lihat `parseTanggalEPusluh_`) |
 | Auth | NIP + password **plaintext** di `Data_User`, sesi disimpan di `localStorage` (`user_eLTT`) | Server banyak percaya data role/kecamatan dari client |
-| Role | `Penyuluh`, `Admin_BPP` (koordinator kecamatan), `Admin_Kab`, `Dinas` | |
+| Role | `penyuluh`, `admin_bpp` (koordinator kecamatan), `admin_kab`, `viewer` (Dinas, penyuluh provinsi, dll — hanya melihat). Diganti dari nama lama `Penyuluh`/`Admin_BPP`/`Admin_Kab`/`Dinas` pada 15 Nov 2026 | |
 | Integrasi | (1) Bookmarklet e-Pusluh `?action=target` / `?action=eltt` → `doPost` aksi `sinkron_padi` & `import_target_epusluh`; (2) Webhook VPS `http://103.245.38.96:3000` (`/webhook/saran`, `/deteksi-ltt`) | `mode: 'no-cors'`, tanpa token |
 | Otomasi | Trigger `arsipBulanan` (tgl 1, 01:00), `backupDatabaseHarian` (copy spreadsheet ke Drive) | |
 | Cache | `CacheService` (HTML 6 jam, target, user, dashboard) | Sumber beberapa bug (lihat `issue.md`) |

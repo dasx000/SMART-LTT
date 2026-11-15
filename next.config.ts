@@ -14,6 +14,8 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   poweredByHeader: false,
+  // ExcelJS hanya dipakai di server (route /api/unduh) — tidak dibundel, tidak dikirim ke HP.
+  serverExternalPackages: ["exceljs"],
   turbopack: {
     rules: {
       "*.css": {
