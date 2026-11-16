@@ -36,5 +36,5 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   // Lewati aset statis & endpoint server-ke-server (bot VPS pakai token sendiri).
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|api/epusluh|.*\\.(?:svg|png|jpg|jpeg|webp|ico)$).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw\\.js|api/epusluh|api/cron|.*\\.(?:svg|png|jpg|jpeg|webp|ico)$).*)"],
 };
