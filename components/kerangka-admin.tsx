@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  ArrowLeft, DatabaseBackup, Goal, ChartLine, ChartPie, FileText, History, House, KeyRound, Leaf, LockKeyhole, Map as Peta, Menu, Power,
+  ArrowLeft, DatabaseBackup, Goal, ChartLine, ChartPie, FileText, History, House, KeyRound, Leaf, LockKeyhole, Map as Peta, Menu, PanelLeftClose, PanelLeftOpen, Power,
   Scale, Shuffle, Sprout, Tags, UserCog, Users, Warehouse, X, Shield, Target,
 } from "lucide-react";
 import { logout } from "@/app/(auth)/login/actions";
@@ -49,6 +49,8 @@ const MENU_BPP: Item[] = [
   { href: "/bpp/pengguna", label: "Manajemen Akun PPL", ikon: <Users size={18} /> },
 ];
 
+const KUNCI_CIUT = "ltt-sidebar-kab-ciut";
+
 const LABEL_ROLE: Record<Role, string> = {
   penyuluh: "Penyuluh",
   admin_bpp: "Koordinator BPP",
@@ -70,6 +72,21 @@ export function KerangkaAdmin({
   children: ReactNode;
 }) {
   const [buka, setBuka] = useState(false);
+  /** Desktop: sidebar diciutkan (default terbuka). Diingat per browser agar tetap saat pindah halaman. */
+  const [ciut, setCiut] = useState(false);
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(KUNCI_CIUT) === "1") setCiut(true);
+    } catch {}
+  }, []);
+  const alihCiut = () => {
+    setCiut((c) => {
+      try {
+        localStorage.setItem(KUNCI_CIUT, c ? "0" : "1");
+      } catch {}
+      return !c;
+    });
+  };
   const path = usePathname();
   const menu = (gaya === "kab" ? MENU_KAB : MENU_BPP).filter((m) => !m.role || m.role.includes(role));
   const isKab = gaya === "kab";
@@ -80,9 +97,10 @@ export function KerangkaAdmin({
       {buka && <div className="fixed inset-0 z-40 bg-black/50 md:hidden" onClick={() => setBuka(false)} aria-hidden />}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col bg-green-800 text-white shadow-2xl transition-transform duration-300 md:relative md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col bg-green-800 text-white shadow-2xl transition-all duration-300 md:relative md:translate-x-0 ${
           buka ? "translate-x-0" : "-translate-x-full"
-        }`}
+        } ${isKab && ciut ? "md:-ml-64 md:shadow-none" : ""}`}
+        inert={isKab && ciut && !buka ? true : undefined}
       >
         <div className={`flex items-center justify-between border-b border-green-700 px-4 ${isKab ? "h-20" : "h-16"}`}>
           {isKab ? (
@@ -155,6 +173,16 @@ export function KerangkaAdmin({
             <div className="flex items-center gap-2">
               <button type="button" onClick={() => setBuka(true)} className="-ml-2 rounded-lg p-2 text-green-700 transition hover:bg-green-50 md:hidden" aria-label="Buka menu">
                 <Menu size={22} />
+              </button>
+              <button
+                type="button"
+                onClick={alihCiut}
+                className="-ml-2 hidden rounded-lg p-2 text-green-700 transition hover:bg-green-50 md:inline-flex"
+                aria-label={ciut ? "Buka sidebar" : "Tutup sidebar"}
+                aria-expanded={!ciut}
+                title={ciut ? "Buka sidebar" : "Tutup sidebar"}
+              >
+                {ciut ? <PanelLeftOpen size={22} /> : <PanelLeftClose size={22} />}
               </button>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
