@@ -1,13 +1,11 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { Download, ShieldCheck, Smartphone, X } from "lucide-react";
+import { Download, ShieldCheck, X } from "lucide-react";
 
 /**
- * Ajakan memasang SMART LTT ke layar utama HP (PWA) — khusus beranda PPL.
- *  - KartuPasangAplikasi: kartu di atas menu; "Nanti saja" menyembunyikannya 30 hari.
- *  - IkonPasangAplikasi: ikon permanen di "Menu Lainnya".
- * Keduanya hilang bila aplikasi sudah dibuka dari ikon layar utama / baru saja dipasang.
+ * Ikon "Pasang Aplikasi" (PWA ke layar utama HP) di "Menu Lainnya" beranda PPL — permanen.
+ * Hilang bila aplikasi sudah dibuka dari ikon layar utama / baru saja dipasang.
  * Chrome/Edge Android → dialog install bawaan; iPhone & browser dalam-aplikasi (WhatsApp dll.) → panduan.
  */
 
@@ -75,65 +73,6 @@ function usePasang(env: Lingkungan | null) {
   };
   const modal = panduan && env ? <PanduanPasang env={env} tutup={() => setPanduan(false)} /> : null;
   return { pasang, modal };
-}
-
-const KUNCI_NANTI = "ltt-pasang-nanti";
-const JEDA_NANTI_MS = 30 * 24 * 60 * 60 * 1000; // 1 bulan
-
-function sedangDitunda(): boolean {
-  try {
-    const t = Number(localStorage.getItem(KUNCI_NANTI));
-    return Number.isFinite(t) && t > 0 && Date.now() - t < JEDA_NANTI_MS;
-  } catch {
-    return false;
-  }
-}
-
-export function KartuPasangAplikasi() {
-  const env = useLingkungan();
-  const { pasang, modal } = usePasang(env);
-  const [baruDitunda, setBaruDitunda] = useState(false);
-
-  // env baru terisi setelah tampil di browser → aman membaca localStorage di sini.
-  if (!env || env.mandiri || env.terpasang) return modal;
-  if (baruDitunda || sedangDitunda()) return modal;
-
-  const nanti = () => {
-    try {
-      localStorage.setItem(KUNCI_NANTI, String(Date.now()));
-    } catch {}
-    setBaruDitunda(true);
-  };
-
-  return (
-    <>
-      <div className="mb-6 rounded-2xl border border-green-200 bg-green-50 p-4">
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-600 text-white shadow">
-            <Smartphone size={20} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-green-900">Pasang SMART LTT di HP</p>
-            <p className="mt-0.5 text-xs text-green-800">Buka langsung dari layar utama HP, tanpa perlu mencari link lagi.</p>
-          </div>
-        </div>
-        <Disclaimer />
-        <div className="mt-3 flex items-center gap-2">
-          <button
-            type="button"
-            onClick={pasang}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-green-600 px-4 py-2.5 text-sm font-bold text-white shadow transition hover:bg-green-700 active:scale-95"
-          >
-            <Download size={16} /> {env.bisaPrompt ? "Pasang" : "Lihat Caranya"}
-          </button>
-          <button type="button" onClick={nanti} className="rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-500 transition hover:bg-green-100 active:scale-95">
-            Nanti saja
-          </button>
-        </div>
-      </div>
-      {modal}
-    </>
-  );
 }
 
 /** Ikon permanen di grid "Menu Lainnya" — gaya sama dengan ikon menu beranda PPL. */
