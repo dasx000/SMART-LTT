@@ -88,6 +88,7 @@ const DAFTAR_ISI = [
   ["wilayah", "GET /wilayah"],
   ["laporan-baca", "GET /laporan"],
   ["laporan-kirim", "POST /laporan"],
+  ["epusluh", "POST /epusluh/padi"],
   ["contoh", "Contoh Kode"],
   ["catatan", "Catatan Perilaku"],
 ] as const;
@@ -352,6 +353,65 @@ Content-Type: application/json
               <K>id_kirim</K> yang sama, server mengembalikan laporan yang sudah ada (<K>duplikat: true</K>) dan tidak membuat laporan ganda. Tanpa id_kirim,
               setiap kiriman menjadi laporan baru.
             </p>
+          </Bagian>
+
+          <Bagian id="epusluh" judul="Sinkron Padi e-Pusluh (Bot)">
+            <Endpoint metode="POST" jalur="/api/v1/epusluh/padi" izin="epusluh:tulis" />
+            <p>
+              Dipakai bot VPS (<K>DASBOT/scripts/run_tarik_data.py</K>) untuk mengirim hasil tarikan laporan padi e-Pusluh. Format body sama dengan kiriman lama
+              ke GAS (<K>aksi</K> dan <K>dataVPS</K> boleh ikut, tetapi diabaikan). Setiap kiriman dicatat di menu <b>Log Sinkronisasi</b>.
+            </p>
+            <TabelParam
+              kolom={["Kolom body (JSON)", "Wajib", "Keterangan"]}
+              baris={[
+                ["data", "ya", <>Array baris, tiap baris array 18 kolom (min. 13), maks. 5000 baris. Urutan kolom di bawah.</>],
+                ["logData", "tidak", <>Info tarikan untuk Log Sinkronisasi: <K>idSync</K>, <K>totalTarik</K>, <K>dataBerisi</K>, <K>dataNihil</K>.</>],
+              ]}
+            />
+            <TabelParam
+              kolom={["Indeks", "", "Isi kolom"]}
+              baris={[
+                ["0", "", <>ID laporan e-Pusluh (<b>angka</b>). Baris tanpa ID asli ditolak.</>],
+                ["1", "", <>Waktu lapor, mis. <K>Nov 16, 2026 09:12:30</K> atau <K>16/11/2026 09:12</K> (dibaca sebagai WIB).</>],
+                ["2 / 3 / 4", "", "Pelapor / Kecamatan / Desa. Kecamatan + desa harus cocok dengan master (huruf besar-kecil diabaikan)."],
+                ["5 / 6", "", <>Komoditas (diabaikan, selalu Padi) / Jenis LTT (<K>-</K> atau kosong = LTT Reguler).</>],
+                ["7–8", "", "Target (diabaikan)."],
+                ["9 / 10 / 11 / 12", "", "Bera / Olah / Tanam / Panen (ha)."],
+                ["13", "", <>Keterangan (<K>-</K> = kosong).</>],
+                ["14–16", "", "Status & waktu verifikasi (diabaikan)."],
+                ["17", "", "Metode penanaman (Regular / PM AAS)."],
+              ]}
+            />
+            <Kode judul="Permintaan">{`POST ${BASE}/api/v1/epusluh/padi
+Authorization: Bearer sltt_...
+Content-Type: application/json
+
+{
+  "data": [
+    ["49758007", "Nov 16, 2026 09:12:30", "NAMA PENYULUH, S.P.", "Blambangan Umpu", "Lembasung", "Padi",
+     "LTT Reguler", 0, 0, 0, 0, 2.5, 0, "-", "Diajukan", "", "", "Regular"]
+  ],
+  "logData": { "idSync": "SYNC-1794800000000", "totalTarik": 337, "dataBerisi": 65, "dataNihil": 272 }
+}`}</Kode>
+            <Kode judul="Balasan 200">{`{
+  "status": "success",
+  "diterima": 1,
+  "ditambah": 1,
+  "diperbarui": 0,
+  "dilewati_data_lama": 0,
+  "wilayah_dilewati": [],
+  "nihil": 0,
+  "id_tidak_valid": 0,
+  "desa_tidak_cocok": [],
+  "tanggal_tidak_terbaca": 0,
+  "tanggal": ["2026-11-16"]
+}`}</Kode>
+            <ul className="list-disc space-y-1.5 pl-5">
+              <li><b>Aturan simpan</b> (sama dengan impor Excel): ID baru ditambah, ID yang sudah ada diperbarui, <b>tidak ada yang dihapus</b>. Kirim ulang tarikan yang sama aman, tidak membuat ganda.</li>
+              <li><b>Dilewati</b>: baris nihil (semua luas 0), ID bukan angka atau ganda dalam satu kiriman, desa tidak dikenal, waktu tak terbaca. Jumlahnya dilaporkan di balasan.</li>
+              <li><b>Data lama</b>: tanggal + kecamatan yang masih berisi data bot lama ber-ID <K>SYNC-…</K> dilewati agar tidak ganda (<K>dilewati_data_lama</K>, <K>wilayah_dilewati</K>).</li>
+              <li>Semua baris diproses dalam satu transaksi: kalau gagal di tengah (<K>500</K>), tidak ada data yang berubah. Kirim ulang aman.</li>
+            </ul>
           </Bagian>
 
           <Bagian id="contoh" judul="Contoh Kode">

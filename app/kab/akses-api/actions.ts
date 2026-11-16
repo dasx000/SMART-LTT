@@ -29,6 +29,28 @@ export async function buatKunciAction(fd: FormData): Promise<HasilKunci> {
   return { sukses: true, pesan: "Kunci dibuat. Salin sekarang — kunci tidak bisa ditampilkan lagi.", kunci };
 }
 
+/** Ubah nama & izin kunci aktif. Kuncinya sendiri tidak berubah (klien tidak perlu mengganti .env). */
+export async function ubahKunciAction(fd: FormData): Promise<{ sukses: boolean; pesan: string }> {
+  await wajibRole("admin_kab");
+  const id = String(fd.get("id") ?? "");
+  if (!z.uuid().safeParse(id).success) return { sukses: false, pesan: "ID tidak valid." };
+  const parse = skema.safeParse({ nama: fd.get("nama"), izin: fd.getAll("izin") });
+  if (!parse.success) return { sukses: false, pesan: parse.error.issues[0]?.message ?? "Isian tidak valid." };
+  const { data, error } = await supabaseAdmin()
+    .from("api_klien")
+    .update({ nama: parse.data.nama, izin: parse.data.izin })
+    .eq("id", id)
+    .eq("aktif", true)
+    .select("id");
+  if (error) {
+    const migrasi = error.message.includes("api_klien_izin_check") ? " (jalankan migrasi 0011 untuk izin epusluh:tulis)" : "";
+    return { sukses: false, pesan: `Gagal menyimpan: ${error.message}${migrasi}` };
+  }
+  if (!data?.length) return { sukses: false, pesan: "Kunci tidak ditemukan atau sudah dicabut." };
+  revalidatePath("/kab/akses-api");
+  return { sukses: true, pesan: "Nama & izin kunci diperbarui. Kunci tetap sama, berlaku langsung." };
+}
+
 /** Hapus kunci yang SUDAH DICABUT beserta catatan pemakaiannya. Kunci aktif harus dicabut dulu. */
 export async function hapusKunciAction(id: string): Promise<{ sukses: boolean; pesan: string }> {
   await wajibRole("admin_kab");

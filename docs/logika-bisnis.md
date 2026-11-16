@@ -425,7 +425,7 @@ Ditemukan di repo bot VPS `d:\CODING\DASBOT`:
 - Skrip juga membandingkan hasil tarikan dengan rekap Partisipasi Penyuluh e-Pusluh (validasi kelengkapan) dan melaporkan ke WA.
 
 **Untuk sistem baru:**
-- Endpoint **`POST /api/epusluh/sinkron-padi`** tetap dibuat (pengganti `doPost`), dengan **token** di header, aturan "timpa per tanggal" sama, 18 kolom termasuk metode penanaman.
+- Endpoint **`POST /api/v1/epusluh/padi`** (pengganti `doPost`), memakai **kunci API** berizin `epusluh:tulis` (menu Akses API), 18 kolom termasuk metode penanaman. Aturan diperbarui 16 Nov 2026: dicocokkan per ID asli e-Pusluh (tambah/perbarui, tanpa hapus), baris nihil dilewati.
 - Di repo DASBOT cukup ubah `GAS_URL` → URL Vercel + tambah header token (perubahan kecil, dilakukan saat cutover). `downloader-ltt.js` di DASBOT juga mengarah ke GAS; dicek saat cutover apakah masih dipakai.
 - Tidak perlu CORS (dipanggil server ke server).
 - Impor target dari e-Pusluh **tidak ada** di VPS → hilang bersama bookmarklet; target diisi lewat aplikasi.

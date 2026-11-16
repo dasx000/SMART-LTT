@@ -253,7 +253,7 @@ Helper SQL: `auth_role()`, `auth_kecamatan_id()`, `is_desa_binaan(desa_id)` (`se
 │  ├─ (app)/ppl/                  # input LTT, laporan hari ini, rekap, produktivitas, sarana, profil
 │  ├─ (app)/bpp/                  # dashboard kecamatan, verifikasi, kelola PPL, target per PPL
 │  ├─ (app)/kab/                  # dashboard kab, antrean, rekap padi/palawija, target, PM AAS, user, logs sinkron
-│  ├─ api/epusluh/sinkron-padi/route.ts
+│  ├─ api/v1/epusluh/padi/route.ts   # sinkron bot (kunci API, izin epusluh:tulis)
 │  ├─ api/epusluh/import-target/route.ts
 │  ├─ api/tuyul/[nama]/route.ts
 │  └─ api/cron/backup/route.ts
@@ -287,7 +287,7 @@ Helper SQL: `auth_role()`, `auth_kecamatan_id()`, `is_desa_binaan(desa_id)` (`se
 | `getDaftarUser`, `simpanDataUser`, `hapusDataUser` | `/kab/pengguna` (pakai `supabase.auth.admin` di server) |
 | `getDaftarKecamatan`, `getDaftarDesabyKecamatan`, `getSemuaGeografi`, `getKecamatanLaporan`, `getDesaLaporan`, `getJenisLTT` | query master (cache `unstable_cache`/`revalidateTag`) |
 | `getProduktivitasDesa`, `simpanProduktivitasDesa`, `getSaranaDesa`, `simpanSaranaDesa`, `getRekap*Produktivitas/Sarana*`, `getProduktivitasSaranaExport` | `/ppl/produktivitas`, `/ppl/sarana`, `/bpp|kab/produktivitas` |
-| `doPost` aksi `sinkron_padi` → `terimaSinkronPadi` | `POST /api/epusluh/sinkron-padi` (upsert by `id_lama`, satu transaksi via RPC) |
+| `doPost` aksi `sinkron_padi` → `terimaSinkronPadi` | `POST /api/v1/epusluh/padi` (upsert per ID e-Pusluh, satu transaksi via RPC) |
 | `doPost` aksi `import_target_epusluh` → `importTargetEpusluh` | `POST /api/epusluh/import-target` |
 | `doGet ?action=target/eltt` (`LoaderTuyul.gs`) | `GET /api/tuyul/target`, `/api/tuyul/eltt` (`Content-Type: application/javascript`) |
 | `getLogsSinkron` | `/kab/logs-sinkron` |
@@ -322,12 +322,12 @@ Aturan: satu util `lib/excel.ts` (ExcelJS, dimuat dinamis saat tombol ditekan), 
 
 > **Revisi setelah audit:** bookmarklet (`LoaderTuyul.gs`, `/api/tuyul/*`, impor target e-Pusluh) **dihapus**. Data padi masuk otomatis dari bot VPS (`DASBOT/scripts/run_tarik_data.py`, cron 11:30/12:30/13:30/22:30 WIB) — lihat `docs/logika-bisnis.md` §25.
 
-- Satu endpoint: **`POST /api/epusluh/sinkron-padi`** (pengganti `doPost aksi=sinkron_padi`).
-  - Wajib header **`Authorization: Bearer <EPUSLUH_INGEST_TOKEN>`** (env Vercel; disimpan juga di `.env` DASBOT).
+- Satu endpoint: **`POST /api/v1/epusluh/padi`** (pengganti `doPost aksi=sinkron_padi`).
+  - Wajib header **`Authorization: Bearer <kunci API>`** berizin `epusluh:tulis` (menu Akses API; disimpan di `.env` DASBOT). *Revisi 16 Nov 2026: token tunggal `EPUSLUH_INGEST_TOKEN` dihapus.*
   - Server ke server → **tanpa CORS**.
   - Body sama dengan sekarang (`data` 18 kolom termasuk metode penanaman, `logData`; `dataVPS` diabaikan). Validasi Zod, batasi ukuran body.
-  - Aturan **timpa per tanggal** dalam satu transaksi (RPC), catat `logs_sinkron`, balas JSON `{status, inserted}` agar skrip tahu sukses/gagal.
-- Perubahan di repo DASBOT (saat cutover): ganti `GAS_URL` → URL Vercel + header token di `run_tarik_data.py` (cek juga `downloader-ltt.js`).
+  - Aturan *(revisi 16 Nov 2026)*: **tambah/perbarui per ID e-Pusluh**, tanpa hapus, nihil dilewati; satu transaksi (RPC), catat `logs_sinkron`, balas JSON `{status, ditambah, diperbarui, ...}`.
+- Perubahan di repo DASBOT (saat cutover): ganti `GAS_URL` → URL Vercel `/api/v1/epusluh/padi` + header kunci API di `run_tarik_data.py` (cek juga `downloader-ltt.js`).
 - Selama masa transisi, endpoint GAS lama **tetap aktif**; bisa kirim ke dua tujuan sekaligus selama uji paralel (Fase 7).
 
 ### 7a. VPS (bot WA + webhook) — tetap dipakai
@@ -372,7 +372,7 @@ Aturan: satu util `lib/excel.ts` (ExcelJS, dimuat dinamis saat tombol ditekan), 
 - [ ] Pakai URL `*.vercel.app` dulu; domain sendiri menyusul (tinggal tambah record DNS di Vercel).
 - [x] ~~Service account Google~~ → tidak diperlukan; sumber data = ekspor `MASTER DATABASE LTT.xlsx` (keputusan 26).
 - [x] Pindahkan file GAS ke `_gas_lama/` (tetap dilacak git sebagai rujukan) + tag `gas-final`.
-- [~] Env: URL, anon key, service role key **terisi** di `.env.local`. **Belum:** `EPUSLUH_INGEST_TOKEN` (min. 24 karakter acak), `VPS_WEBHOOK_SECRET`.
+- [~] Env: URL, anon key, service role key **terisi** di `.env.local`. **Belum:** `VPS_WEBHOOK_SECRET`. (Token bot diganti kunci API, 16 Nov 2026.)
 - [x] **Ekspor awal (keputusan C)** — selesai via xlsx: `docs/laporan-isi-data.md`. Rincian lama: skrip `scripts/etl/ekspor.ts` tarik semua sheet → JSON lokal (`data_lama/`, di `.gitignore`) + `laporan-isi-data.md`: jumlah baris per sheet, nilai unik status/komoditas/jenis, desa yang tidak cocok dengan `Data_Geografi`, tanggal berformat teks, sel kosong. Skema §4 direvisi berdasarkan laporan ini.
 
 ### Fase 0.5 — Audit logika (1–2 hari) *(keputusan A)*

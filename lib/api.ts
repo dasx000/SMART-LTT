@@ -15,6 +15,7 @@ export const IZIN = {
   "wilayah:baca": "Baca data kecamatan & desa",
   "laporan:baca": "Baca laporan LTT (padi, jagung, ubi kayu)",
   "laporan:tulis": "Kirim laporan LTT Jagung & Ubi Kayu atas nama PPL",
+  "epusluh:tulis": "Kirim data padi hasil tarikan e-Pusluh (bot sinkron)",
 } as const;
 export type Izin = keyof typeof IZIN;
 export const DAFTAR_IZIN = Object.keys(IZIN) as Izin[];

@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BookOpen, KeyRound, Plus } from "lucide-react";
+import { BookOpen, KeyRound, Pencil, Plus } from "lucide-react";
 import { wajibRole } from "@/lib/auth";
 import { KerangkaHalaman } from "@/components/kerangka-halaman";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { formatTanggalJam } from "@/lib/format";
 import { DAFTAR_IZIN, IZIN } from "@/lib/api";
 import { teksParam, urlDengan, type CariParam } from "@/lib/param";
-import { buatKunciAction, cabutKunciAction, hapusKunciAction } from "./actions";
+import { buatKunciAction, cabutKunciAction, hapusKunciAction, ubahKunciAction } from "./actions";
+import { ModalForm } from "@/components/master/modal-form";
+import { Bidang, kelasIn } from "@/components/master/ui-master";
 import { FormKunci, TombolCabut, TombolHapusKunci } from "./form-kunci";
 
 export const metadata: Metadata = { title: "Akses API — SMART LTT" };
@@ -27,6 +29,7 @@ const ENDPOINT = [
   { m: "GET", jalur: "/api/v1/wilayah", izin: "wilayah:baca", ket: "Kecamatan & desa dengan kode Kemendagri (format master_desa.json)" },
   { m: "GET", jalur: "/api/v1/laporan", izin: "laporan:baca", ket: "Laporan LTT. Opsi: dari, sampai (YYYY-MM-DD, maks. 92 hari), komoditas, kecamatan, desa, sumber, nip, halaman, per (maks. 1000)" },
   { m: "POST", jalur: "/api/v1/laporan", izin: "laporan:tulis", ket: "Kirim laporan Jagung/Ubi Kayu: { nip, desa, komoditas, realisasi_tanam, realisasi_panen, keterangan?, id_kirim? }" },
+  { m: "POST", jalur: "/api/v1/epusluh/padi", izin: "epusluh:tulis", ket: "Sinkron data padi hasil tarikan e-Pusluh oleh bot: { data: [[18 kolom]], logData? }. Tambah/perbarui per ID e-Pusluh, nihil dilewati" },
 ];
 
 async function Isi({ searchParams }: { searchParams: CariParam }) {
@@ -37,7 +40,8 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
     a.from("api_klien").select("id, nama, awalan, izin, aktif, created_at, terakhir_dipakai, dicabut_pada").order("aktif", { ascending: false }).order("created_at", { ascending: false }),
     a.from("api_log").select("id, waktu, metode, jalur, status, durasi_ms, klien:klien_id(nama)").order("waktu", { ascending: false }).limit(20),
   ]);
-  const kembali = urlDengan(DASAR, q, { buat: null });
+  const kembali = urlDengan(DASAR, q, { buat: null, edit: null });
+  const diubah = klien?.find((k) => k.id === teksParam(q, "edit") && k.aktif);
 
   return (
     <>
@@ -100,7 +104,12 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
                     </td>
                     <td className="p-3 text-center">
                       {k.aktif ? (
-                        <TombolCabut id={k.id} nama={k.nama} aksi={cabutKunciAction} />
+                        <div className="flex items-center justify-center gap-1.5">
+                          <Link href={urlDengan(DASAR, q, { edit: k.id, buat: null })} scroll={false} className="inline-flex items-center gap-1 rounded-lg border border-blue-200 px-2.5 py-1 text-[11px] font-bold text-blue-600 hover:bg-blue-50">
+                            <Pencil size={12} /> Ubah
+                          </Link>
+                          <TombolCabut id={k.id} nama={k.nama} aksi={cabutKunciAction} />
+                        </div>
                       ) : (
                         <TombolHapusKunci id={k.id} nama={k.nama} aksi={hapusKunciAction} />
                       )}
@@ -175,6 +184,31 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
 
       {teksParam(q, "buat") === "1" && (
         <FormKunci aksi={buatKunciAction} izin={DAFTAR_IZIN.map((k) => ({ kode: k, label: IZIN[k] }))} kembali={kembali} />
+      )}
+      {diubah && (
+        <ModalForm key={diubah.id} judul={`Ubah Kunci "${diubah.nama}"`} aksi={ubahKunciAction} kembali={kembali}>
+          <input type="hidden" name="id" value={diubah.id} />
+          <p className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs text-blue-800">
+            Kunci <span className="font-mono">{diubah.awalan}…</span> tetap sama, jadi klien tidak perlu mengganti .env. Perubahan izin berlaku langsung.
+          </p>
+          <Bidang label="Nama Klien" wajib>
+            <input name="nama" defaultValue={diubah.nama} required maxLength={80} className={kelasIn} />
+          </Bidang>
+          <fieldset>
+            <legend className="mb-2 text-xs font-semibold text-gray-700">Izin <span className="text-red-500">*</span></legend>
+            <div className="space-y-2">
+              {DAFTAR_IZIN.map((z) => (
+                <label key={z} className="flex items-start gap-2 rounded-xl border border-gray-200 p-2.5 text-sm hover:bg-gray-50">
+                  <input type="checkbox" name="izin" value={z} defaultChecked={(diubah.izin as string[]).includes(z)} className="mt-0.5 h-4 w-4 accent-green-600" />
+                  <span>
+                    <span className="font-mono text-xs font-bold text-gray-800">{z}</span>
+                    <span className="block text-xs text-gray-500">{IZIN[z]}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        </ModalForm>
       )}
     </>
   );

@@ -1,6 +1,6 @@
 import "server-only";
 
-// Aturan baca data e-Pusluh — dipakai bersama oleh sinkron bot (/api/epusluh/sinkron-padi)
+// Aturan baca data e-Pusluh — dipakai bersama oleh sinkron bot (/api/v1/epusluh/padi)
 // dan impor Excel e-Pusluh (Admin Kab), supaya kedua jalur menghasilkan data yang sama persis.
 
 export const teks = (v: unknown) => String(v ?? "").trim();
