@@ -17,7 +17,13 @@ export default function HalamanLogs({ searchParams }: { searchParams: CariParam 
   );
 }
 
-type Ket = { id_sync?: string | null; desa_tidak_cocok?: string[]; tanggal_tidak_terbaca?: number } | null;
+type Ket = {
+  id_sync?: string | null;
+  desa_tidak_cocok?: string[];
+  tanggal_tidak_terbaca?: number;
+  contoh_tanggal_tidak_terbaca?: string[];
+  id_tidak_valid?: number;
+} | null;
 const tglPanjang = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric" });
 
 /** Log Sinkronisasi e-Pusluh (aplikasi lama) — halaman & jumlah baris lewat URL. */
@@ -90,6 +96,18 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
                         >
                           {ok ? <Check size={10} /> : <TriangleAlert size={10} />} {ok ? "Sukses" : sebagian ? "Sebagian" : "Gagal"}
                         </span>
+                        {!ok && (
+                          <div className="mt-1 max-w-[16rem] space-y-0.5 text-left text-[10px] text-gray-500">
+                            {(k?.tanggal_tidak_terbaca ?? 0) > 0 && (
+                              <p className="text-red-600">
+                                {k?.tanggal_tidak_terbaca} waktu tak terbaca
+                                {k?.contoh_tanggal_tidak_terbaca?.length ? `: ${k.contoh_tanggal_tidak_terbaca.map((t) => `"${t}"`).join(", ")}` : ""}
+                              </p>
+                            )}
+                            {(k?.desa_tidak_cocok?.length ?? 0) > 0 && <p>Desa tak dikenal: {k?.desa_tidak_cocok?.join("; ")}</p>}
+                            {(k?.id_tidak_valid ?? 0) > 0 && <p>{k?.id_tidak_valid} baris tanpa ID e-Pusluh</p>}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );

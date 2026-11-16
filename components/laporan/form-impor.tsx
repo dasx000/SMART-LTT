@@ -110,6 +110,11 @@ export function FormImpor({
                 Tanggal + kecamatan ini masih berisi data lama (ID SYNC), jadi dilewati agar tidak ganda: {r.wilayahDilewati.join("; ")}
               </p>
             )}
+            {r && r.contohTanggalGagal?.length > 0 && (
+              <p className="mt-2 text-red-700">
+                Contoh Waktu Lapor yang tidak terbaca (laporkan bila format e-Pusluh berubah): {r.contohTanggalGagal.map((t) => `"${t}"`).join("; ")}
+              </p>
+            )}
             {r && r.desaTakCocok.length > 0 && (
               <p className="mt-2 text-red-700">Desa tidak ada di database (baris tidak diimpor): {r.desaTakCocok.join("; ")}</p>
             )}

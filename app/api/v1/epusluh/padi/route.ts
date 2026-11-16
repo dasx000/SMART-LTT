@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { galat, jalankanApi, sukses } from "@/lib/api";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { parseTanggalEpusluh } from "@/lib/tanggal-epusluh";
+import { contohTakTerbaca, parseTanggalEpusluh } from "@/lib/tanggal-epusluh";
 import { SELECT_DESA, angka, jenisLtt, idValid, keterangan, kunciNama, metode, nihil as barisNihil, petaDesa as bentukPetaDesa, teks } from "@/lib/epusluh";
 
 /**
@@ -50,6 +50,7 @@ export async function POST(req: NextRequest) {
       const desaTakCocok = new Set<string>();
       const idTerpakai = new Set<string>();
       let tanggalGagal = 0;
+      const contohTgl = contohTakTerbaca();
       let nihil = 0;
       let idTidakValid = 0;
 
@@ -67,6 +68,7 @@ export async function POST(req: NextRequest) {
         const tanggal = parseTanggalEpusluh(r[1]);
         if (!tanggal) {
           tanggalGagal++;
+          contohTgl.tambah(r[1]);
           continue;
         }
         const tanam = angka(r[11]);
@@ -119,6 +121,7 @@ export async function POST(req: NextRequest) {
         id_tidak_valid: idTidakValid,
         desa_tidak_cocok: [...desaTakCocok],
         tanggal_tidak_terbaca: tanggalGagal,
+        contoh_tanggal_tidak_terbaca: contohTgl.daftar(),
         tanggal,
       };
       const adaMasalah = desaTakCocok.size > 0 || tanggalGagal > 0 || idTidakValid > 0;

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { wajibRole } from "@/lib/auth";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseSiap } from "@/lib/env";
+import { contohTakTerbaca, parseTanggalEpusluh } from "@/lib/tanggal-epusluh";
 import { SELECT_DESA, angka, idValid, jenisLtt, keterangan, kunciNama, metode, nihil, petaDesa, teks } from "@/lib/epusluh";
 
 const BATAS_BYTE = 5 * 1024 * 1024;
@@ -21,6 +22,8 @@ export type RingkasImpor = {
   jenisBaru: string[];
   desaTakCocok: string[];
   tanggalGagal: number;
+  /** contoh teks Waktu Lapor yang tidak terbaca (format baru e-Pusluh?) */
+  contohTanggalGagal: string[];
   idTidakValid: number;
   idGanda: number;
   tanggal: string[];
@@ -56,27 +59,6 @@ function nilaiSel(v: ExcelJS.CellValue): unknown {
     if ("text" in v) return v.text;
   }
   return v;
-}
-
-const dua = (n: number) => String(n).padStart(2, "0");
-
-/**
- * Waktu Lapor → ISO WIB. Format tegas e-Pusluh: "15-11-2026 14:31:47" (hari-bulan-tahun).
- * Sel bertipe tanggal Excel juga diterima (jam dinding dianggap WIB). Selain itu ditolak, tidak ditebak.
- */
-function waktuLapor(v: unknown): string | null {
-  if (v instanceof Date) {
-    if (Number.isNaN(v.getTime())) return null;
-    return `${v.getUTCFullYear()}-${dua(v.getUTCMonth() + 1)}-${dua(v.getUTCDate())}T${dua(v.getUTCHours())}:${dua(v.getUTCMinutes())}:${dua(v.getUTCSeconds())}+07:00`;
-  }
-  const m = teks(v).match(/^(\d{1,2})-(\d{1,2})-(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
-  if (!m) return null;
-  const [hari, bulan, tahun, jam, menit] = [m[1], m[2], m[3], m[4], m[5]].map(Number);
-  if (bulan < 1 || bulan > 12 || hari < 1 || hari > 31 || jam > 23 || menit > 59) return null;
-  const iso = `${tahun}-${dua(bulan)}-${dua(hari)}T${dua(jam)}:${dua(menit)}:${m[6] ?? "00"}+07:00`;
-  const d = new Date(iso);
-  // tolak tanggal mustahil (mis. 31-02) yang digeser otomatis oleh Date
-  return Number.isNaN(d.getTime()) || new Date(d.getTime() + 7 * 3600e3).getUTCDate() !== hari ? null : iso;
 }
 
 /**
@@ -126,6 +108,7 @@ export async function imporEpusluhAction(formData: FormData): Promise<HasilImpor
   const desaTakCocok = new Set<string>();
   const tanggal = new Set<string>();
   let barisFile = 0, tanggalGagal = 0, idTidakValid = 0, idGanda = 0, jmlNihil = 0;
+  const contohTgl = contohTakTerbaca();
 
   for (let i = 2; i <= ws.rowCount; i++) {
     const row = ws.getRow(i);
@@ -137,8 +120,9 @@ export async function imporEpusluhAction(formData: FormData): Promise<HasilImpor
 
     if (!idValid(id)) { idTidakValid++; continue; }
     if (idTerpakai.has(id)) { idGanda++; continue; }
-    const waktu = waktuLapor(ambil("waktu"));
-    if (!waktu) { tanggalGagal++; continue; }
+    // Waktu Lapor: teks (format apa pun yang dikenali) atau sel tanggal Excel → WIB
+    const waktu = parseTanggalEpusluh(ambil("waktu"));
+    if (!waktu) { tanggalGagal++; contohTgl.tambah(ambil("waktu")); continue; }
     const desaId = peta.get(`${kunciNama(ambil("kec"))}|${kunciNama(ambil("desa"))}`);
     if (!desaId) { desaTakCocok.add(`${teks(ambil("kec"))} / ${teks(ambil("desa"))}`); continue; }
 
@@ -164,7 +148,7 @@ export async function imporEpusluhAction(formData: FormData): Promise<HasilImpor
 
   const ringkas: RingkasImpor = {
     barisFile, valid: baris.length, ditambah: 0, diperbarui: 0, dilewati: 0, nihil: jmlNihil, wilayahDilewati: [], jenisBaru: [],
-    desaTakCocok: [...desaTakCocok].sort(), tanggalGagal, idTidakValid, idGanda,
+    desaTakCocok: [...desaTakCocok].sort(), tanggalGagal, contohTanggalGagal: contohTgl.daftar(), idTidakValid, idGanda,
     tanggal: [...tanggal].sort().map((t) => t.split("-").reverse().join("-")),
   };
   if (baris.length === 0) {
