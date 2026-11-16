@@ -15,10 +15,10 @@ export type Pengguna = {
   wajibGantiPassword: boolean;
 };
 
-/** Halaman awal tiap role. */
+/** Halaman awal tiap role. Admin BPP merangkap penyuluh → mulai di menu PPL; menu BPP lewat tombol di sana. */
 export const BERANDA_ROLE: Record<Role, string> = {
   penyuluh: "/ppl",
-  admin_bpp: "/bpp",
+  admin_bpp: "/ppl",
   admin_kab: "/kab",
   viewer: "/kab",
 };
