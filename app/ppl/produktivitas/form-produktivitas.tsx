@@ -61,12 +61,12 @@ export function TabelProd({
         Satuan <b className="text-gray-500">ton/ha</b>. Kosongkan atau isi 0 bila tidak ada panen. Boleh memakai koma atau titik.
       </p>
       <div className="overflow-x-auto rounded-2xl border border-gray-100">
-        <table className="w-full min-w-[480px] text-xs">
+        <table className="w-full text-xs">
           <thead>
             <tr className="bg-gray-50 text-[11px] font-bold text-gray-600 uppercase">
-              <th className="px-2 py-3 text-left">Bulan</th>
+              <th className="w-full px-2 py-3 text-left">Bulan</th>
               {KOM.map((k) => (
-                <th key={k} className="w-[28%] px-1 py-3 text-center">
+                <th key={k} className="px-0.5 py-3 text-center whitespace-nowrap">
                   {k}
                 </th>
               ))}
@@ -77,14 +77,14 @@ export function TabelProd({
               <tr key={b} className={`border-t border-gray-100 ${bulanKini === i + 1 ? "bg-blue-50/60" : ""}`}>
                 <td className="px-2 py-1 font-semibold text-gray-700">{b}</td>
                 {KOM.map((k) => (
-                  <td key={k} className="px-1 py-1">
+                  <td key={k} className="px-0.5 py-1">
                     <input
                       inputMode="decimal"
                       placeholder="0"
                       aria-label={`${k} ${b}`}
                       value={nilai[k][i]}
                       onChange={(e) => ubah(k, i, e.target.value)}
-                      className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-right text-sm tabular-nums text-gray-800 placeholder:text-gray-400 focus:border-green-500 focus:outline-hidden"
+                      className="mx-auto block w-14 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-right text-sm tabular-nums text-gray-800 placeholder:text-gray-400 focus:border-green-500 focus:outline-hidden"
                     />
                   </td>
                 ))}
