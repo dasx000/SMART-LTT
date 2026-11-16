@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { ChevronRight, FileSpreadsheet, RotateCw, Warehouse } from "lucide-react";
+import { ChevronRight, FileSpreadsheet, Warehouse } from "lucide-react";
+import { TombolMuatUlang } from "@/components/tombol-muat-ulang";
+import { TombolUnduh } from "@/components/tombol-unduh";
 import { wajibRole } from "@/lib/auth";
 import { KerangkaHalaman } from "@/components/kerangka-halaman";
 import { supabaseServer } from "@/lib/supabase/server";
 import { bulanTahunWIB } from "@/lib/format";
+import { InfografisSarana, type BarisSaranaKec } from "@/components/infografis-sarana";
 import { KOLOM_SARANA, ambilSarana, daftarDesa, daftarKecamatan } from "@/lib/data";
 
 export const metadata: Metadata = { title: "Sarana Desa — SMART LTT" };
@@ -25,6 +27,17 @@ async function Isi() {
   const s = await supabaseServer();
   const [kecs, desa, sarana] = await Promise.all([daftarKecamatan(s), daftarDesa(s), ambilSarana(s)]);
   const tahun = bulanTahunWIB().tahun;
+  const ringkas: BarisSaranaKec[] = kecs.map((kec) => {
+    const dk = desa.filter((d) => d.kecamatan_id === kec.id);
+    const isi = dk.flatMap((d) => sarana.get(d.id) ?? []);
+    const unit = {} as BarisSaranaKec["unit"];
+    const desaPunya = {} as BarisSaranaKec["desaPunya"];
+    for (const c of KOLOM_SARANA) {
+      unit[c.kunci] = isi.reduce((a, x) => a + (Number(x[c.kunci]) || 0), 0);
+      desaPunya[c.kunci] = isi.filter((x) => (Number(x[c.kunci]) || 0) > 0).length;
+    }
+    return { id: kec.id, nama: kec.nama, jumlahDesa: dk.length, desaTerisi: isi.length, unit, desaPunya };
+  });
 
   return (
     <>
@@ -36,15 +49,14 @@ async function Isi() {
           <p className="text-[11px] text-gray-500">Jumlah unit, diisi PPL per desa. Klik kecamatan untuk melihat desa.</p>
         </div>
         <div className="flex gap-2">
-          <Link href="/kab/sarana" className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-600">
-            <RotateCw size={14} /> Muat Ulang
-          </Link>
-          <a href={`/api/unduh/produktivitas?tahunDari=${tahun}&tahunSampai=${tahun}`} className="flex items-center gap-1.5 rounded-lg bg-green-700 px-3 py-1.5 text-xs font-bold text-white">
-            <FileSpreadsheet size={14} /> Unduh Excel
-          </a>
+          <TombolMuatUlang href="/kab/sarana" label="Muat Ulang" className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-600" />
+          <TombolUnduh href={`/api/unduh/produktivitas?tahunDari=${tahun}&tahunSampai=${tahun}`} ikon={<FileSpreadsheet size={14} />} className="flex items-center gap-1.5 rounded-lg bg-green-700 px-3 py-1.5 text-xs font-bold text-white" />
         </div>
       </div>
 
+      <InfografisSarana baris={ringkas} />
+
+      <h3 className="mb-2 text-sm font-bold text-gray-800">Rincian per Kecamatan &amp; Desa</h3>
       <div className="overflow-x-auto rounded-2xl border border-gray-100 bg-white shadow-sm">
         <div className="min-w-[620px]">
           <div className={`${kolom} bg-gray-50 px-3 py-3 text-[11px] font-bold text-gray-500 uppercase`}>

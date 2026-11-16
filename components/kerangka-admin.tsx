@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  ArrowLeft, Goal, ChartLine, ChartPie, FileText, History, House, KeyRound, Leaf, Map as Peta, Menu, Power,
+  ArrowLeft, DatabaseBackup, Goal, ChartLine, ChartPie, FileText, History, House, KeyRound, Leaf, LockKeyhole, Map as Peta, Menu, Power,
   Scale, Shuffle, Sprout, Tags, UserCog, Users, Warehouse, X, Shield, Target,
 } from "lucide-react";
 import { logout } from "@/app/(auth)/login/actions";
@@ -32,10 +32,12 @@ const MENU_KAB: Item[] = [
   { href: "/kab/pengguna", label: "Manajemen Penyuluh", ikon: <UserCog size={18} />, role: ["admin_kab"] },
   { href: "/kab/target", label: "Target Komoditas", ikon: <Goal size={18} />, role: ["admin_kab"] },
   { href: "/kab/logs", label: "Log Sinkronisasi", ikon: <History size={18} />, role: ["admin_kab"] },
+  { href: "/kab/backup", label: "Backup Data", ikon: <DatabaseBackup size={18} />, role: ["admin_kab"] },
   { href: "/kab/master/kecamatan", label: "Kecamatan", ikon: <Peta size={18} />, role: ["admin_kab"], grup: "Master Data" },
   { href: "/kab/master/desa", label: "Desa", ikon: <House size={18} />, role: ["admin_kab"] },
   { href: "/kab/master/jenis-ltt", label: "Jenis LTT", ikon: <Tags size={18} />, role: ["admin_kab"] },
   { href: "/kab/akses-api", label: "Akses API", ikon: <KeyRound size={18} />, role: ["admin_kab"], grup: "Integrasi", awalan: "/kab/akses-api" },
+  { href: "/profil", label: "Profil Saya", ikon: <LockKeyhole size={18} />, grup: "Akun" },
 ];
 
 const MENU_BPP: Item[] = [
@@ -182,9 +184,9 @@ export function KerangkaAdmin({
                 <Link
                   href="/ppl"
                   title="Kembali ke PPL"
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-green-700 shadow transition hover:bg-green-50 active:scale-95"
+                  className="flex h-9 items-center gap-1.5 rounded-full bg-white px-3.5 text-xs font-bold text-green-700 shadow transition hover:bg-green-50 active:scale-95"
                 >
-                  <Shuffle size={16} />
+                  <Shuffle size={15} /> Mode PPL
                 </Link>
               </div>
             </div>

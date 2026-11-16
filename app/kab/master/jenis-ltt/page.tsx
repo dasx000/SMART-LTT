@@ -9,6 +9,7 @@ import { ModalForm } from "@/components/master/modal-form";
 import { Bidang, Catatan, KepalaMaster, kelasIn } from "@/components/master/ui-master";
 import { teksParam, urlDengan, type CariParam } from "@/lib/param";
 import { simpanJenisLttAction } from "../actions";
+import { METODE_PENANAMAN } from "@/lib/data";
 
 export const metadata: Metadata = { title: "Master Jenis LTT — SMART LTT" };
 
@@ -37,6 +38,14 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
     }),
   );
 
+  // Jumlah laporan padi per metode penanaman (+ yang belum diisi)
+  const hitungMetode = (kode: string | null) => {
+    let x = s.from("laporan_ltt").select("id", { count: "exact", head: true }).eq("komoditas", "Padi").is("dihapus_pada", null);
+    x = kode ? x.eq("metode_penanaman", kode) : x.is("metode_penanaman", null);
+    return x.then(({ count }) => count ?? 0);
+  };
+  const [pakaiMetode, tanpaMetode] = await Promise.all([Promise.all(METODE_PENANAMAN.map((m) => hitungMetode(m.kode))), hitungMetode(null)]);
+
   const edit = teksParam(q, "edit");
   const dipilih = edit && edit !== "baru" ? jenis?.find((j) => String(j.id) === edit) : undefined;
   const kembali = urlDengan(DASAR, q, { edit: null });
@@ -53,7 +62,7 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
       <Catatan>
         Nama harus <b>persis sama dengan e-Pusluh</b>; jenis baru dari e-Pusluh juga otomatis terdaftar (urutan 50). Jenis yang sudah
         tidak dipakai cukup <b>dinonaktifkan</b>: laporan lamanya tetap tampil, tetapi tidak muncul lagi di form target. Mengganti nama
-        jenis yang sudah dipakai dapat memengaruhi rekap kategori (Reguler, Padi Gogo, Oplah 2025). Jagung &amp; Ubi Kayu hanya punya
+        jenis yang sudah dipakai dapat memengaruhi rekap kategori (Reguler, Padi Gogo, Oplah 2026, PM-AAS). Jagung &amp; Ubi Kayu hanya punya
         satu jenis (&quot;LTT&quot;) dan tidak dikelola di sini.
       </Catatan>
 
@@ -96,6 +105,50 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
         </div>
         <p className="border-t border-gray-100 p-3 text-xs text-gray-500">
           {jenis?.length ?? 0} jenis · {(jenis ?? []).filter((j) => j.aktif).length} aktif
+        </p>
+      </div>
+
+      {/* Metode penanaman — daftar tetap (acuan), tidak bisa diubah dari sini */}
+      <div className="mt-8 mb-3">
+        <h3 className="text-base font-bold text-gray-800">Metode Penanaman</h3>
+        <p className="text-xs text-gray-500">Cara tanam yang dicatat di setiap laporan padi, berdampingan dengan Jenis LTT.</p>
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 bg-gray-50 text-[10px] font-bold text-gray-500 uppercase">
+                <th className="p-3 text-left">Metode</th>
+                <th className="p-3 text-left">Nilai di e-Pusluh / Database</th>
+                <th className="p-3 text-left">Keterangan</th>
+                <th className="p-3 text-right">Dipakai Laporan</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {METODE_PENANAMAN.map((m, i) => (
+                <tr key={m.kode} className="hover:bg-gray-50">
+                  <td className="p-3">
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${m.kode === "PM AAS" ? "bg-violet-100 text-violet-700" : "bg-green-100 text-green-700"}`}>
+                      {m.label}
+                    </span>
+                  </td>
+                  <td className="p-3 font-mono text-xs text-gray-500">{m.kode}</td>
+                  <td className="p-3 text-xs text-gray-600">{m.keterangan}</td>
+                  <td className="p-3 text-right">{formatAngka(pakaiMetode[i])}</td>
+                </tr>
+              ))}
+              <tr className="bg-gray-50/60 text-gray-400">
+                <td className="p-3"><span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-500">Tidak diisi</span></td>
+                <td className="p-3 font-mono text-xs">(kosong)</td>
+                <td className="p-3 text-xs">Laporan lama / input tanpa metode. Di rekap ditampilkan sebagai &quot;Tidak diisi&quot;.</td>
+                <td className="p-3 text-right">{formatAngka(tanpaMetode)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="border-t border-gray-100 p-3 text-xs text-gray-500">
+          Daftar ini <b>tetap</b> (tidak bisa ditambah/diubah) karena nilainya dipakai sinkron e-Pusluh dan perhitungan PM-AAS.
+          Metode laporan bisa dikoreksi Admin Kab lewat menu edit laporan.
         </p>
       </div>
 

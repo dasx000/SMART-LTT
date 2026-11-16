@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { Filter, FileSpreadsheet, FileUp, ListChecks, Pencil, RotateCw, Search, SearchCheck, Sprout, Wheat, X } from "lucide-react";
+import { Filter, FileSpreadsheet, FileUp, ListChecks, Pencil, Search, SearchCheck, Sprout, Wheat, X } from "lucide-react";
+import { TombolMuatUlang } from "@/components/tombol-muat-ulang";
+import { TombolUnduh } from "@/components/tombol-unduh";
 import { formatAngka, formatTanggal } from "@/lib/format";
 import { KOMODITAS, type BarisLaporan, type DesaRef, type Kec } from "@/lib/data";
 import { urlDengan } from "@/lib/param";
@@ -20,7 +22,7 @@ export const PILIHAN_PER = [10, 25, 50, 100];
  * Filter/cari/halaman/edit semuanya di URL dan diproses di server (hanya satu halaman dikirim).
  */
 export function DaftarLaporan({
-  dasar, q, baris, total, ringkas, hal, per, dari, sampai, kecs, desaPilihan, kecamatanTerkunci, unduh, impor, aksiHapus,
+  dasar, q, baris, total, ringkas, hal, per, dari, sampai, hariIni, kecs, desaPilihan, kecamatanTerkunci, unduh, impor, aksiHapus,
 }: {
   dasar: string;
   q: Record<string, string | string[] | undefined>;
@@ -31,6 +33,8 @@ export function DaftarLaporan({
   per: number;
   dari: string;
   sampai: string;
+  /** Batas atas pilihan tanggal (YYYY-MM-DD, WIB). */
+  hariIni: string;
   kecs: Kec[];
   /** desa untuk pilihan filter (kecamatan terpilih / kecamatan BPP) */
   desaPilihan: DesaRef[];
@@ -39,7 +43,8 @@ export function DaftarLaporan({
   unduh: string;
   /** Admin Kab: tautan jendela Impor Excel e-Pusluh (?impor=1) */
   impor?: string;
-  aksiHapus: (id: number) => Promise<{ sukses: boolean; pesan: string }>;
+  /** Tanpa ini tombol hapus tidak ditampilkan (mis. Admin BPP hanya boleh ubah). */
+  aksiHapus?: (id: number) => Promise<{ sukses: boolean; pesan: string }>;
 }) {
   const ambil = (k: string) => {
     const v = q[k];
@@ -61,12 +66,8 @@ export function DaftarLaporan({
               <FileUp size={16} /> Impor Excel
             </Link>
           )}
-          <a href={unduh} className="flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 text-sm font-bold text-white shadow hover:bg-green-700">
-            <FileSpreadsheet size={16} /> Unduh Excel
-          </a>
-          <Link href={urlDengan(dasar, q, { edit: null })} className="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-bold text-blue-600 hover:bg-blue-100">
-            <RotateCw size={16} /> Refresh
-          </Link>
+          <TombolUnduh href={unduh} ikon={<FileSpreadsheet size={16} />} className="flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 text-sm font-bold text-white shadow hover:bg-green-700" />
+          <TombolMuatUlang href={urlDengan(dasar, q, { edit: null })} label="Refresh" ukuran={16} className="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-bold text-blue-600 hover:bg-blue-100" />
         </div>
       </div>
 
@@ -75,11 +76,11 @@ export function DaftarLaporan({
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
           <label>
             <span className={lbl}>Dari Tanggal</span>
-            <input type="date" name="dari" defaultValue={dari} className={kelasIn} />
+            <input type="date" name="dari" defaultValue={dari} max={hariIni} className={kelasIn} />
           </label>
           <label>
             <span className={lbl}>Sampai Tanggal</span>
-            <input type="date" name="sampai" defaultValue={sampai} className={kelasIn} />
+            <input type="date" name="sampai" defaultValue={sampai} max={hariIni} className={kelasIn} />
           </label>
           <label>
             <span className={lbl}>Komoditas</span>
@@ -228,7 +229,7 @@ export function DaftarLaporan({
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </Link>
-                        <TombolHapus id={l.id} aksi={aksiHapus} />
+                        {aksiHapus && <TombolHapus id={l.id} aksi={aksiHapus} />}
                       </div>
                     </td>
                   </tr>

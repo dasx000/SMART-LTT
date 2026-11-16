@@ -19,8 +19,9 @@ export async function muatHalamanLaporan(
   const s = await supabaseServer();
   const hariIni = tanggalIsoWIB();
   // Default = hari ini (seperti aplikasi lama)
-  const dari = tglOk(teksParam(q, "dari"), hariIni);
-  const sampai = [tglOk(teksParam(q, "sampai"), dari), dari].sort()[1];
+  // Tidak boleh melewati hari ini (WIB); sampai >= dari.
+  const dari = [tglOk(teksParam(q, "dari"), hariIni), hariIni].sort()[0];
+  const sampai = [[tglOk(teksParam(q, "sampai"), dari), hariIni].sort()[0], dari].sort()[1];
   const komoditas = (KOMODITAS as string[]).includes(teksParam(q, "komoditas") ?? "") ? (teksParam(q, "komoditas") as Komoditas) : null;
   const metode = ["Regular", "PM AAS"].includes(teksParam(q, "metode") ?? "") ? teksParam(q, "metode") : null;
   const kecId = kecamatanKunci ?? (angkaParam(q, "kecamatan", 1, 100000, 0) || null);
@@ -48,7 +49,7 @@ export async function muatHalamanLaporan(
   const kecEdit = edit ? (edit.desa as unknown as { kecamatan_id: number } | null)?.kecamatan_id : null;
   return {
     daftar: {
-      dasar, q, hal, per, dari, sampai, kecs,
+      dasar, q, hal, per, dari, sampai, hariIni, kecs,
       baris: hasil.baris,
       total: hasil.total,
       ringkas: hasil.ringkas,

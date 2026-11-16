@@ -21,11 +21,13 @@ export default function HalamanTargetPpl({ searchParams }: { searchParams: CariP
 async function Isi({ searchParams }: { searchParams: CariParam }) {
   const p = await wajibRole("penyuluh", "admin_bpp");
   const q = await searchParams;
-  const bulan = angkaParam(q, "bulan", 1, 12, bulanTahunWIB().bulan);
+  const kini = bulanTahunWIB();
+  const tahun = angkaParam(q, "tahun", 2000, 2100, kini.tahun);
+  const bulan = angkaParam(q, "bulan", 1, 12, kini.bulan);
   const kom = ((KOMODITAS as string[]).includes(teksParam(q, "komoditas") ?? "") ? teksParam(q, "komoditas") : "Padi") as Komoditas;
   const s = await supabaseServer();
   const desa = await desaBinaanSaya(s, p.id);
-  const [jenis, semua] = await Promise.all([jenisPadi(s), ambilTargetDesa(s, desa.map((d) => d.id), { bulan, komoditas: kom })]);
+  const [jenis, semua] = await Promise.all([jenisPadi(s), ambilTargetDesa(s, desa.map((d) => d.id), { tahun, bulan, komoditas: kom })]);
   const target = semua;
 
   return (
@@ -34,8 +36,8 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
         <Kosong teks="Belum ada desa binaan. Hubungi Admin BPP." />
       ) : (
         <>
-          <PilihBulanKomoditas dasar="/ppl/target" bulan={bulan} kom={kom} info={<>Terisi <b>{target.length}</b> / {desa.length} desa</>} />
-          <FormTarget desa={desa} jenis={jenis} target={target} bulan={bulan} kom={kom} />
+          <PilihBulanKomoditas dasar="/ppl/target" tahun={tahun} bulan={bulan} kom={kom} info={<>Terisi <b>{target.length}</b> / {desa.length} desa</>} />
+          <FormTarget desa={desa} jenis={jenis} target={target} tahun={tahun} bulan={bulan} kom={kom} />
         </>
       )}
     </>

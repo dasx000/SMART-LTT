@@ -1,20 +1,20 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { wajibRole } from "@/lib/auth";
 import { KerangkaHalaman, KepalaPanel } from "@/components/kerangka-halaman";
 import { supabaseServer } from "@/lib/supabase/server";
-import { bulanTahunWIB } from "@/lib/format";
-import { KOMODITAS, ambilProduktivitas, ambilSarana, desaBinaanSaya, tahunProduktivitas, type Komoditas } from "@/lib/data";
-import { Kosong, TombolUnduh } from "@/components/ui";
+import { bulanTahunWIB, formatTanggalJam } from "@/lib/format";
+import { KOMODITAS, ambilProduktivitas, ambilSarana, desaBinaanSaya, tahunProduktivitas } from "@/lib/data";
+import { Kosong } from "@/components/ui";
+import { SelectOtomatis } from "@/components/select-otomatis";
 import { angkaParam, teksParam, type CariParam } from "@/lib/param";
-import { KartuProd, KartuSarana } from "./form-produktivitas";
+import { KartuSarana, TabelProd } from "./form-produktivitas";
 
 export const metadata: Metadata = { title: "Produktivitas — SMART LTT" };
 
 /**
- * /ppl/produktivitas?tahun=2026&komoditas=Padi   → isian produktivitas
- * /ppl/produktivitas?tab=sarana                  → isian sarana desa
- * Hanya data tahun & komoditas terpilih yang dikirim ke browser.
+ * /ppl/produktivitas?desa=12&tahun=2026   → tabel produktivitas satu desa (12 bulan × 3 komoditas)
+ * /ppl/produktivitas?tab=sarana           → isian sarana desa
+ * Hanya data desa & tahun terpilih yang dikirim ke browser.
  */
 export default function HalamanProduktivitasPpl({ searchParams }: { searchParams: CariParam }) {
   return (
@@ -32,102 +32,90 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
   const sarana = teksParam(q, "tab") === "sarana";
   const tahunIni = bulanTahunWIB().tahun;
   const tahun = angkaParam(q, "tahun", 2000, 2100, tahunIni);
-  const kom = ((KOMODITAS as string[]).includes(teksParam(q, "komoditas") ?? "") ? teksParam(q, "komoditas") : "Padi") as Komoditas;
 
   const s = await supabaseServer();
   const desa = await desaBinaanSaya(s, p.id);
-  const ids = desa.map((d) => d.id);
-
-  const kepala = sarana ? (
-    <KepalaPanel judul="Sarana Desa" sub="Desa binaan Anda" warna="text-orange-600" />
-  ) : (
-    <KepalaPanel judul="Produktivitas" sub="Desa binaan Anda — ton/ha" />
-  );
-  const tab = (
-    <div className="mb-4 flex gap-1 rounded-xl bg-gray-100 p-1 text-xs font-bold">
-      <Link href="/ppl/produktivitas" className={`flex-1 rounded-lg py-2 text-center transition ${!sarana ? "bg-green-600 text-white" : "text-gray-500 hover:bg-white"}`}>
-        Produktivitas
-      </Link>
-      <Link href="/ppl/produktivitas?tab=sarana" className={`flex-1 rounded-lg py-2 text-center transition ${sarana ? "bg-orange-500 text-white" : "text-gray-500 hover:bg-white"}`}>
-        Sarana
-      </Link>
-    </div>
-  );
 
   if (desa.length === 0) {
     return (
       <>
-        {kepala}
+        <KepalaPanel judul={sarana ? "Sarana Desa" : "Produktivitas"} warna={sarana ? "text-orange-600" : undefined} />
         <Kosong teks="Belum ada desa binaan. Hubungi Admin BPP." />
       </>
     );
   }
 
+  const desaPilih = desa.find((d) => d.id === angkaParam(q, "desa", 1, Number.MAX_SAFE_INTEGER, 0)) ?? desa[0];
+  const { data: kec } = await s.from("kecamatan").select("nama").eq("id", desaPilih.kecamatan_id).maybeSingle();
+  const subKec = kec?.nama ? `Kec. ${kec.nama}` : "Desa binaan Anda";
+  const kelasPilih = (fokus: string) =>
+    `mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-bold text-gray-800 normal-case tracking-normal focus:outline-hidden ${fokus}`;
+  const pilihDesa = (fokus: string) => (
+    <label className="flex-1 text-[10px] font-bold tracking-wider text-gray-400 uppercase">
+      Desa
+      <SelectOtomatis name="desa" defaultValue={desaPilih.id} className={kelasPilih(fokus)}>
+        {desa.map((d) => (
+          <option key={d.id} value={d.id}>
+            {d.nama}
+          </option>
+        ))}
+      </SelectOtomatis>
+    </label>
+  );
+
   if (sarana) {
-    const data = await ambilSarana(s, ids);
+    const data = await ambilSarana(s, [desaPilih.id]);
+    const x = data.get(desaPilih.id);
     return (
       <>
-        {kepala}
-        {tab}
-        <div className="space-y-3">
-          {desa.map((d) => {
-            const x = data.get(d.id);
-            return (
-              <KartuSarana
-                key={d.id}
-                desa={d}
-                awal={x ? { desaId: d.id, gudang_gabah: x.gudang_gabah, embung: x.embung, lantai_jemur: x.lantai_jemur, mesin_pengering: x.mesin_pengering } : undefined}
-              />
-            );
-          })}
-        </div>
+        <KepalaPanel judul="Sarana Desa" sub={subKec} warna="text-orange-600" />
+        <form method="get" className="mb-3">
+          <input type="hidden" name="tab" value="sarana" />
+          {pilihDesa("focus:border-orange-400")}
+        </form>
+        <KartuSarana
+          key={desaPilih.id}
+          desaId={desaPilih.id}
+          awal={x ? { desaId: desaPilih.id, gudang_gabah: x.gudang_gabah, embung: x.embung, lantai_jemur: x.lantai_jemur, mesin_pengering: x.mesin_pengering } : undefined}
+          diperbarui={x?.updated_at ? formatTanggalJam(x.updated_at) : null}
+        />
       </>
     );
   }
 
-  const [nilai, daftarTahun] = await Promise.all([ambilProduktivitas(s, tahun, ids), tahunProduktivitas(s, tahunIni)]);
+  const [nilai, daftarTahun, terakhir] = await Promise.all([
+    ambilProduktivitas(s, tahun, [desaPilih.id]),
+    tahunProduktivitas(s, tahunIni),
+    s.from("produktivitas_desa").select("updated_at").eq("tahun", tahun).eq("desa_id", desaPilih.id).order("updated_at", { ascending: false }).limit(1).maybeSingle(),
+  ]);
   const pilihanTahun = [...new Set([...daftarTahun, tahunIni - 1])].sort((a, b) => b - a);
+  const awal = Object.fromEntries(KOMODITAS.map((k) => [k, nilai.get(`${desaPilih.id}|${k}`)]).filter(([, v]) => v));
+  const diperbarui = terakhir.data?.updated_at ? formatTanggalJam(terakhir.data.updated_at as string) : null;
 
   return (
     <>
-      {kepala}
-      {tab}
-      <div className="mb-3 space-y-2 rounded-2xl border border-gray-200 bg-white p-3">
-        <form method="get" className="flex items-end gap-2">
-          <input type="hidden" name="komoditas" value={kom} />
-          <label className="flex flex-1 flex-col gap-1 text-[11px] font-semibold text-gray-500">
-            Tahun
-            <select name="tahun" defaultValue={tahun} className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium">
-              {pilihanTahun.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button type="submit" className="rounded-xl bg-green-600 px-4 py-2 text-xs font-bold text-white">
-            Pilih
-          </button>
-          <TombolUnduh href={`/api/unduh/produktivitas?tahunDari=${tahun}&tahunSampai=${tahun}`} label="Excel" />
-        </form>
-        <div className="flex gap-1 rounded-xl bg-gray-100 p-1">
-          {KOMODITAS.map((k) => (
-            <Link
-              key={k}
-              href={`/ppl/produktivitas?tahun=${tahun}&komoditas=${encodeURIComponent(k)}`}
-              className={`flex-1 rounded-lg py-2 text-center text-xs font-bold transition-all ${kom === k ? "bg-green-600 text-white" : "text-gray-500 hover:bg-white"}`}
-            >
-              {k}
-            </Link>
-          ))}
-        </div>
-        <p className="text-[11px] text-gray-500">Satuan ton/ha (maks. 100). Kosong = 0.</p>
-      </div>
-      <div className="space-y-3">
-        {desa.map((d) => (
-          <KartuProd key={`${d.id}-${tahun}-${kom}`} desa={d} tahun={tahun} kom={kom} awal={nilai.get(`${d.id}|${kom}`)} />
-        ))}
-      </div>
+      <KepalaPanel judul="Produktivitas" sub={subKec} />
+      <form method="get" className="mb-2 flex items-end gap-2">
+        {pilihDesa("focus:border-green-500")}
+        <label className="w-24 text-[10px] font-bold tracking-wider text-gray-400 uppercase">
+          Tahun
+          <SelectOtomatis name="tahun" defaultValue={tahun} className={kelasPilih("focus:border-green-500")}>
+            {pilihanTahun.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </SelectOtomatis>
+        </label>
+      </form>
+      <TabelProd
+        key={`${desaPilih.id}-${tahun}`}
+        desaId={desaPilih.id}
+        tahun={tahun}
+        bulanKini={tahun === tahunIni ? bulanTahunWIB().bulan : 0}
+        awal={awal}
+        diperbarui={diperbarui}
+      />
     </>
   );
 }

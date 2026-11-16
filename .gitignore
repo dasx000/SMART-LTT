@@ -45,3 +45,7 @@ next-env.d.ts
 *.xlsx
 *.xls
 *.csv
+
+# File backup data (berisi data pribadi) — jangan pernah di-commit
+/backup/
+*.json.gz

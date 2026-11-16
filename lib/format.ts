@@ -26,6 +26,16 @@ export function formatAngka(nilai: number | null | undefined, maxDesimal = 2): s
   return f.format(n);
 }
 
+/**
+ * Nilai awal kotak isian angka: TANPA pemisah ribuan (1234.5 → "1234,5"; 0 → "").
+ * `formatAngka` menghasilkan "1.234" yang oleh `parseDesimal` dibaca 1,234 — jangan dipakai untuk isian.
+ */
+export function angkaIsian(n: number | null | undefined): string {
+  const v = Number(n);
+  if (!Number.isFinite(v) || v === 0) return "";
+  return String(Math.round(v * 100) / 100).replace(".", ",");
+}
+
 /** 12.5 → "12,50 Ha" */
 export function formatHa(nilai: number | null | undefined): string {
   return `${formatAngka(nilai)} Ha`;

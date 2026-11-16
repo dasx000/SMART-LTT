@@ -19,31 +19,35 @@ async function cekBinaan(desaId: number) {
   return { p, s, boleh: Boolean(data) };
 }
 
-const skemaProd = z.object({
+const skemaProdDesa = z.object({
   tahun: z.number().int().min(2000).max(2100),
   desaId: z.number().int().positive(),
-  komoditas: z.enum(["Padi", "Jagung", "Ubi Kayu"]),
-  nilai: z.array(angkaHa("Produktivitas", 100)).length(12),
+  nilai: z.object({
+    Padi: z.array(angkaHa("Produktivitas Padi", 100)).length(12),
+    Jagung: z.array(angkaHa("Produktivitas Jagung", 100)).length(12),
+    "Ubi Kayu": z.array(angkaHa("Produktivitas Ubi Kayu", 100)).length(12),
+  }),
 });
 
-export async function simpanProduktivitasAction(input: z.input<typeof skemaProd>): Promise<HasilAksi> {
-  const cek = skemaProd.safeParse(input);
+/** Simpan 12 bulan × 3 komoditas satu desa sekaligus (tampilan tabel ala GAS lama). */
+export async function simpanProduktivitasDesaAction(input: z.input<typeof skemaProdDesa>): Promise<HasilAksi> {
+  const cek = skemaProdDesa.safeParse(input);
   if (!cek.success) {
     const i = cek.error.issues[0];
-    const bulan = typeof i?.path[1] === "number" ? ` (bulan ke-${i.path[1] + 1})` : "";
+    const bulan = typeof i?.path[2] === "number" ? ` (bulan ke-${i.path[2] + 1})` : "";
     return { sukses: false, pesan: `${i?.message ?? "Isian tidak valid."}${bulan} Maksimal 100 ton/ha.` };
   }
   const d = cek.data;
   const { p, s, boleh } = await cekBinaan(d.desaId);
   if (!boleh) return { sukses: false, pesan: "Hanya desa binaan Anda yang boleh diisi." };
 
-  const { error } = await s.from("produktivitas_desa").upsert(
-    d.nilai.map((v, i) => ({ tahun: d.tahun, bulan: i + 1, desa_id: d.desaId, komoditas: d.komoditas, nilai: v, penginput_id: p.id })),
-    { onConflict: "tahun,bulan,desa_id,komoditas" },
+  const baris = (Object.keys(d.nilai) as (keyof typeof d.nilai)[]).flatMap((kom) =>
+    d.nilai[kom].map((v, i) => ({ tahun: d.tahun, bulan: i + 1, desa_id: d.desaId, komoditas: kom, nilai: v, penginput_id: p.id })),
   );
+  const { error } = await s.from("produktivitas_desa").upsert(baris, { onConflict: "tahun,bulan,desa_id,komoditas" });
   if (error) return { sukses: false, pesan: `Gagal menyimpan: ${error.message}` };
   revalidatePath("/ppl/produktivitas");
-  return { sukses: true, pesan: `Produktivitas ${d.komoditas} ${d.tahun} tersimpan.` };
+  return { sukses: true, pesan: `Produktivitas ${d.tahun} tersimpan.` };
 }
 
 const bulat = (label: string) =>

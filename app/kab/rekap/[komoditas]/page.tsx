@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { FileSpreadsheet, RotateCw, Sprout, Wheat } from "lucide-react";
+import { FileSpreadsheet, Sprout, Wheat } from "lucide-react";
 import { wajibRole } from "@/lib/auth";
 import { KerangkaHalaman } from "@/components/kerangka-halaman";
 import { supabaseServer } from "@/lib/supabase/server";
 import { formatAngka, tanggalIsoWIB } from "@/lib/format";
-import { ambilLaporan, daftarKecamatan, jenisPadi, rekapPerKecamatan, type Komoditas } from "@/lib/data";
+import { ambilLaporan, daftarKecamatan, jenisPadi, padiPerJenis, rekapPerKecamatan, type Komoditas } from "@/lib/data";
+import { KartuRincianJenis } from "@/components/kartu-rincian-jenis";
+import { FilterRentangTanggal } from "@/components/filter-rentang-tanggal";
+import { TombolUnduh } from "@/components/tombol-unduh";
 import { TabDashboardKab } from "@/components/tab-dashboard-kab";
 import { teksParam, urlDengan, type CariParam } from "@/lib/param";
 
@@ -31,8 +34,10 @@ async function Isi({ params, searchParams }: Props) {
   if (!kom) notFound();
   const q = await searchParams;
   const hariIni = tanggalIsoWIB();
-  const dari = tglOk(teksParam(q, "dari"), hariIni);
-  const sampai = [tglOk(teksParam(q, "sampai"), dari), dari].sort()[1];
+  // Validasi server: tidak melewati hari ini, dan dari ≤ sampai (URL bisa diketik manual).
+  const batas = (v: string) => (v > hariIni ? hariIni : v);
+  const dari = batas(tglOk(teksParam(q, "dari"), hariIni));
+  const sampai = batas([tglOk(teksParam(q, "sampai"), dari), dari].sort()[1]);
   const isPadi = kom === "Padi";
   const jenis = isPadi ? teksParam(q, "jenisLtt") : null;
 
@@ -45,8 +50,8 @@ async function Isi({ params, searchParams }: Props) {
     ambilLaporan(s, { dari: `${dari}T00:00:00+07:00`, sampai: `${tanggalIsoWIB(akhir)}T00:00:00+07:00`, komoditas: kom }, kecs),
   ]);
   const r = rekapPerKecamatan(kecs, lap, kom, jenis);
+  const padiJenis = isPadi ? padiPerJenis(jenis ? lap.filter((l) => l.jenis === jenis) : lap) : [];
   const unduh = urlDengan("/api/unduh/rekap-kecamatan", {}, { dari, sampai, komoditas: kom, jenisLtt: jenis });
-  const kelasIn = "rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 outline-none focus:border-green-500";
 
   return (
     <>
@@ -57,29 +62,39 @@ async function Isi({ params, searchParams }: Props) {
           <h2 className="text-lg font-bold text-gray-800">{isPadi ? "Rekap Padi Harian (e-Pusluh)" : `Rekap ${kom} Harian`}</h2>
           <p className="text-[11px] text-gray-500">Data harian laporan petugas lapangan.</p>
         </div>
-        <form method="get" className="flex flex-wrap items-center gap-2">
-          <input type="date" name="dari" defaultValue={dari} max={hariIni} className={kelasIn} />
-          <span className="text-gray-400">-</span>
-          <input type="date" name="sampai" defaultValue={sampai} max={hariIni} className={kelasIn} />
-          {isPadi && (
-            <select name="jenisLtt" defaultValue={jenis ?? ""} className={kelasIn}>
-              <option value="">Semua Jenis LTT</option>
-              {daftarJenis.map((j) => (
-                <option key={j.id} value={j.nama}>{j.nama}</option>
-              ))}
-            </select>
-          )}
-          <a href={unduh} className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700">
-            <FileSpreadsheet size={14} /> Excel
-          </a>
-          <button type="submit" title="Tampilkan" className="rounded-lg border border-gray-200 bg-white p-2 text-gray-600 hover:bg-gray-50">
-            <RotateCw size={14} />
-          </button>
-        </form>
+        <FilterRentangTanggal
+          dari={dari}
+          sampai={sampai}
+          hariIni={hariIni}
+          jenis={jenis}
+          daftarJenis={isPadi ? daftarJenis.map((j) => j.nama) : undefined}
+          sisipan={
+            <TombolUnduh href={unduh} label="Excel" ikon={<FileSpreadsheet size={14} />} className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700" />
+          }
+        />
       </div>
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {[
+        {isPadi ? (
+          <>
+            <KartuRincianJenis
+              besar
+              label="Luas Tanam"
+              nilai={r.totalTanam}
+              ikon={<Sprout size={18} />}
+              warnaIkon="bg-blue-50 text-blue-600"
+              rincian={padiJenis.map((j) => ({ jenis: j.jenis, nilai: j.tanam }))}
+            />
+            <KartuRincianJenis
+              besar
+              label="Luas Panen"
+              nilai={r.totalPanen}
+              ikon={<Wheat size={18} />}
+              warnaIkon="bg-yellow-50 text-yellow-600"
+              rincian={padiJenis.map((j) => ({ jenis: j.jenis, nilai: j.panen }))}
+            />
+          </>
+        ) : [
           { label: "Luas Tanam", n: r.totalTanam, ikon: <Sprout size={18} />, warna: "bg-blue-50 text-blue-600" },
           { label: "Luas Panen", n: r.totalPanen, ikon: <Wheat size={18} />, warna: "bg-yellow-50 text-yellow-600" },
         ].map((k) => (
@@ -106,23 +121,47 @@ async function Isi({ params, searchParams }: Props) {
               <tr className="bg-gray-50 text-[10px] font-bold text-gray-500 uppercase">
                 <th className="p-3 text-left">Kecamatan</th>
                 {isPadi && <th className="p-3 text-left">Jenis LTT</th>}
+                {isPadi && <th className="p-3 text-left">Metode Penanaman</th>}
                 <th className="p-3 text-right">Tanam (Ha)</th>
                 <th className="p-3 text-right">Panen (Ha)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {r.baris.map((b, i) => (
-                <tr key={i} className="hover:bg-gray-50">
-                  <td className="p-3 font-semibold text-gray-700">{b.kecamatan}</td>
+              {r.baris.map((b, i) => {
+                // Kecamatan dengan beberapa baris (jenis/metode berbeda) → nama ditulis sekali (rowspan).
+                const awal = i === 0 || r.baris[i - 1].kecamatan !== b.kecamatan;
+                const rentang = awal ? r.baris.slice(i).findIndex((x) => x.kecamatan !== b.kecamatan) : 0;
+                const jml = rentang === -1 ? r.baris.length - i : rentang;
+                return (
+                <tr key={i} className={`hover:bg-gray-50 ${awal ? "border-t border-gray-200" : ""}`}>
+                  {awal && (
+                    <td rowSpan={jml} className="border-r border-gray-100 bg-white p-3 align-top font-semibold text-gray-700">{b.kecamatan}</td>
+                  )}
                   {isPadi && <td className="p-3 text-gray-500">{b.jenis}</td>}
+                  {isPadi && (
+                    <td className="p-3">
+                      {b.metode === "-" ? (
+                        <span className="text-gray-300">-</span>
+                      ) : (
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                            b.metode === "PM-AAS" ? "bg-violet-100 text-violet-700" : b.metode === "Reguler" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+                          }`}
+                        >
+                          {b.metode}
+                        </span>
+                      )}
+                    </td>
+                  )}
                   <td className={`p-3 text-right ${b.tanam ? "font-bold text-gray-800" : "text-gray-300"}`}>{formatAngka(b.tanam)}</td>
                   <td className={`p-3 text-right ${b.panen ? "font-bold text-gray-800" : "text-gray-300"}`}>{formatAngka(b.panen)}</td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
             <tfoot>
               <tr className="bg-green-50 font-bold text-gray-800">
-                <td className="p-3" colSpan={isPadi ? 2 : 1}>TOTAL KABUPATEN</td>
+                <td className="p-3" colSpan={isPadi ? 3 : 1}>TOTAL KABUPATEN</td>
                 <td className="p-3 text-right">{formatAngka(r.totalTanam)}</td>
                 <td className="p-3 text-right">{formatAngka(r.totalPanen)}</td>
               </tr>

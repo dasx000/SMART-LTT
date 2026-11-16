@@ -135,7 +135,7 @@ Supabase
    ├─ Postgres (tabel + view + fungsi RPC + RLS)
    └─ Auth (users ↔ tabel profiles)
    │
-   └─▶ VPS webhook (saran, deteksi LTT) dipanggil dari server Next.js
+   └─▶ VPS webhook (deteksi LTT) dipanggil dari server Next.js
 ```
 
 Prinsip:
@@ -291,7 +291,7 @@ Helper SQL: `auth_role()`, `auth_kecamatan_id()`, `is_desa_binaan(desa_id)` (`se
 | `doPost` aksi `import_target_epusluh` → `importTargetEpusluh` | `POST /api/epusluh/import-target` |
 | `doGet ?action=target/eltt` (`LoaderTuyul.gs`) | `GET /api/tuyul/target`, `/api/tuyul/eltt` (`Content-Type: application/javascript`) |
 | `getLogsSinkron` | `/kab/logs-sinkron` |
-| `kirimSaranWebhook` | Server Action `kirimSaran` → `fetch` ke VPS (URL di env) |
+| `kirimSaranWebhook` | **Dihapus** (keputusan 16 Nov 2026, fitur saran tidak dipakai) |
 | `arsipBulanan`, `pindahKeArsip_` | **Dihapus** (tidak perlu arsip di Postgres) |
 | `backupDatabaseHarian` | Cron `pg_dump` harian 00:00 WIB → Google Drive (lihat §7b) |
 | `rekalkulasiRingkasan`, `rebuiltPadiRingkasan_`, `upsertRingkasan_` | **Dihapus** (view) |
@@ -331,7 +331,7 @@ Aturan: satu util `lib/excel.ts` (ExcelJS, dimuat dinamis saat tombol ditekan), 
 - Selama masa transisi, endpoint GAS lama **tetap aktif**; bisa kirim ke dua tujuan sekaligus selama uji paralel (Fase 7).
 
 ### 7a. VPS (bot WA + webhook) — tetap dipakai
-- Webhook `/webhook/saran` dan `/deteksi-ltt` di VPS tetap dipanggil, sekarang dari server Next.js (Server Action), URL di env `VPS_WEBHOOK_URL`.
+- Webhook `/deteksi-ltt` di VPS tetap dipanggil (`/webhook/saran` tidak lagi — fitur saran dihapus 16 Nov 2026), sekarang dari server Next.js (Server Action), URL di env `VPS_WEBHOOK_URL`.
 - Tambah header rahasia `X-Webhook-Secret` (env `VPS_WEBHOOK_SECRET`) dan cek di sisi VPS.
 - Jika bot WA perlu membaca data LTT, bot memanggil endpoint Next.js `/api/bot/*` dengan token, atau langsung ke Supabase dengan key khusus. Hindari bot memegang `service_role`.
 
@@ -420,7 +420,7 @@ Aturan: satu util `lib/excel.ts` (ExcelJS, dimuat dinamis saat tombol ditekan), 
 - [ ] Edit laporan LTT, status padi harian.
 - [ ] Rekap harian/bulanan PPL, target per desa.
 - [ ] Produktivitas per desa (tabel 12 bulan × 3 komoditas) & sarana desa.
-- [ ] Profil (nama, WA, password), kirim saran.
+- [x] Profil (`/profil`): hanya nomor WA yang bisa diubah; nama & NIP dikunci (hak Admin Kab). Ganti password tidak wajib (`/ganti-password`). Kirim saran **dihapus** (16 Nov 2026).
 
 ### Fase 5 — Fitur BPP (2 hari)
 - [ ] Dashboard kecamatan + grafik.

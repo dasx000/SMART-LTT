@@ -6,7 +6,7 @@ import { FormEditLaporan } from "@/components/laporan/form-edit-laporan";
 import { muatHalamanLaporan } from "@/components/laporan/muat-laporan";
 import { Kosong } from "@/components/ui";
 import type { CariParam } from "@/lib/param";
-import { editLaporanBppAction, hapusLaporanBppAction } from "../actions";
+import { editLaporanBppAction } from "../actions";
 
 export const metadata: Metadata = { title: "Laporan LTT — SMART LTT" };
 
@@ -25,7 +25,8 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
   const { daftar, edit } = await muatHalamanLaporan("/bpp/laporan", await searchParams, p.kecamatanId);
   return (
     <>
-      <DaftarLaporan {...daftar} aksiHapus={hapusLaporanBppAction} />
+      {/* Admin BPP hanya boleh mengubah laporan, tidak menghapus. */}
+      <DaftarLaporan {...daftar} />
       {edit && <FormEditLaporan lengkap={false} aksi={editLaporanBppAction} {...edit} />}
     </>
   );

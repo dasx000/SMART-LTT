@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ClipboardList, Goal, Inbox, Target, UserCheck, Users, Warehouse } from "lucide-react";
+import { ArrowRight, CheckCircle2, ClipboardList, Goal, MapPinned, Target, Users, Warehouse } from "lucide-react";
 import { wajibRole } from "@/lib/auth";
 import { KerangkaHalaman } from "@/components/kerangka-halaman";
 import { supabaseServer } from "@/lib/supabase/server";
-import { NAMA_BULAN, awalHariWIB, bulanTahunWIB, formatAngka } from "@/lib/format";
+import { NAMA_BULAN, bulanTahunWIB, formatAngka } from "@/lib/format";
 import { KOMODITAS, daftarDesa, daftarKecamatan, periodeDariParam, ringkasanWilayah } from "@/lib/data";
 import { daftarAnggota } from "@/lib/pengguna";
 import { KartuCapaian, PilihPeriode } from "@/components/dashboard";
@@ -43,17 +43,28 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
   ]);
   const namaKec = kecs.find((k) => k.id === p.kecamatanId)?.nama ?? "";
 
-  // Laporan hari ini (WIB) di kecamatan + siapa saja PPL yang sudah lapor (input manual)
-  const { data: hariIni } = await s
-    .from("laporan_ltt")
-    .select("pelapor_id, sumber")
-    .in("desa_id", desa.map((d) => d.id))
-    .gte("tanggal_lapor", awalHariWIB())
-    .is("dihapus_pada", null)
-    .limit(5000);
   const aktif = ppl.filter((u) => u.aktif);
-  const sudah = new Set((hariIni ?? []).map((l) => l.pelapor_id).filter(Boolean));
-  const belum = aktif.filter((u) => !sudah.has(u.id));
+
+  // Kampung yang belum mengisi target LTT PADI bulan berjalan (WIB) — hanya padi yang wajib.
+  // Ada baris target_desa padi (termasuk nilai 0) = sudah isi.
+  const { tahun: tahunKini, bulan: bulanKini } = bulanTahunWIB();
+  const { data: tgtKini } = await s
+    .from("target_desa")
+    .select("desa_id")
+    .eq("tahun", tahunKini)
+    .eq("bulan", bulanKini)
+    .eq("komoditas", "Padi")
+    .in("desa_id", desa.map((d) => d.id));
+  const sudahTarget = new Set((tgtKini ?? []).map((t) => t.desa_id));
+  const belumTarget = desa.filter((d) => !sudahTarget.has(d.id));
+  // Dikelompokkan per PPL supaya jelas siapa yang perlu diingatkan.
+  const perPpl = aktif
+    .map((u) => ({ nama: u.nama, kampung: belumTarget.filter((d) => u.desaIds.includes(d.id)).map((d) => d.nama) }))
+    .filter((x) => x.kampung.length > 0)
+    .sort((a, b) => b.kampung.length - a.kampung.length || a.nama.localeCompare(b.nama));
+  const tanpaPpl = belumTarget.filter((d) => !aktif.some((u) => u.desaIds.includes(d.id))).map((d) => d.nama);
+  if (tanpaPpl.length) perPpl.push({ nama: "Belum ada PPL", kampung: tanpaPpl });
+  const pctTarget = desa.length ? ((desa.length - belumTarget.length) / desa.length) * 100 : 0;
 
   return (
     <div className="space-y-6">
@@ -76,32 +87,50 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="flex items-center justify-between rounded-xl border-l-4 border-blue-500 bg-white p-5 shadow-sm">
-          <div>
-            <p className="mb-1 text-xs font-bold text-gray-500 uppercase">Laporan Hari Ini</p>
-            <p className="text-2xl font-bold text-gray-800">
-              {(hariIni ?? []).length} <span className="text-sm font-normal text-gray-500">Data</span>
-            </p>
-          </div>
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-500"><Inbox /></div>
-        </div>
-        <div className="rounded-xl border-l-4 border-green-500 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
+      <div className="rounded-xl bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className={`flex h-10 w-10 items-center justify-center rounded-full ${belumTarget.length ? "bg-red-50 text-red-500" : "bg-green-50 text-green-500"}`}>
+              <MapPinned size={18} />
+            </div>
             <div>
-              <p className="mb-1 text-xs font-bold text-gray-500 uppercase">Sudah Lapor Hari Ini</p>
-              <p className="text-2xl font-bold text-gray-800">
-                {aktif.length - belum.length} / {aktif.length} <span className="text-sm font-normal text-gray-500">Orang</span>
+              <p className="text-xs font-bold text-gray-500 uppercase">Target LTT Padi {NAMA_BULAN[bulanKini - 1]}</p>
+              <p className="text-lg font-bold text-gray-800">
+                {desa.length - belumTarget.length} / {desa.length} <span className="text-xs font-normal text-gray-500">kampung sudah isi</span>
               </p>
             </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-50 text-green-500"><UserCheck /></div>
           </div>
-          {belum.length > 0 && (
-            <p className="mt-2 text-[11px] text-red-600">
-              <b>Belum lapor:</b> {belum.map((u) => u.nama).join(", ")}
-            </p>
-          )}
+          <Link href={`/bpp/target?tahun=${tahunKini}&bulan=${bulanKini}&komoditas=Padi`} className="flex items-center gap-1 rounded-lg bg-cyan-50 px-3 py-1.5 text-[11px] font-bold text-cyan-700 hover:bg-cyan-100">
+            Isi Target <ArrowRight size={12} />
+          </Link>
         </div>
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-gray-100">
+          <div className={`h-full rounded-full ${pctTarget >= 100 ? "bg-green-500" : pctTarget >= 50 ? "bg-amber-400" : "bg-red-500"}`} style={{ width: `${pctTarget}%` }} />
+        </div>
+
+        {perPpl.length === 0 ? (
+          <p className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-green-600">
+            <CheckCircle2 size={14} /> Semua kampung sudah mengisi target padi bulan ini.
+          </p>
+        ) : (
+          <div className="mt-3">
+            <p className="mb-2 text-[10px] font-bold tracking-wide text-gray-400 uppercase">Belum isi target · per PPL</p>
+            <ul className="divide-y divide-gray-100">
+              {perPpl.map((x) => (
+                <li key={x.nama} className="flex flex-col gap-1.5 py-2 sm:flex-row sm:items-start sm:gap-3">
+                  <span className={`w-full shrink-0 text-xs font-semibold sm:w-56 ${x.nama === "Belum ada PPL" ? "text-gray-400 italic" : "text-gray-700"}`}>
+                    {x.nama} <span className="font-normal text-gray-400">({x.kampung.length})</span>
+                  </span>
+                  <span className="flex flex-wrap gap-1">
+                    {x.kampung.map((k) => (
+                      <span key={k} className="rounded-md border border-red-100 bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-600">{k}</span>
+                    ))}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">

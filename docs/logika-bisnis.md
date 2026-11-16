@@ -85,6 +85,7 @@
 ## 5. Target PM AAS (Kabupaten)
 
 - **Sheet `Target_PmAas_Kabupaten`**: `Tahun, Bulan (1–12), Target_Tanam_Ha`. Satu baris per tahun+bulan (upsert).
+- **Sistem baru (16 Nov 2026):** target ("kesanggupan tanam") diisi **per kecamatan per tahun+bulan** (`ltt.target_pm_aas_kecamatan`, migrasi 0014) oleh Admin Kab lewat "Set Target". **Target kabupaten = jumlah target kecamatan**; bila bulan itu belum dirinci, dipakai angka lama `ltt.target_pm_aas`. Rekap per kecamatan menampilkan Target, Tanam, Capaian %, Panen.
 - **Realisasi PM AAS** = jumlah luas tanam & panen baris **padi** (bulan itu) yang kolom `Metode_Penanaman` **mengandung teks "PM AAS"** (huruf besar/kecil bebas).
 - Hasil: total tanam, total panen, target, **% capaian = total tanam ÷ target × 100** (0 jika target 0), rincian per metode (urut tanam terbesar), rekap per kecamatan (urut nama). Dibulatkan 2 desimal.
 
@@ -216,6 +217,11 @@ Perhitungan persen capaian dilakukan di browser (lihat bagian frontend).
 - ❗ **Temuan penting:** sheet **`Target_Bulanan` dan `Target_Detail_Jenis` tidak dipakai aplikasi lagi.** Satu-satunya yang membacanya adalah `migrasiTargetKeV2()` (fungsi pindah data sekali jalan ke format `Target_Desa_*`). ❓ Mohon konfirmasi: kalau setuju, kedua sheet ini **tidak dimigrasi** (cukup disimpan di arsip spreadsheet), karena isinya sudah ada di `Target_Desa_*`.
 - ❗ **`Target_Kecamatan_Provinsi` tidak punya fungsi tulis di aplikasi** — selama ini diisi langsung di spreadsheet. Karena spreadsheet tidak dipakai lagi, **sistem baru perlu halaman input target provinsi per kecamatan** (Admin Kab). ❓
 - ⚠️ Semua sheet target hanya punya **Bulan (1–12), tanpa Tahun** (kecuali PM AAS). Lihat §16.
+- **Sistem baru (16 Nov 2026, migrasi 0015):**
+  - Semua target punya **Tahun + Bulan**. Data lama `target_desa` diberi tahun 2026.
+  - **Target Desa** (`target_desa`) hanya diisi **PPL masing-masing** untuk desa binaannya (penyuluh / Admin BPP di mode PPL). Admin BPP & Admin Kab hanya melihat.
+  - **Target Kecamatan** = jumlah target desa (view `v_target_kecamatan`); **Target Kabupaten** = jumlah target kecamatan (`v_target_kabupaten`). Tidak diisi manual; tabel lama `target_kecamatan` hanya arsip.
+  - **Target Provinsi** (`target_provinsi`) = target tiap kecamatan yang ditetapkan provinsi (bukan jumlah desa), diisi **Admin Kab** di `/kab/target` → Detail bulan → "Set Target Provinsi". Isi awal = angka lama `target_kecamatan`. Dipakai sebagai **pembagi capaian %** di kartu capaian dashboard Kab/BPP, rekap kecamatan, dan kolom target tabel LTT Padi **format Provinsi**; di halaman target ditampilkan berdampingan dengan jumlah target desa (selisih kurang/lebih).
 
 ### 17b. Lihat target (`ambilTargetBulanan({bulan, komoditas})`)
 
@@ -285,7 +291,7 @@ Aturan sesuai plan lama (sudah diimplementasikan di GAS):
 - `doGet ?action=target` / `?action=eltt` → menyajikan kode bookmarklet.
 - ⚠️ `doGet ?action=migrasi` → **siapa pun yang tahu URL bisa menjalankan `migrasiTargetKeV3()`**. Tidak dibawa ke sistem baru.
 - `doPost` aksi `sinkron_padi`, `import_target_epusluh` — tanpa token.
-- `kirimSaranWebhook(pesan, user)` → POST ke VPS `/webhook/saran` dengan `{timestamp, saran, pengguna:{id,nama,nip,role,kecamatan,desa}}`. Pesan kosong ditolak.
+- `kirimSaranWebhook(pesan, user)` → POST ke VPS `/webhook/saran` dengan `{timestamp, saran, pengguna:{id,nama,nip,role,kecamatan,desa}}`. Pesan kosong ditolak. **Tidak dibawa ke sistem baru** (keputusan user 16 Nov 2026: fitur saran tidak dipakai).
 
 ## 22. Bookmarklet e-Pusluh (`LoaderTuyul.gs`)
 
@@ -352,7 +358,7 @@ Kedua bookmarklet dijalankan admin di halaman e-Pusluh, membaca tabel di layar (
 ### 23f. Halaman BPP
 
 - Hanya `Admin_BPP`. Judul "BPP <KECAMATAN>". Menu: Dashboard, Verifikasi, Target, Manajemen PPL, Laporan LTT.
-- **Dashboard**: laporan hari ini, menunggu verifikasi, "sudah lapor x / y orang", daftar nama PPL belum lapor (merah), tabel antrean hari ini (centang → "Sahkan?" → `Terverifikasi BPP`; tombol edit tanam/panen/keterangan per baris).
+- **Dashboard**: laporan hari ini, menunggu verifikasi, "Target LTT Padi bulan berjalan x / y kampung terisi" + daftar kampung belum isi target **padi** (hanya padi yang wajib) dikelompokkan per PPL (baris target bernilai 0 dihitung sudah isi), tabel antrean hari ini (centang → "Sahkan?" → `Terverifikasi BPP`; tombol edit tanam/panen/keterangan per baris).
 - **Laporan LTT BPP**: sama dengan Laporan LTT Kab tapi dikunci ke kecamatannya; bisa edit (tanam, panen, keterangan) — termasuk baris **padi**. Unduh Excel.
 - **Target**: daftar PPL di kecamatan dengan total target desa binaannya per bulan & komoditas, status Sudah/Belum; BPP bisa **input/edit target untuk desa-desa PPL tersebut** (form yang sama dengan PPL, §23h).
 - **Manajemen PPL**: tambah PPL (role otomatis `Penyuluh`, password min. 4), ubah nama/desa binaan (checklist desa dari master kecamatan), aktif/nonaktifkan, reset password, **hapus PPL**.
@@ -363,13 +369,12 @@ Kedua bookmarklet dijalankan admin di halaman e-Pusluh, membaca tabel di layar (
 - Tabel per kecamatan (komoditas Jagung/Ubi Kayu, tanggal opsional): total laporan, belum diverifikasi BPP, siap verifikasi, sudah Kab, tanam, panen. Filter status & cari.
 - Tombol **verifikasi per kecamatan** → semua laporan berstatus `Terverifikasi BPP` di kecamatan itu → `Terverifikasi Kabupaten`.
 
-### 23h. Input target oleh PPL (& BPP untuk PPL-nya)
+### 23h. Input target oleh PPL
 
-- Per bulan × komoditas, satu kartu per desa binaan.
+- Per **tahun** × bulan × komoditas, satu kartu per desa binaan. Hanya PPL pemilik desa binaan yang bisa mengisi (dicek di server + RLS 0015); mode BPP hanya rekap.
 - **Padi**: baris rincian (jenis LTT dari `Jenis_LTT` + luas tanam + luas panen, wajib); **total tanam & panen dihitung otomatis** = jumlah rincian (kolom terkunci). Default satu baris `LTT Reguler`.
 - **Jagung / Ubi Kayu**: total tanam & total panen wajib.
 - Luas baku opsional. IP selalu 0.
-- ⚠️ Server tidak mengecek desa itu milik PPL/BPP pemanggil.
 
 ### 23i. Rekap PPL
 

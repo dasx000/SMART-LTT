@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Download } from "lucide-react";
 
 /** Komponen tampilan kecil tanpa JS (Server Component) — dipakai halaman-halaman fitur. */
 
@@ -30,17 +29,8 @@ export function Kartu({ judul, aksi, children, className = "" }: { judul?: strin
   );
 }
 
-/** Tombol unduh = tautan biasa ke /api/unduh/... (file dibuat di server, tanpa JS di HP). */
-export function TombolUnduh({ href, label = "Unduh Excel" }: { href: string; label?: string }) {
-  return (
-    <a
-      href={href}
-      className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700 active:scale-95"
-    >
-      <Download className="h-4 w-4" aria-hidden /> {label}
-    </a>
-  );
-}
+/** Tombol unduh Excel — file dirakit di browser (lihat components/tombol-unduh.tsx). */
+export { TombolUnduh } from "@/components/tombol-unduh";
 
 export const kelasInput =
   "w-full rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium focus:border-primary focus:outline-hidden";
@@ -122,13 +112,14 @@ export function Persen({ realisasi, target }: { realisasi: number; target: numbe
 }
 
 /**
- * Pilihan bulan (GET) + komoditas (tautan) untuk halaman target — semuanya URL, tanpa JS.
+ * Pilihan tahun + bulan (GET) + komoditas (tautan) untuk halaman target — semuanya URL, tanpa JS.
  * `info` misalnya "Terisi 2 / 5 desa".
  */
 export function PilihBulanKomoditas({
-  dasar, bulan, kom, info,
+  dasar, tahun, bulan, kom, info,
 }: {
   dasar: string;
+  tahun: number;
   bulan: number;
   kom: string;
   info?: ReactNode;
@@ -138,6 +129,14 @@ export function PilihBulanKomoditas({
     <div className="mb-3 space-y-2 rounded-2xl border border-gray-200 bg-white p-3">
       <form method="get" action={dasar} className="flex items-end gap-2">
         <input type="hidden" name="komoditas" value={kom} />
+        <label className="flex flex-col gap-1 text-[11px] font-semibold text-gray-500">
+          Tahun
+          <select name="tahun" defaultValue={tahun} className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium">
+            {pilihanTahun(tahun).map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        </label>
         <label className="flex flex-1 flex-col gap-1 text-[11px] font-semibold text-gray-500">
           Bulan
           <select name="bulan" defaultValue={bulan} className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium">
@@ -152,7 +151,7 @@ export function PilihBulanKomoditas({
         {["Padi", "Jagung", "Ubi Kayu"].map((k) => (
           <Link
             key={k}
-            href={`${dasar}?bulan=${bulan}&komoditas=${encodeURIComponent(k)}`}
+            href={`${dasar}?tahun=${tahun}&bulan=${bulan}&komoditas=${encodeURIComponent(k)}`}
             aria-current={kom === k ? "page" : undefined}
             className={`flex-1 rounded-lg py-2 text-center text-xs font-bold transition-all ${kom === k ? "bg-green-600 text-white" : "text-gray-500 hover:bg-white"}`}
           >
@@ -163,4 +162,18 @@ export function PilihBulanKomoditas({
       {info && <p className="text-right text-xs text-gray-500">{info}</p>}
     </div>
   );
+}
+
+/** Tahun pertama data target di aplikasi (data lama dimigrasikan sebagai 2026). */
+const TAHUN_AWAL_TARGET = 2026;
+
+/**
+ * Pilihan tahun target: dari tahun pertama data (2026) s.d. tahun depan (tahun berjalan WIB + 1),
+ * plus tahun terpilih. Bertambah otomatis tiap ganti tahun — mis. tahun 2028 → 2026, 2027, 2028, 2029.
+ */
+export function pilihanTahun(terpilih: number): number[] {
+  const kini = Number(new Intl.DateTimeFormat("en", { timeZone: "Asia/Jakarta", year: "numeric" }).format(new Date()));
+  const awal = Math.min(TAHUN_AWAL_TARGET, kini - 1);
+  const daftar = Array.from({ length: kini + 1 - awal + 1 }, (_, i) => awal + i);
+  return [...new Set([...daftar, terpilih])].sort((a, b) => a - b);
 }

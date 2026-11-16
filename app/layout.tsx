@@ -9,6 +9,10 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "sw
 export const metadata: Metadata = {
   title: { default: "SMART LTT", template: "%s · SMART LTT" },
   description: "Pelaporan Luas Tambah Tanam (LTT) Padi, Jagung, dan Ubi Kayu.",
+  applicationName: "SMART LTT",
+  // iPhone: "Tambah ke Layar Utama" → nama di bawah ikon + tampil tanpa bilah Safari
+  appleWebApp: { capable: true, title: "SMART LTT", statusBarStyle: "default" },
+  formatDetection: { telephone: false }, // NIP/angka panjang jangan dijadikan tautan telepon
 };
 
 export const viewport: Viewport = {
@@ -22,7 +26,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="id" className={`${inter.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         {/* Garis progres di atas layar saat pindah halaman (gaya YouTube) */}
-        <NextTopLoader color="#15803d" height={3} showSpinner={false} shadow={false} />
+        <NextTopLoader color="#f97316" height={4} showSpinner={false} shadow="0 0 10px #f97316,0 0 5px #fb923c" zIndex={9999} />
         {children}
       </body>
     </html>

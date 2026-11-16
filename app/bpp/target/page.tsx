@@ -3,13 +3,12 @@ import { wajibRole } from "@/lib/auth";
 import { KerangkaHalaman } from "@/components/kerangka-halaman";
 import { supabaseServer } from "@/lib/supabase/server";
 import { NAMA_BULAN, bulanTahunWIB, formatAngka } from "@/lib/format";
-import { KOMODITAS, ambilTargetDesa, daftarDesa, jenisPadi, type Komoditas } from "@/lib/data";
+import { KOMODITAS, ambilTargetDesa, daftarDesa, type Komoditas } from "@/lib/data";
 import { daftarAnggota } from "@/lib/pengguna";
-import { FormTarget } from "@/components/form-target";
 import { JudulHalaman, Kartu, Kosong, PilihBulanKomoditas, Tabel, sel, selAngka } from "@/components/ui";
 import { angkaParam, teksParam, type CariParam } from "@/lib/param";
 
-export const metadata: Metadata = { title: "Target BPP — SMART LTT" };
+export const metadata: Metadata = { title: "Target Desa — SMART LTT" };
 
 export default function HalamanTargetBpp({ searchParams }: { searchParams: CariParam }) {
   return (
@@ -23,16 +22,17 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
   const p = await wajibRole("admin_bpp");
   if (!p.kecamatanId) return <Kosong teks="Akun Anda belum terikat ke kecamatan. Hubungi Admin Kabupaten." />;
   const q = await searchParams;
-  const bulan = angkaParam(q, "bulan", 1, 12, bulanTahunWIB().bulan);
+  const kini = bulanTahunWIB();
+  const tahun = angkaParam(q, "tahun", 2000, 2100, kini.tahun);
+  const bulan = angkaParam(q, "bulan", 1, 12, kini.bulan);
   const kom = ((KOMODITAS as string[]).includes(teksParam(q, "komoditas") ?? "") ? teksParam(q, "komoditas") : "Padi") as Komoditas;
 
   const s = await supabaseServer();
-  const [desa, jenis, ppl] = await Promise.all([
+  const [desa, ppl] = await Promise.all([
     daftarDesa(s, p.kecamatanId),
-    jenisPadi(s),
     daftarAnggota({ kecamatanId: p.kecamatanId, role: ["penyuluh", "admin_bpp"] }),
   ]);
-  const target = await ambilTargetDesa(s, desa.map((d) => d.id), { bulan, komoditas: kom });
+  const target = await ambilTargetDesa(s, desa.map((d) => d.id), { tahun, bulan, komoditas: kom });
   const aktif = ppl.filter((x) => x.aktif);
 
   // Target per PPL = jumlah target desa binaannya (logika-bisnis §10)
@@ -47,15 +47,20 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
     };
   });
 
+  const perDesa = desa.map((d) => {
+    const t = target.find((x) => x.bulan === bulan && x.komoditas === kom && x.desaId === d.id);
+    return { id: d.id, nama: d.nama, ada: Boolean(t), tanam: t?.tanam ?? 0, panen: t?.panen ?? 0 };
+  });
+
   const namaPpl = (desaId: number) =>
     aktif.filter((u) => u.desaIds.includes(desaId)).map((u) => u.nama).join(", ") || "Belum ada PPL";
 
   return (
     <>
-      <JudulHalaman judul="Target Desa Kecamatan" sub="Isi atau perbaiki target desa untuk PPL di kecamatan Anda. Target kecamatan diisi di Dashboard BPP." />
+      <JudulHalaman judul="Target Desa Kecamatan" sub="Rekap target desa yang diisi masing-masing PPL. Target kecamatan = jumlah target desa." />
 
-      <PilihBulanKomoditas dasar="/bpp/target" bulan={bulan} kom={kom} />
-      <Kartu judul={`Rekap target per PPL — ${kom}, ${NAMA_BULAN[bulan - 1]}`} className="mb-4">
+      <PilihBulanKomoditas dasar="/bpp/target" tahun={tahun} bulan={bulan} kom={kom} />
+      <Kartu judul={`Rekap target per PPL — ${kom}, ${NAMA_BULAN[bulan - 1]} ${tahun}`} className="mb-4">
         {ringkas.length === 0 ? (
           <Kosong teks="Belum ada PPL aktif di kecamatan ini." />
         ) : (
@@ -88,14 +93,30 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
         )}
       </Kartu>
 
-      <h2 className="mb-2 text-sm font-bold">Isi target per desa</h2>
-      <FormTarget
-        desa={desa.map((d) => ({ id: d.id, nama: d.nama, label: `PPL: ${namaPpl(d.id)}` }))}
-        jenis={jenis}
-        target={target.filter((t) => t.bulan === bulan && t.komoditas === kom)}
-        bulan={bulan}
-        kom={kom}
-      />
+      <Kartu judul={`Rincian target per desa — ${kom}, ${NAMA_BULAN[bulan - 1]} ${tahun}`}>
+        <Tabel
+          kepala={["Desa", "PPL", "Target Tanam", "Target Panen", "Status"]}
+          kaki={
+            <tr>
+              <td className={sel} colSpan={2}>JUMLAH (= target kecamatan)</td>
+              <td className={selAngka}>{formatAngka(perDesa.reduce((a, r) => a + r.tanam, 0))}</td>
+              <td className={selAngka}>{formatAngka(perDesa.reduce((a, r) => a + r.panen, 0))}</td>
+              <td className={sel}></td>
+            </tr>
+          }
+        >
+          {perDesa.map((r) => (
+            <tr key={r.id}>
+              <td className={sel}>{r.nama}</td>
+              <td className={`${sel} text-gray-500`}>{namaPpl(r.id)}</td>
+              <td className={selAngka}>{r.ada ? formatAngka(r.tanam) : "–"}</td>
+              <td className={selAngka}>{r.ada ? formatAngka(r.panen) : "–"}</td>
+              <td className={`${sel} text-center font-bold ${r.ada ? "text-primary" : "text-danger"}`}>{r.ada ? "Sudah" : "Belum"}</td>
+            </tr>
+          ))}
+        </Tabel>
+        <p className="mt-2 text-[11px] text-gray-500">Target desa hanya diisi oleh PPL masing-masing lewat menu Target Bulanan.</p>
+      </Kartu>
     </>
   );
 }

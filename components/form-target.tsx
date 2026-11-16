@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { formatAngka, parseDesimal } from "@/lib/format";
+import { angkaIsian, formatAngka, parseDesimal } from "@/lib/format";
 import { gagal, sukses } from "@/lib/swal";
 import { simpanTargetDesaAction } from "@/app/ppl/target/actions";
 import type { TargetDesaData, JenisRef, Komoditas } from "@/lib/data";
@@ -10,10 +10,10 @@ type DesaForm = { id: number; nama: string; label?: string };
 
 const kelasIn =
   "w-full rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 text-right text-sm tabular-nums focus:border-primary focus:outline-hidden";
-const tampil = (n: number) => (n ? formatAngka(n) : "");
+const tampil = angkaIsian;
 
 /**
- * Kartu input target per desa (logika-bisnis §23h) untuk SATU (bulan, komoditas) dari URL.
+ * Kartu input target per desa (logika-bisnis §23h) untuk SATU (tahun, bulan, komoditas) dari URL.
  * Padi: rincian per jenis LTT, total dihitung otomatis. Jagung/Ubi Kayu: total langsung.
  * Pilihan bulan & komoditas = <PilihBulanKomoditas> (server, URL).
  */
@@ -21,20 +21,22 @@ export function FormTarget({
   desa,
   jenis,
   target,
+  tahun,
   bulan,
   kom,
 }: {
   desa: DesaForm[];
   jenis: JenisRef[];
-  /** target untuk (bulan, kom) ini saja */
+  /** target untuk (tahun, bulan, kom) ini saja */
   target: TargetDesaData[];
+  tahun: number;
   bulan: number;
   kom: Komoditas;
 }) {
   return (
     <div className="space-y-3">
       {desa.map((d) => (
-        <KartuDesa key={`${d.id}-${bulan}-${kom}`} desa={d} bulan={bulan} kom={kom} jenis={jenis} awal={target.find((t) => t.desaId === d.id)} />
+        <KartuDesa key={`${d.id}-${tahun}-${bulan}-${kom}`} desa={d} tahun={tahun} bulan={bulan} kom={kom} jenis={jenis} awal={target.find((t) => t.desaId === d.id)} />
       ))}
     </div>
   );
@@ -42,12 +44,14 @@ export function FormTarget({
 
 function KartuDesa({
   desa,
+  tahun,
   bulan,
   kom,
   jenis,
   awal,
 }: {
   desa: DesaForm;
+  tahun: number;
   bulan: number;
   kom: Komoditas;
   jenis: JenisRef[];
@@ -80,6 +84,7 @@ function KartuDesa({
     e.preventDefault();
     mulai(async () => {
       const h = await simpanTargetDesaAction({
+        tahun,
         bulan,
         desaId: desa.id,
         komoditas: kom,

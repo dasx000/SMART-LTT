@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ChevronRight, FileSpreadsheet, Scale } from "lucide-react";
 import { wajibRole } from "@/lib/auth";
 import { KerangkaHalaman } from "@/components/kerangka-halaman";
+import { TombolUnduh } from "@/components/tombol-unduh";
 import { supabaseServer } from "@/lib/supabase/server";
 import { NAMA_BULAN, bulanTahunWIB, formatAngka } from "@/lib/format";
 import { KOMODITAS, ambilProduktivitas, daftarDesa, daftarKecamatan, rataPositif, tahunProduktivitas } from "@/lib/data";
@@ -52,9 +53,7 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
             ))}
           </select>
           <button type="submit" className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white">Tampilkan</button>
-          <a href={`/api/unduh/produktivitas?tahunDari=${tahun}&tahunSampai=${tahun}`} className="flex items-center gap-1.5 rounded-lg bg-green-700 px-3 py-1.5 text-xs font-bold text-white">
-            <FileSpreadsheet size={14} /> Unduh Excel
-          </a>
+          <TombolUnduh href={`/api/unduh/produktivitas?tahunDari=${tahun}&tahunSampai=${tahun}`} ikon={<FileSpreadsheet size={14} />} className="flex items-center gap-1.5 rounded-lg bg-green-700 px-3 py-1.5 text-xs font-bold text-white" />
         </form>
       </div>
 

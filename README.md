@@ -63,7 +63,7 @@ _gas_lama/           kode Apps Script lama (rujukan, jangan diubah)
 ## Integrasi
 
 - **Data padi** masuk otomatis dari bot VPS (`DASBOT/scripts/run_tarik_data.py`, jadwal 11:30, 12:30, 13:30, 22:30 WIB) ke endpoint `POST /api/v1/epusluh/padi` dengan kunci API berizin `epusluh:tulis` (menu **Akses API**). Dokumentasi semua endpoint: `/kab/akses-api/dokumentasi`.
-- **Saran pengguna** diteruskan ke webhook VPS (`VPS_WEBHOOK_URL`).
+- Fitur **kirim saran** dari aplikasi lama **tidak dibawa** (keputusan 16 Nov 2026, tidak dipakai).
 
 ## Aturan penting
 

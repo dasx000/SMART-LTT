@@ -1,7 +1,7 @@
 import "server-only";
 import { supabaseServer } from "@/lib/supabase/server";
 import { ambilSemua } from "@/lib/supabase/ambil-semua";
-import { rentangBulanWIB, tanggalIsoWIB } from "@/lib/format";
+import { bulanTahunWIB, rentangBulanWIB, tanggalIsoWIB } from "@/lib/format";
 
 /**
  * Lapisan data bersama: dipakai halaman DAN tombol unduh Excel, supaya angka di layar
@@ -137,18 +137,10 @@ export async function ambilLaporan(
   });
 }
 
-// ─── Kategori (dashboard target vs realisasi & rekap Dinas) ───────────────────
+// ─── Kategori jenis LTT (dipakai rekap Dinas & format Provinsi) ────────────────
 
-/** Kategori lama (logika-bisnis §23d/23e). Oplah 2024/2026, CSR, Rehab tidak masuk (keputusan §25 no. 16). */
+/** Kategori lama (logika-bisnis §23d/23e). */
 export type Kategori = "LTTReguler" | "PadiGogo" | "Oplah2025" | "Jagung" | "UbiKayu";
-
-export const KATEGORI: { kunci: Kategori; label: string }[] = [
-  { kunci: "LTTReguler", label: "LTT Reguler" },
-  { kunci: "PadiGogo", label: "LTT Padi Gogo" },
-  { kunci: "Oplah2025", label: "LTT Oplah 2025" },
-  { kunci: "Jagung", label: "Jagung" },
-  { kunci: "UbiKayu", label: "Ubi Kayu" },
-];
 
 export function kategoriDari(komoditas: Komoditas, jenis: string | null): Kategori | null {
   if (komoditas === "Jagung") return "Jagung";
@@ -163,79 +155,6 @@ export function kategoriDari(komoditas: Komoditas, jenis: string | null): Katego
 type TR = { tanam: number; panen: number };
 const nol = (): TR => ({ tanam: 0, panen: 0 });
 
-/** Target per kecamatan per kategori untuk satu bulan. */
-export async function targetKategoriPerKecamatan(s: Supa, bulan: number): Promise<Map<number, Record<Kategori, TR>>> {
-  const desa = await daftarDesa(s);
-  const kecDesa = new Map(desa.map((d) => [d.id, d.kecamatan_id]));
-  const jenis = await jenisPadi(s);
-  const namaJenis = new Map(jenis.map((j) => [j.id, j.nama]));
-
-  const [{ data: td, error: e1 }, { data: tk, error: e2 }] = await Promise.all([
-    s.from("target_desa")
-      .select("desa_id, komoditas, target_tanam, target_panen, rincian:target_desa_rincian(jenis_ltt_id, target_tanam, target_panen)")
-      .eq("bulan", bulan)
-      .limit(5000),
-    s.from("target_kecamatan").select("kecamatan_id, komoditas, target_tanam, target_panen").eq("bulan", bulan),
-  ]);
-  if (e1) throw new Error(e1.message);
-  if (e2) throw new Error(e2.message);
-
-  const hasil = new Map<number, Record<Kategori, TR>>();
-  const ambil = (kecId: number) => {
-    let r = hasil.get(kecId);
-    if (!r) {
-      r = { LTTReguler: nol(), PadiGogo: nol(), Oplah2025: nol(), Jagung: nol(), UbiKayu: nol() };
-      hasil.set(kecId, r);
-    }
-    return r;
-  };
-
-  // 1. Jumlah target desa (padi per jenis dari rincian)
-  for (const t of td ?? []) {
-    const kecId = kecDesa.get(t.desa_id);
-    if (!kecId) continue;
-    const r = ambil(kecId);
-    if (t.komoditas === "Padi") {
-      for (const ri of (t.rincian as { jenis_ltt_id: number; target_tanam: number; target_panen: number }[]) ?? []) {
-        const k = kategoriDari("Padi", namaJenis.get(ri.jenis_ltt_id) ?? null);
-        if (!k) continue;
-        r[k].tanam += Number(ri.target_tanam) || 0;
-        r[k].panen += Number(ri.target_panen) || 0;
-      }
-    } else {
-      const k = kategoriDari(t.komoditas as Komoditas, null)!;
-      r[k].tanam += Number(t.target_tanam) || 0;
-      r[k].panen += Number(t.target_panen) || 0;
-    }
-  }
-
-  // 2. Target kecamatan (diisi Admin BPP) MENIMPA hasil jumlah desa, seperti Target_Kecamatan_Provinsi
-  //    di aplikasi lama: padi → hanya kategori LTT Reguler (logika-bisnis §17a). Nilai 0 = tidak diisi.
-  for (const t of tk ?? []) {
-    const r = ambil(t.kecamatan_id);
-    const k: Kategori = t.komoditas === "Padi" ? "LTTReguler" : t.komoditas === "Jagung" ? "Jagung" : "UbiKayu";
-    if (Number(t.target_tanam) > 0) r[k].tanam = Number(t.target_tanam);
-    if (Number(t.target_panen) > 0) r[k].panen = Number(t.target_panen);
-  }
-  return hasil;
-}
-
-export function realisasiKategoriPerKecamatan(laporan: BarisLaporan[]): Map<number, Record<Kategori, TR>> {
-  const hasil = new Map<number, Record<Kategori, TR>>();
-  for (const l of laporan) {
-    const k = kategoriDari(l.komoditas, l.jenis);
-    if (!k) continue;
-    let r = hasil.get(l.kecamatanId);
-    if (!r) {
-      r = { LTTReguler: nol(), PadiGogo: nol(), Oplah2025: nol(), Jagung: nol(), UbiKayu: nol() };
-      hasil.set(l.kecamatanId, r);
-    }
-    r[k].tanam += l.tanam;
-    r[k].panen += l.panen;
-  }
-  return hasil;
-}
-
 /** Laporan satu bulan (WIB) se-kabupaten. */
 export async function laporanBulan(s: Supa, tahun: number, bulan: number, kecs?: Kec[]) {
   const { dari, sampai } = rentangBulanWIB(tahun, bulan);
@@ -244,36 +163,160 @@ export async function laporanBulan(s: Supa, tahun: number, bulan: number, kecs?:
 
 // ─── Rekap Dinas (logika-bisnis §23e) ──────────────────────────────────────────
 
-export type BarisDinas = {
-  kecamatan: string;
-  padiReguler: TR;
-  padiGogo: TR;
-  jagung: TR;
-  kedelai: TR; // selalu 0 (keputusan §25 no. 15)
-  ubiKayu: TR;
-};
+/** Kolom tabel Rekapitulasi LTT (dashboard & Excel), berurutan. Kedelai dihapus (16 Nov 2026). */
+export const KOLOM_DINAS = [
+  { kunci: "padiReguler", label: "LTT Padi Reguler" },
+  { kunci: "padiGogo", label: "LTT Padi Gogo" },
+  { kunci: "oplah2026", label: "LTT Padi OPLAH 2026" },
+  { kunci: "jagung", label: "LTT Jagung" },
+  { kunci: "ubiKayu", label: "LTT Ubi Kayu" },
+] as const;
+export type KunciDinas = (typeof KOLOM_DINAS)[number]["kunci"];
+export type BarisDinas = { kecamatan: string } & Record<KunciDinas, TR>;
+
+function kunciDinas(l: BarisLaporan): KunciDinas | null {
+  if (l.komoditas === "Jagung") return "jagung";
+  if (l.komoditas === "Ubi Kayu") return "ubiKayu";
+  const j = (l.jenis ?? "").toLowerCase().replace(/\s+/g, " ");
+  if (j.includes("oplah") && j.includes("2026")) return "oplah2026";
+  const k = kategoriDari("Padi", l.jenis);
+  return k === "LTTReguler" ? "padiReguler" : k === "PadiGogo" ? "padiGogo" : null;
+}
 
 export function rekapDinas(kecs: Kec[], laporan: BarisLaporan[]): BarisDinas[] {
-  const r = realisasiKategoriPerKecamatan(laporan);
-  return kecs.map((k) => {
-    const x = r.get(k.id);
+  const baru = (nama: string): BarisDinas => ({ kecamatan: nama, padiReguler: nol(), padiGogo: nol(), oplah2026: nol(), jagung: nol(), ubiKayu: nol() });
+  const peta = new Map(kecs.map((k) => [k.id, baru(k.nama)]));
+  for (const l of laporan) {
+    const b = peta.get(l.kecamatanId);
+    const k = kunciDinas(l);
+    if (!b || !k) continue;
+    b[k].tanam += l.tanam;
+    b[k].panen += l.panen;
+  }
+  return [...peta.values()];
+}
+
+// ─── Laporan LTT Padi format Provinsi (hari ini + 1 s.d hari ini) ───────────────
+
+/** Kolom realisasi tabel format Provinsi (khusus padi), berurutan. */
+export const KOLOM_PROV = [
+  { kunci: "reguler", label: "LTT Padi Reguler" },
+  { kunci: "gogo", label: "LTT Padi Lahan Kering/Gogo" },
+  { kunci: "oplah2026", label: "LTT Padi OPLAH 2026" },
+  { kunci: "pmAasReguler", label: "LTT PM-AAS Reguler" },
+  { kunci: "pmAasOplah", label: "LTT PM-AAS OPLAH" },
+] as const;
+export type KunciProv = (typeof KOLOM_PROV)[number]["kunci"];
+type NilaiProv = Record<KunciProv, number>;
+export type BarisProv = {
+  kecamatan: string;
+  target: number;
+  hariIni: NilaiProv & { total: number };
+  kumulatifPmAas: number;
+  kumulatif: number;
+  persen: number;
+};
+
+/**
+ * Kategori laporan padi untuk tabel Provinsi. PM-AAS dipisah dulu (Reguler / Oplah tahun berapa pun);
+ * selain itu Reguler, Gogo, Oplah 2026. Jenis lain (Oplah 2024/2025, CSR, Rehab) → null, tidak dihitung.
+ */
+function kunciProv(l: BarisLaporan): KunciProv | null {
+  if (l.komoditas !== "Padi") return null;
+  const j = (l.jenis ?? "").toLowerCase().replace(/\s+/g, " ");
+  const oplah = j.includes("oplah");
+  const kat = kategoriDari("Padi", l.jenis);
+  if (l.metode === "PM AAS") {
+    if (oplah) return "pmAasOplah";
+    if (kat === "LTTReguler") return "pmAasReguler";
+  }
+  if (kat === "LTTReguler") return "reguler";
+  if (kat === "PadiGogo") return "gogo";
+  if (oplah && j.includes("2026")) return "oplah2026";
+  return null;
+}
+
+/**
+ * Tabel LTT Padi format Provinsi untuk bulan terpilih (WIB). Tanggal akhir = hari ini bila bulan berjalan,
+ * atau tanggal terakhir bulan itu bila bulan lalu. Kolom realisasi = tanggal akhir saja,
+ * total = tanggal 1 s.d tanggal akhir. Target = Target Provinsi padi per kecamatan bulan itu (diisi Admin Kab, `target_provinsi`).
+ */
+export async function rekapProvinsiPadi(s: Supa, tahun: number, bulan: number, kecs?: Kec[]) {
+  const daftar = kecs ?? (await daftarKecamatan(s));
+  const now = bulanTahunWIB();
+  const bulanBerjalan = now.tahun === tahun && now.bulan === bulan;
+  const hariTerakhir = new Date(Date.UTC(tahun, bulan, 0)).getUTCDate();
+  const akhir = bulanBerjalan ? tanggalIsoWIB() : `${tahun}-${String(bulan).padStart(2, "0")}-${String(hariTerakhir).padStart(2, "0")}`;
+  const { dari, sampai } = rentangBulanWIB(tahun, bulan);
+  const [lap, { data: tgt, error }] = await Promise.all([
+    ambilLaporan(s, { dari, sampai, komoditas: "Padi" }, daftar),
+    s.from("target_provinsi").select("kecamatan_id, target_tanam").eq("tahun", tahun).eq("bulan", bulan).eq("komoditas", "Padi"),
+  ]);
+  if (error) throw new Error(error.message);
+
+  const kosong = (): NilaiProv => ({ reguler: 0, gogo: 0, oplah2026: 0, pmAasReguler: 0, pmAasOplah: 0 });
+  const peta = new Map(daftar.map((k) => [k.id, { hari: kosong(), kum: kosong(), target: 0 }]));
+  for (const t of tgt ?? []) {
+    const p = peta.get(t.kecamatan_id);
+    if (p) p.target += Number(t.target_tanam) || 0;
+  }
+  for (const l of lap) {
+    const p = peta.get(l.kecamatanId);
+    const k = kunciProv(l);
+    if (!p || !k) continue;
+    const tgl = tanggalIsoWIB(l.waktu);
+    if (tgl > akhir) continue;
+    p.kum[k] += l.tanam;
+    if (tgl === akhir) p.hari[k] += l.tanam;
+  }
+
+  const jumlah = (n: NilaiProv) => KOLOM_PROV.reduce((a, c) => a + n[c.kunci], 0);
+  const baris: BarisProv[] = daftar.map((k) => {
+    const p = peta.get(k.id)!;
+    const kumulatif = jumlah(p.kum);
     return {
       kecamatan: k.nama,
-      padiReguler: x?.LTTReguler ?? nol(),
-      padiGogo: x?.PadiGogo ?? nol(),
-      jagung: x?.Jagung ?? nol(),
-      kedelai: nol(),
-      ubiKayu: x?.UbiKayu ?? nol(),
+      target: p.target,
+      hariIni: { ...p.hari, total: jumlah(p.hari) },
+      kumulatifPmAas: p.kum.pmAasReguler + p.kum.pmAasOplah,
+      kumulatif,
+      persen: p.target > 0 ? (kumulatif / p.target) * 100 : 0,
     };
   });
+  const tot = (f: (b: BarisProv) => number) => baris.reduce((a, b) => a + f(b), 0);
+  const totalTarget = tot((b) => b.target);
+  const totalKum = tot((b) => b.kumulatif);
+  const total = {
+    target: totalTarget,
+    hariIni: { ...Object.fromEntries(KOLOM_PROV.map((c) => [c.kunci, tot((b) => b.hariIni[c.kunci])])), total: tot((b) => b.hariIni.total) } as NilaiProv & { total: number },
+    kumulatifPmAas: tot((b) => b.kumulatifPmAas),
+    kumulatif: totalKum,
+    persen: totalTarget > 0 ? (totalKum / totalTarget) * 100 : 0,
+  };
+  return { akhir, bulanBerjalan, tahun, bulan, baris, total };
 }
 
 // ─── Rekap per kecamatan, rentang tanggal (logika-bisnis §12, §13) ─────────────
 
-export type BarisRekapKec = { kecamatan: string; jenis: string; tanam: number; panen: number };
+/**
+ * Metode penanaman (kolom laporan_ltt.metode_penanaman). Daftar tetap: nilainya dipakai sinkron e-Pusluh,
+ * validasi form, dan logika PM-AAS — jangan diganti tanpa migrasi data.
+ */
+export const METODE_PENANAMAN = [
+  { kode: "Regular", label: "Reguler", keterangan: "Tanam biasa, di luar program PM-AAS." },
+  { kode: "PM AAS", label: "PM-AAS", keterangan: "Tanam melalui program PM-AAS; dihitung di dashboard PM-AAS dan kolom PM-AAS format Provinsi." },
+] as const;
+
+/** Nama tampil metode; kosong → "Tidak diisi". */
+export function labelMetode(kode: string | null | undefined): string {
+  if (!kode) return "Tidak diisi";
+  return METODE_PENANAMAN.find((m) => m.kode === kode)?.label ?? kode;
+}
+
+export type BarisRekapKec = { kecamatan: string; jenis: string; metode: string; tanam: number; panen: number };
 
 /**
- * Padi: satu baris per (kecamatan, jenis); kecamatan tanpa data → satu baris "-", 0, 0.
+ * Padi: satu baris per (kecamatan, jenis, metode penanaman); kecamatan tanpa data → satu baris "-", 0, 0.
  * Palawija: satu baris per kecamatan (semua 15 kecamatan).
  */
 export function rekapPerKecamatan(kecs: Kec[], laporan: BarisLaporan[], komoditas: Komoditas, jenis?: string | null) {
@@ -283,22 +326,25 @@ export function rekapPerKecamatan(kecs: Kec[], laporan: BarisLaporan[], komodita
       (l) => l.kecamatanId === k.id && l.komoditas === komoditas && (!jenis || komoditas !== "Padi" || l.jenis === jenis),
     );
     if (komoditas === "Padi") {
-      const perJenis = new Map<string, TR>();
+      const per = new Map<string, TR & { jenis: string; metode: string }>();
       for (const l of milik) {
         const j = l.jenis ?? "LTT Reguler";
-        const t = perJenis.get(j) ?? nol();
+        const m = labelMetode(l.metode);
+        const kunci = `${j}|${m}`;
+        const t = per.get(kunci) ?? { jenis: j, metode: m, ...nol() };
         t.tanam += l.tanam;
         t.panen += l.panen;
-        perJenis.set(j, t);
+        per.set(kunci, t);
       }
-      if (perJenis.size === 0) baris.push({ kecamatan: k.nama, jenis: "-", tanam: 0, panen: 0 });
-      for (const [j, t] of [...perJenis].sort(([a], [b]) => a.localeCompare(b))) {
-        baris.push({ kecamatan: k.nama, jenis: j, ...t });
+      if (per.size === 0) baris.push({ kecamatan: k.nama, jenis: "-", metode: "-", tanam: 0, panen: 0 });
+      for (const t of [...per.values()].sort((a, b) => a.jenis.localeCompare(b.jenis) || a.metode.localeCompare(b.metode))) {
+        baris.push({ kecamatan: k.nama, ...t });
       }
     } else {
       baris.push({
         kecamatan: k.nama,
         jenis: komoditas,
+        metode: "-",
         tanam: milik.reduce((a, l) => a + l.tanam, 0),
         panen: milik.reduce((a, l) => a + l.panen, 0),
       });
@@ -309,6 +355,20 @@ export function rekapPerKecamatan(kecs: Kec[], laporan: BarisLaporan[], komodita
     totalTanam: baris.reduce((a, b) => a + b.tanam, 0),
     totalPanen: baris.reduce((a, b) => a + b.panen, 0),
   };
+}
+
+/** Total padi per jenis LTT (LTT Reguler, Padi Gogo, Oplah 2025, …) dari laporan mentah. */
+export function padiPerJenis(laporan: BarisLaporan[]): { jenis: string; tanam: number; panen: number }[] {
+  const m = new Map<string, TR>();
+  for (const l of laporan) {
+    if (l.komoditas !== "Padi") continue;
+    const j = l.jenis ?? "LTT Reguler";
+    const t = m.get(j) ?? nol();
+    t.tanam += l.tanam;
+    t.panen += l.panen;
+    m.set(j, t);
+  }
+  return [...m].map(([jenis, t]) => ({ jenis, ...t }));
 }
 
 // ─── Rekap PPL (logika-bisnis §19, §23i) ──────────────────────────────────────
@@ -338,7 +398,7 @@ export async function rekapBulananPpl(s: Supa, desa: DesaRef[], tahun: number, b
   const { dari, sampai } = rentangBulanWIB(tahun, bulan);
   const [laporan, { data: target, error }] = await Promise.all([
     ambilLaporan(s, { dari, sampai, desaIds: ids }),
-    s.from("target_desa").select("desa_id, komoditas, target_tanam, target_panen, luas_baku").eq("bulan", bulan).in("desa_id", ids),
+    s.from("target_desa").select("desa_id, komoditas, target_tanam, target_panen, luas_baku").eq("tahun", tahun).eq("bulan", bulan).in("desa_id", ids),
   ]);
   if (error) throw new Error(error.message);
 
@@ -469,7 +529,7 @@ export type TargetDesaData = {
   rincian: { jenisId: number; tanam: number; panen: number }[];
 };
 
-export async function ambilTargetDesa(s: Supa, desaIds: number[], f: { bulan?: number; komoditas?: Komoditas } = {}): Promise<TargetDesaData[]> {
+export async function ambilTargetDesa(s: Supa, desaIds: number[], f: { tahun: number; bulan?: number; komoditas?: Komoditas }): Promise<TargetDesaData[]> {
   if (desaIds.length === 0) return [];
   type R = {
     desa_id: number; bulan: number; komoditas: Komoditas; target_tanam: number; target_panen: number; luas_baku: number | null;
@@ -479,7 +539,8 @@ export async function ambilTargetDesa(s: Supa, desaIds: number[], f: { bulan?: n
     let q = s
       .from("target_desa")
       .select("desa_id, bulan, komoditas, target_tanam, target_panen, luas_baku, rincian:target_desa_rincian(jenis_ltt_id, target_tanam, target_panen)")
-      .in("desa_id", desaIds);
+      .in("desa_id", desaIds)
+      .eq("tahun", f.tahun);
     if (f.bulan) q = q.eq("bulan", f.bulan);
     if (f.komoditas) q = q.eq("komoditas", f.komoditas);
     return q.order("id").range(a, b) as unknown as PromiseLike<{ data: R[] | null; error: { message: string } | null }>;
@@ -644,14 +705,14 @@ const kosongTP = (): TanamPanen => ({ tanam: 0, panen: 0 });
 const perKom = <T,>(f: () => T) => ({ Padi: f(), Jagung: f(), "Ubi Kayu": f() }) as Record<Komoditas, T>;
 
 /**
- * Kab: baris = kecamatan, target = target_kecamatan (diisi BPP).
- * BPP: kecamatanId diisi → baris = desa di kecamatan itu, target = target kecamatannya.
+ * Kab: baris = kecamatan, target = Target Provinsi per kecamatan (`target_provinsi`, diisi Admin Kab).
+ * BPP: kecamatanId diisi → baris = desa di kecamatan itu, target = Target Provinsi kecamatannya.
  */
 export async function ringkasanWilayah(s: Supa, tahun: number, bulan: number, kecamatanId?: number | null): Promise<RingkasanWilayah> {
   const kecs = await daftarKecamatan(s);
   const desa = kecamatanId ? await daftarDesa(s, kecamatanId) : null;
   const { dari, sampai } = rentangBulanWIB(tahun, bulan);
-  let qt = s.from("target_kecamatan").select("kecamatan_id, komoditas, target_tanam, target_panen").eq("bulan", bulan);
+  let qt = s.from("target_provinsi").select("kecamatan_id, komoditas, target_tanam, target_panen").eq("tahun", tahun).eq("bulan", bulan);
   if (kecamatanId) qt = qt.eq("kecamatan_id", kecamatanId);
   const [lap, { data: tgt, error }] = await Promise.all([
     ambilLaporan(s, { dari, sampai, desaIds: desa ? desa.map((d) => d.id) : null }, kecs),
@@ -693,9 +754,32 @@ export async function ringkasanWilayah(s: Supa, tahun: number, bulan: number, ke
   return { total, pmAas, target, baris, laporan: lap, kecs };
 }
 
-/** Target PM AAS kabupaten (tahun, bulan). 0 bila belum diatur / tabel belum dibuat (migrasi 0006). */
+export type TargetPmAas = {
+  /** Target kabupaten: jumlah target kecamatan, atau angka lama `target_pm_aas` bila belum ada rincian. */
+  total: number;
+  /** kecamatan_id → target tanam (Ha). Kosong bila bulan itu belum dirinci per kecamatan. */
+  perKec: Map<number, number>;
+};
+
+/**
+ * Target PM AAS (tahun, bulan). Rincian per kecamatan (migrasi 0014) diutamakan;
+ * bila belum ada, pakai target kabupaten lama (0006). Tabel belum dibuat → 0.
+ */
+export async function ambilTargetPmAasRinci(s: Supa, tahun: number, bulan: number): Promise<TargetPmAas> {
+  const [kec, kab] = await Promise.all([
+    s.from("target_pm_aas_kecamatan").select("kecamatan_id, target_tanam").eq("tahun", tahun).eq("bulan", bulan),
+    s.from("target_pm_aas").select("target_tanam").eq("tahun", tahun).eq("bulan", bulan).maybeSingle(),
+  ]);
+  const perKec = new Map<number, number>();
+  for (const t of kec.error ? [] : (kec.data ?? [])) {
+    const n = Number(t.target_tanam) || 0;
+    if (n > 0) perKec.set(t.kecamatan_id, n);
+  }
+  const total = perKec.size > 0 ? [...perKec.values()].reduce((a, b) => a + b, 0) : kab.error ? 0 : Number(kab.data?.target_tanam) || 0;
+  return { total, perKec };
+}
+
+/** Target PM AAS kabupaten (tahun, bulan) — lihat `ambilTargetPmAasRinci`. */
 export async function ambilTargetPmAas(s: Supa, tahun: number, bulan: number): Promise<number> {
-  const { data, error } = await s.from("target_pm_aas").select("target_tanam").eq("tahun", tahun).eq("bulan", bulan).maybeSingle();
-  if (error) return 0;
-  return Number(data?.target_tanam) || 0;
+  return (await ambilTargetPmAasRinci(s, tahun, bulan)).total;
 }

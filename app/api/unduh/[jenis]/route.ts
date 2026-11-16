@@ -2,31 +2,33 @@ import type { NextRequest } from "next/server";
 import { bacaPengguna, type Pengguna, type Role } from "@/lib/auth";
 import { supabaseServer } from "@/lib/supabase/server";
 import { NAMA_BULAN, NAMA_BULAN_PENDEK, bulanTahunWIB, formatTanggalJam, tanggalIsoWIB } from "@/lib/format";
-import { bukuBaru, kepala, tabel, barisData, barisTotal, gayaHeader, rasio, kirimXlsx, HIJAU_TUA, type Kolom } from "@/lib/excel";
+import { HIJAU_TUA, headerKolom, rasio, type Blok, type Kolom, type Lembar, type Sel, type SpesifikasiExcel } from "@/lib/excel-spec";
 import {
-  KATEGORI, KOLOM_SARANA, KOMODITAS,
+  KOLOM_PROV, KOLOM_SARANA, KOMODITAS,
   ambilLaporan, ambilProduktivitas, ambilSarana, daftarDesa, daftarKecamatan, desaBinaanSaya, desaRekapPpl,
-  laporanBulan, rataPositif, realisasiKategoriPerKecamatan, rekapBulananPpl, rekapDinas, rekapHarianPpl,
-  rekapPerKecamatan, targetKategoriPerKecamatan,
-  type Kategori, type Komoditas, type Supa,
+  KOLOM_DINAS, laporanBulan, rataPositif, rekapBulananPpl, rekapDinas, rekapHarianPpl,
+  rekapPerKecamatan, rekapProvinsiPadi,
+  type Komoditas, type Supa,
 } from "@/lib/data";
 
 /**
- * GET /api/unduh/<jenis>?... — semua tombol unduh Excel (plan §6b).
- * Data diambil dengan sesi user (RLS berlaku) lewat lib/data.ts yang sama dengan halaman.
+ * GET /api/unduh/<jenis>?... — data untuk semua tombol unduh Excel.
+ * Mengembalikan SpesifikasiExcel (JSON); file .xlsx dirakit di BROWSER (components/tombol-unduh.tsx)
+ * supaya server tidak terbebani ExcelJS. Data diambil dengan sesi user (RLS berlaku).
  */
 
 const HAK: Record<string, Role[]> = {
   "laporan": ["admin_bpp", "admin_kab"],
   "rekap-kecamatan": ["admin_kab", "viewer"],
   "rekap-dinas": ["admin_kab", "viewer"],
-  "target-realisasi": ["admin_kab", "viewer"],
+  "ltt-provinsi": ["admin_kab", "viewer"],
   "rekap-ppl": ["penyuluh", "admin_bpp"],
   "produktivitas": ["penyuluh", "admin_bpp", "admin_kab"],
 };
 
 const teksErr = (pesan: string, status: number) =>
   new Response(pesan, { status, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+const kirim = (spec: SpesifikasiExcel) => Response.json(spec, { headers: { "Cache-Control": "private, no-store" } });
 
 const tglValid = (v: string | null) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
 const angka = (v: string | null, min: number, max: number, def: number) => {
@@ -58,18 +60,28 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ jenis: stri
       case "laporan": return await unduhLaporan(s, p, q);
       case "rekap-kecamatan": return await unduhRekapKecamatan(s, q);
       case "rekap-dinas": return await unduhRekapDinas(s, q);
-      case "target-realisasi": return await unduhTargetRealisasi(s, q);
+      case "ltt-provinsi": return await unduhLttProvinsi(s, q);
       case "rekap-ppl": return await unduhRekapPpl(s, p, q);
       case "produktivitas": return await unduhProduktivitas(s, p, q);
     }
   } catch (e) {
     console.error("[unduh]", jenis, e);
-    return teksErr("Gagal membuat file Excel. Coba lagi.", 500);
+    return teksErr("Gagal menyiapkan data Excel. Coba lagi.", 500);
   }
   return teksErr("Jenis unduhan tidak dikenal.", 404);
 }
 
-// ─── Laporan LTT (Kab & BPP) — unduhExcelLaporan / unduhExcelLaporanBPP ─────────
+/** Lembar tabel sederhana: header + data + (opsional) total. */
+function lembarTabel(
+  nama: string, judul: string, info: string[], kolom: Kolom[], data: Sel[][],
+  total?: { nilai: Sel[]; gabung?: number }, extra?: Partial<Lembar>,
+): Lembar {
+  const blok: Blok[] = [headerKolom(kolom), { t: "data", baris: data }];
+  if (total) blok.push({ t: "total", ...total });
+  return { nama, judul, info, kolom, blok, ...extra };
+}
+
+// ─── Laporan LTT (Kab & BPP) ──────────────────────────────────────────────────
 async function unduhLaporan(s: Supa, p: Pengguna, q: URLSearchParams) {
   const hariIni = tanggalIsoWIB();
   const { tahun, bulan } = bulanTahunWIB();
@@ -86,8 +98,6 @@ async function unduhLaporan(s: Supa, p: Pengguna, q: URLSearchParams) {
   const data = await ambilLaporan(s, { ...rentangTanggal(dari, sampai), komoditas, desaIds }, kecs);
   const namaKec = kecId ? (kecs.find((k) => k.id === kecId)?.nama ?? "") : "Semua Kecamatan";
 
-  const wb = bukuBaru();
-  const ws = wb.addWorksheet("Laporan LTT", { views: [{ state: "frozen", ySplit: 5 }] });
   const kolom: Kolom[] = [
     { judul: "No", lebar: 5, jenis: "bulat" },
     { judul: "Tanggal Laporan", lebar: 20 },
@@ -103,23 +113,27 @@ async function unduhLaporan(s: Supa, p: Pengguna, q: URLSearchParams) {
     { judul: "Metode Penanaman", lebar: 14 },
     { judul: "Keterangan", lebar: 28 },
   ];
-  kepala(ws, kolom.length, `LAPORAN LTT ${komoditas?.toUpperCase() ?? "SEMUA KOMODITAS"} — ${namaKec.toUpperCase()}`, [
-    `Periode: ${dari} s/d ${sampai}`,
-  ]);
   const sum = (f: (l: (typeof data)[number]) => number) => data.reduce((a, l) => a + f(l), 0);
-  tabel(
-    ws,
-    kolom,
-    data.map((l, i) => [
-      i + 1, formatTanggalJam(l.waktu), l.pelapor, l.kecamatan, l.desa, l.komoditas, l.jenis ?? "-",
-      l.bera, l.olah, l.tanam, l.panen, l.metode ?? "-", l.keterangan ?? "",
-    ]),
-    { nilai: ["TOTAL", "", "", "", "", "", "", sum((l) => l.bera), sum((l) => l.olah), sum((l) => l.tanam), sum((l) => l.panen), "", ""], gabung: 7 },
-  );
-  return kirimXlsx(wb, ["Laporan", namaKec, komoditas ?? "", `${dari}_sd_${sampai}`]);
+  return kirim({
+    namaFile: ["Laporan", namaKec, komoditas ?? "", `${dari}_sd_${sampai}`],
+    lembar: [
+      lembarTabel(
+        "Laporan LTT",
+        `LAPORAN LTT ${komoditas?.toUpperCase() ?? "SEMUA KOMODITAS"} — ${namaKec.toUpperCase()}`,
+        [`Periode: ${dari} s/d ${sampai}`],
+        kolom,
+        data.map((l, i) => [
+          i + 1, formatTanggalJam(l.waktu), l.pelapor, l.kecamatan, l.desa, l.komoditas, l.jenis ?? "-",
+          l.bera, l.olah, l.tanam, l.panen, l.metode ?? "-", l.keterangan ?? "",
+        ]),
+        { nilai: ["TOTAL", "", "", "", "", "", "", sum((l) => l.bera), sum((l) => l.olah), sum((l) => l.tanam), sum((l) => l.panen), "", ""], gabung: 7 },
+        { beku: { y: 5 } },
+      ),
+    ],
+  });
 }
 
-// ─── Rekap per kecamatan, rentang tanggal — unduhExcelKecamatan ───────────────
+// ─── Rekap per kecamatan, rentang tanggal ─────────────────────────────────────
 async function unduhRekapKecamatan(s: Supa, q: URLSearchParams) {
   const hariIni = tanggalIsoWIB();
   const dari = tglValid(q.get("dari")) ?? hariIni;
@@ -133,21 +147,25 @@ async function unduhRekapKecamatan(s: Supa, q: URLSearchParams) {
   const r = rekapPerKecamatan(kecs, lap, komoditas, jenis);
   const tglInfo = dari === sampai ? dari : `${dari} s/d ${sampai}`;
 
-  const wb = bukuBaru();
-  const ws = wb.addWorksheet("Rekap Kecamatan");
   const kolom: Kolom[] = isPadi
-    ? [{ judul: "KECAMATAN", lebar: 25 }, { judul: "JENIS LTT", lebar: 20 }, { judul: "LUAS TANAM (HA)", lebar: 20, jenis: "angka" }, { judul: "LUAS PANEN (HA)", lebar: 20, jenis: "angka" }]
+    ? [
+        { judul: "KECAMATAN", lebar: 25 }, { judul: "JENIS LTT", lebar: 20 }, { judul: "METODE PENANAMAN", lebar: 18 },
+        { judul: "LUAS TANAM (HA)", lebar: 20, jenis: "angka" }, { judul: "LUAS PANEN (HA)", lebar: 20, jenis: "angka" },
+      ]
     : [{ judul: "KECAMATAN", lebar: 25 }, { judul: "LUAS TANAM (HA)", lebar: 20, jenis: "angka" }, { judul: "LUAS PANEN (HA)", lebar: 20, jenis: "angka" }];
-  kepala(ws, kolom.length, `REKAPITULASI ${komoditas.toUpperCase()} PER KECAMATAN`, [
-    isPadi ? `Tanggal Laporan: ${tglInfo} | Jenis LTT: ${jenis ?? "Semua"}` : `Tanggal Laporan: ${tglInfo}`,
-  ]);
-  tabel(
-    ws,
-    kolom,
-    r.baris.map((b) => (isPadi ? [b.kecamatan, b.jenis, b.tanam, b.panen] : [b.kecamatan, b.tanam, b.panen])),
-    { nilai: isPadi ? ["TOTAL KABUPATEN", "", r.totalTanam, r.totalPanen] : ["TOTAL KABUPATEN", r.totalTanam, r.totalPanen], gabung: isPadi ? 2 : 1 },
-  );
-  return kirimXlsx(wb, ["Rekap_Kecamatan", komoditas, jenis ?? "", dari === sampai ? dari : `${dari}_sd_${sampai}`]);
+  return kirim({
+    namaFile: ["Rekap_Kecamatan", komoditas, jenis ?? "", dari === sampai ? dari : `${dari}_sd_${sampai}`],
+    lembar: [
+      lembarTabel(
+        "Rekap Kecamatan",
+        `REKAPITULASI ${komoditas.toUpperCase()} PER KECAMATAN`,
+        [isPadi ? `Tanggal Laporan: ${tglInfo} | Jenis LTT: ${jenis ?? "Semua"}` : `Tanggal Laporan: ${tglInfo}`],
+        kolom,
+        r.baris.map((b) => (isPadi ? [b.kecamatan, b.jenis, b.metode, b.tanam, b.panen] : [b.kecamatan, b.tanam, b.panen])),
+        { nilai: isPadi ? ["TOTAL KABUPATEN", "", "", r.totalTanam, r.totalPanen] : ["TOTAL KABUPATEN", r.totalTanam, r.totalPanen], gabung: isPadi ? 3 : 1 },
+      ),
+    ],
+  });
 }
 
 function bulanDariQuery(q: URLSearchParams) {
@@ -155,105 +173,194 @@ function bulanDariQuery(q: URLSearchParams) {
   return { tahun: angka(q.get("tahun"), 2000, 2100, now.tahun), bulan: angka(q.get("bulan"), 1, 12, now.bulan) };
 }
 
-// ─── Rekap LTT format Dinas — unduhExcelRekapLTT ──────────────────────────────
+// ─── Rekap LTT format Dinas ───────────────────────────────────────────────────
 async function unduhRekapDinas(s: Supa, q: URLSearchParams) {
   const { tahun, bulan } = bulanDariQuery(q);
   const kecs = await daftarKecamatan(s);
   const rows = rekapDinas(kecs, await laporanBulan(s, tahun, bulan, kecs));
+  const nG = KOLOM_DINAS.length;
 
-  const wb = bukuBaru();
-  const ws = wb.addWorksheet("Rekap LTT");
   const kolom: Kolom[] = [
     { judul: "NO", lebar: 5, jenis: "bulat" },
     { judul: "KECAMATAN", lebar: 22 },
-    ...Array.from({ length: 10 }, () => ({ judul: "", lebar: 12, jenis: "angka" as const })),
+    ...Array.from({ length: nG * 2 }, () => ({ judul: "", lebar: 12, jenis: "angka" as const })),
   ];
-  kepala(ws, 12, "LAPORAN REKAPITULASI LUAS TAMBAH TANAM (LTT)", [`Periode: ${NAMA_BULAN[bulan - 1]} ${tahun}`]);
-  kolom.forEach((k, i) => (ws.getColumn(i + 1).width = k.lebar));
-  const grup = ["PADI REGULER", "PADI GOGO", "JAGUNG", "KEDELAI", "UBI KAYU"];
-  const h1 = ws.addRow(["NO", "KECAMATAN", ...grup.flatMap((g) => [g, ""])]);
-  const h2 = ws.addRow(["", "", ...grup.flatMap(() => ["Tanam (Ha)", "Panen (Ha)"])]);
-  ws.mergeCells(h1.number, 1, h2.number, 1);
-  ws.mergeCells(h1.number, 2, h2.number, 2);
-  grup.forEach((_, i) => ws.mergeCells(h1.number, 3 + i * 2, h1.number, 4 + i * 2));
-  gayaHeader(h1);
-  gayaHeader(h2);
+  const grup = KOLOM_DINAS.map((g) => g.label.toUpperCase());
+  const nilai = (b: (typeof rows)[number]) => KOLOM_DINAS.flatMap(({ kunci }) => [b[kunci].tanam, b[kunci].panen]);
+  const total = Array.from({ length: nG * 2 }, (_, c) => rows.reduce((a, b) => a + nilai(b)[c], 0));
 
-  const nilai = (b: (typeof rows)[number]) => [b.padiReguler, b.padiGogo, b.jagung, b.kedelai, b.ubiKayu].flatMap((t) => [t.tanam, t.panen]);
-  rows.forEach((b, i) => barisData(ws, kolom, [i + 1, b.kecamatan, ...nilai(b)]));
-  const total = Array.from({ length: 10 }, (_, c) => rows.reduce((a, b) => a + nilai(b)[c], 0));
-  barisTotal(ws, kolom, ["JUMLAH", "", ...total], 2);
-  return kirimXlsx(wb, ["Rekap_LTT", `${NAMA_BULAN[bulan - 1]}_${tahun}`]);
-}
-
-// ─── Target vs realisasi per kecamatan — unduhExcelTargetVsRealisasi ─────────
-async function unduhTargetRealisasi(s: Supa, q: URLSearchParams) {
-  const { tahun, bulan } = bulanDariQuery(q);
-  const kat = (KATEGORI.find((k) => k.kunci === q.get("kategori"))?.kunci ?? "LTTReguler") as Kategori;
-  const sisi = q.get("sisi") === "panen" ? "panen" : "tanam";
-  const label = KATEGORI.find((k) => k.kunci === kat)!.label;
-  const komoditas = kat === "Jagung" ? "JAGUNG" : kat === "UbiKayu" ? "UBI KAYU" : "PADI";
-
-  const kecs = await daftarKecamatan(s);
-  const [target, lap] = await Promise.all([targetKategoriPerKecamatan(s, bulan), laporanBulan(s, tahun, bulan, kecs)]);
-  const real = realisasiKategoriPerKecamatan(lap);
-
-  const wb = bukuBaru();
-  const ws = wb.addWorksheet("Target vs Realisasi");
-  const kolom: Kolom[] = [
-    { judul: "KECAMATAN", lebar: 25 },
-    { judul: "TARGET (HA)", lebar: 18, jenis: "angka" },
-    { judul: "REALISASI (HA)", lebar: 18, jenis: "angka" },
-    { judul: "CAPAIAN (%)", lebar: 18, jenis: "persen" },
-  ];
-  kepala(ws, 4, "LAPORAN TARGET VS REALISASI PER KECAMATAN", [
-    `Komoditas: ${komoditas} (${label}) | Tipe: ${sisi.toUpperCase()}`,
-    `Periode: ${NAMA_BULAN[bulan - 1]} ${tahun}`,
-  ]);
-  const data = kecs.map((k) => {
-    const t = target.get(k.id)?.[kat][sisi] ?? 0;
-    const r = real.get(k.id)?.[kat][sisi] ?? 0;
-    return [k.nama, t, r, rasio(r, t) ?? 0];
+  return kirim({
+    namaFile: ["Rekap_LTT", `${NAMA_BULAN[bulan - 1]}_${tahun}`],
+    lembar: [{
+      nama: "Rekap LTT",
+      judul: "LAPORAN REKAPITULASI LUAS TAMBAH TANAM (LTT)",
+      info: [`Periode: ${NAMA_BULAN[bulan - 1]} ${tahun}`],
+      kolom,
+      blok: [
+        {
+          t: "header",
+          baris: [
+            ["NO", "KECAMATAN", ...grup.flatMap((g) => [g, ""])],
+            ["", "", ...grup.flatMap(() => ["Tanam (Ha)", "Panen (Ha)"])],
+          ],
+          gabung: [[1, 1, 2, 1], [1, 2, 2, 2], ...grup.map((_, i) => [1, 3 + i * 2, 1, 4 + i * 2] as [number, number, number, number])],
+        },
+        { t: "data", baris: rows.map((b, i) => [i + 1, b.kecamatan, ...nilai(b)]) },
+        { t: "total", nilai: ["JUMLAH", "", ...total], gabung: 2 },
+      ],
+    }],
   });
-  const tT = data.reduce((a, d) => a + (d[1] as number), 0);
-  const tR = data.reduce((a, d) => a + (d[2] as number), 0);
-  tabel(ws, kolom, data, { nilai: ["TOTAL KABUPATEN", tT, tR, rasio(tR, tT) ?? 0] });
-  return kirimXlsx(wb, ["Target_VS_Realisasi", label, sisi, `${NAMA_BULAN[bulan - 1]}_${tahun}`]);
 }
 
-// ─── Rekap PPL bulanan / harian — downloadRekapExcel / _downloadRekapHarianExcel ─
+// ─── LTT Padi format Provinsi (hari ini + 1 s.d hari ini) ─────────────────────
+/** Warna persentase (sama dengan dashboard): <60 merah, 60–84 kuning, ≥85 hijau. */
+const PERSEN_MERAH = { bg: "FFEF4444", fc: "FFFFFFFF" };
+const PERSEN_KUNING = { bg: "FFFDE047", fc: "FF713F12" };
+const PERSEN_HIJAU = { bg: "FF16A34A", fc: "FFFFFFFF" };
+const WARNA_PERSEN = (p: number) => (p >= 85 ? PERSEN_HIJAU : p >= 60 ? PERSEN_KUNING : PERSEN_MERAH);
+
+async function unduhLttProvinsi(s: Supa, q: URLSearchParams) {
+  const { tahun, bulan } = bulanDariQuery(q);
+  const d = await rekapProvinsiPadi(s, tahun, bulan);
+  const tgl = Number(d.akhir.slice(8, 10));
+  const bln = NAMA_BULAN[d.bulan - 1];
+  const hariIniTeks = `${tgl} ${bln} ${d.tahun}`;
+  const sd = `1 s.d ${hariIniTeks}`;
+  const nK = KOLOM_PROV.length;
+
+  // Warna = kelas Tailwind yang dipakai tabel di dashboard (components/tabel-ltt-provinsi.tsx).
+  const W = {
+    abu: { bg: "FFF9FAFB", fc: "FF4B5563" }, // gray-50 / gray-600 — No, Kecamatan, Target
+    biruGrup: { bg: "FFDBEAFE", fc: "FF1E3A8A" }, // blue-100 / blue-900 — judul grup Realisasi
+    biru: { bg: "FFEFF6FF", fc: "FF1E3A8A" }, // blue-50 — sub-kolom Realisasi
+    ungu: { bg: "FFEDE9FE", fc: "FF4C1D95" }, // violet-100 — Total PM-AAS 1 s.d
+    oranye: { bg: "FFFFEDD5", fc: "FF7C2D12" }, // orange-100 — Total LTT 1 s.d & Persentase (terkait)
+    jumlah: { bg: "FFFEFCE8", fc: "FF854D0E" }, // yellow-50 / yellow-800 — baris JUMLAH
+  };
+  const ISI = { biru: "FFF7FAFF", ungu: "FFFAF8FF", oranye: "FFFFFBF5" }; // latar isi kolom (…-50 tipis)
+  const NOL = "FFD1D5DB"; // gray-300 — angka 0 samar
+  const TEKS = "FF1F2937"; // gray-800
+
+  const kolom: Kolom[] = [
+    { judul: "", lebar: 5, jenis: "bulat", rata: "center" },
+    { judul: "", lebar: 22 },
+    { judul: "", lebar: 16, jenis: "angka" },
+    ...KOLOM_PROV.map(() => ({ judul: "", lebar: 13, jenis: "angka" as const })),
+    { judul: "", lebar: 11, jenis: "angka" },
+    { judul: "", lebar: 16, jenis: "angka" },
+    { judul: "", lebar: 16, jenis: "angka" },
+    { judul: "", lebar: 16, jenis: "angka" },
+  ];
+  const h = (v: string, w: { bg: string; fc: string }): Sel => ({ v: v.toUpperCase(), ...w });
+  /** angka; 0 → abu-abu samar. `bg` = latar kolom, `tebal` = semibold di web. */
+  const n = (x: number, bg?: string, tebal = false): Sel => (x ? { v: x, bg, fc: TEKS, tebal } : { v: 0, bg, fc: NOL });
+  const persen = (p: number, ada: boolean): Sel =>
+    ada ? { v: Math.round(p * 100) / 100, ...WARNA_PERSEN(p), tebal: true } : { v: "-", bg: W.abu.bg, fc: "FF9CA3AF" };
+  const j = (x: number): Sel => (x ? { v: x, ...W.jumlah } : { v: 0, bg: W.jumlah.bg, fc: NOL });
+  const cR = 4; // kolom pertama realisasi
+  const cA = cR + nK + 1; // kolom setelah "Total LTT" harian
+
+  return kirim({
+    namaFile: ["LTT_Padi_Provinsi", d.akhir],
+    lembar: [{
+      nama: "LTT Padi",
+      judul: "LAPORAN LTT PADI (FORMAT PROVINSI)",
+      info: [`Realisasi ${d.bulanBerjalan ? "hari ini" : "tanggal terakhir"} (${hariIniTeks}) dan kumulatif ${sd}`],
+      kolom,
+      beku: { x: 2, y: 7 },
+      garis: "FFE5E7EB", // gray-200
+      tanpaZebra: true,
+      blok: [
+        {
+          t: "header",
+          baris: [
+            [
+              h("No", W.abu), h("Kecamatan", W.abu), h(`Target LTT Bulan ${bln} ${d.tahun}`, W.abu),
+              h(`Realisasi LTT ${hariIniTeks}`, W.biruGrup), ...Array.from({ length: nK }, () => h("", W.biruGrup)),
+              h(`Total LTT PM-AAS ${sd}`, W.ungu), h(`Total LTT ${sd}`, W.oranye), h(`Persentase Total LTT ${sd}`, W.oranye),
+            ],
+            [
+              h("", W.abu), h("", W.abu), h("", W.abu),
+              ...KOLOM_PROV.map((k) => h(k.label, W.biru)), h("Total LTT", W.biru),
+              h("", W.ungu), h("", W.oranye), h("", W.oranye),
+            ],
+          ],
+          gabung: [
+            [1, 1, 2, 1], [1, 2, 2, 2], [1, 3, 2, 3],
+            [1, cR, 1, cR + nK],
+            [1, cA, 2, cA], [1, cA + 1, 2, cA + 1], [1, cA + 2, 2, cA + 2],
+          ],
+        },
+        {
+          t: "total",
+          gabung: 2,
+          nilai: [
+            { v: "JUMLAH", ...W.jumlah }, { v: "", ...W.jumlah }, j(d.total.target),
+            ...KOLOM_PROV.map((k) => j(d.total.hariIni[k.kunci])), j(d.total.hariIni.total),
+            j(d.total.kumulatifPmAas), j(d.total.kumulatif), persen(d.total.persen, d.total.target > 0),
+          ],
+        },
+        {
+          t: "data",
+          baris: d.baris.map((b, i) => [
+            { v: i + 1, fc: "FF6B7280" },
+            { v: b.kecamatan, fc: "FF374151", tebal: true },
+            b.target > 0 ? { v: b.target, fc: TEKS } : { v: "-", fc: "FF9CA3AF" },
+            ...KOLOM_PROV.map((k) => n(b.hariIni[k.kunci])),
+            n(b.hariIni.total, ISI.biru, true),
+            n(b.kumulatifPmAas, ISI.ungu),
+            n(b.kumulatif, ISI.oranye, true),
+            persen(b.persen, b.target > 0),
+          ]),
+        },
+        { t: "kosong" },
+        { t: "catatan", teks: "Keterangan", fc: "FF374151" },
+        { t: "catatan", teks: "< 60% — Rendah", ...PERSEN_MERAH },
+        { t: "catatan", teks: "60% – 84,99% — Sedang", ...PERSEN_KUNING },
+        { t: "catatan", teks: "≥ 85% — Baik / tercapai", ...PERSEN_HIJAU },
+        { t: "catatan", teks: "-  Target belum diisi", bg: W.abu.bg, fc: "FF9CA3AF" },
+        { t: "catatan", teks: `• Kolom Realisasi LTT ${hariIniTeks} hanya berisi laporan tanggal ${hariIniTeks}${d.bulanBerjalan ? " (hari ini)" : " (tanggal terakhir bulan ini)"}.` },
+        { t: "catatan", teks: `• Total LTT PM-AAS dan Total LTT = akumulasi tanggal ${sd}.` },
+        { t: "catatan", teks: `• Persentase = Total LTT ${sd} ÷ Target LTT bulan ${bln} × 100%.` },
+        { t: "catatan", teks: "• Hanya jenis yang tampil di tabel yang dihitung; Oplah 2024/2025 (non PM-AAS), CSR, dan Rehab Bencana tidak dihitung." },
+        { t: "catatan", teks: "• Angka 0 ditulis samar agar data yang berisi lebih mudah terlihat." },
+      ],
+    }],
+  });
+}
+
+// ─── Rekap PPL bulanan / harian ───────────────────────────────────────────────
 async function unduhRekapPpl(s: Supa, p: Pengguna, q: URLSearchParams) {
   const desa = await desaRekapPpl(s, p);
-  const wb = bukuBaru();
 
   if (q.get("mode") === "harian") {
     const tanggal = tglValid(q.get("tanggal")) ?? tanggalIsoWIB();
     const rows = await rekapHarianPpl(s, desa, tanggal);
-    const ws = wb.addWorksheet("Rekap Harian");
     const kolom: Kolom[] = [
       { judul: "No", lebar: 5, jenis: "bulat" },
       { judul: "Desa", lebar: 26 },
       { judul: "Luas Tanam (Ha)", lebar: 16, jenis: "angka" },
       { judul: "Luas Panen (Ha)", lebar: 16, jenis: "angka" },
     ];
-    kepala(ws, 4, `REKAP HARIAN LTT – ${p.nama}`, [`Tanggal Laporan: ${tanggal}`]);
-    kolom.forEach((k, i) => (ws.getColumn(i + 1).width = k.lebar));
+    const blok: Blok[] = [];
     for (const kom of KOMODITAS) {
       const isi = rows.filter((r) => r.komoditas === kom);
-      const g = ws.addRow([`Komoditas: ${kom}`]);
-      ws.mergeCells(g.number, 1, g.number, 4);
-      g.getCell(1).font = { bold: true };
-      gayaHeader(ws.addRow(kolom.map((k) => k.judul)), HIJAU_TUA);
-      isi.forEach((r, i) => barisData(ws, kolom, [i + 1, r.desa, r.tanam, r.panen]));
-      barisTotal(ws, kolom, ["JUMLAH", "", isi.reduce((a, r) => a + r.tanam, 0), isi.reduce((a, r) => a + r.panen, 0)], 2);
-      ws.addRow([]);
+      blok.push(
+        { t: "grup", teks: `Komoditas: ${kom}` },
+        headerKolom(kolom, HIJAU_TUA),
+        { t: "data", baris: isi.map((r, i) => [i + 1, r.desa, r.tanam, r.panen]) },
+        { t: "total", nilai: ["JUMLAH", "", isi.reduce((a, r) => a + r.tanam, 0), isi.reduce((a, r) => a + r.panen, 0)], gabung: 2 },
+        { t: "kosong" },
+      );
     }
-    return kirimXlsx(wb, ["Rekap_Harian", p.nama, tanggal]);
+    return kirim({
+      namaFile: ["Rekap_Harian", p.nama, tanggal],
+      lembar: [{ nama: "Rekap Harian", judul: `REKAP HARIAN LTT – ${p.nama}`, info: [`Tanggal Laporan: ${tanggal}`], kolom, blok }],
+    });
   }
 
   const { tahun, bulan } = bulanDariQuery(q);
   const rows = await rekapBulananPpl(s, desa, tahun, bulan);
-  const ws = wb.addWorksheet("Rekap LTT");
   const kolom: Kolom[] = [
     { judul: "No", lebar: 5, jenis: "bulat" },
     { judul: "Kampung", lebar: 22 },
@@ -268,29 +375,35 @@ async function unduhRekapPpl(s: Supa, p: Pengguna, q: URLSearchParams) {
     { judul: "Realisasi Panen", lebar: 12, jenis: "angka" },
     { judul: "Capaian Panen (%)", lebar: 12, jenis: "persen" },
   ];
-  kepala(ws, 12, `REKAP LAPORAN LTT – ${p.nama}`, [`Periode: ${NAMA_BULAN[bulan - 1]} ${tahun}`]);
-  kolom.forEach((k, i) => (ws.getColumn(i + 1).width = k.lebar));
-  gayaHeader(ws.addRow(kolom.map((k) => k.judul)), HIJAU_TUA);
+  const blok: Blok[] = [headerKolom(kolom, HIJAU_TUA)];
   let no = 0;
   for (const kom of KOMODITAS) {
     const isi = rows.filter((r) => r.komoditas === kom);
-    for (const r of isi) {
-      barisData(ws, kolom, [
+    blok.push({
+      t: "data",
+      baris: isi.map((r) => [
         ++no, r.desa, kom, kom === "Padi" ? r.luasBaku : null, 0, r.targetTanam, r.realisasiTanam,
         rasio(r.realisasiTanam, r.targetTanam), "—", r.targetPanen, r.realisasiPanen, rasio(r.realisasiPanen, r.targetPanen),
-      ]);
-    }
+      ]),
+    });
     const s2 = (f: (r: (typeof isi)[number]) => number) => isi.reduce((a, r) => a + f(r), 0);
-    barisTotal(ws, kolom, [
-      `JUMLAH ${kom.toUpperCase()}`, "", "", kom === "Padi" ? s2((r) => r.luasBaku) : null, 0,
-      s2((r) => r.targetTanam), s2((r) => r.realisasiTanam), rasio(s2((r) => r.realisasiTanam), s2((r) => r.targetTanam)),
-      "—", s2((r) => r.targetPanen), s2((r) => r.realisasiPanen), rasio(s2((r) => r.realisasiPanen), s2((r) => r.targetPanen)),
-    ], 3);
+    blok.push({
+      t: "total",
+      gabung: 3,
+      nilai: [
+        `JUMLAH ${kom.toUpperCase()}`, "", "", kom === "Padi" ? s2((r) => r.luasBaku) : null, 0,
+        s2((r) => r.targetTanam), s2((r) => r.realisasiTanam), rasio(s2((r) => r.realisasiTanam), s2((r) => r.targetTanam)),
+        "—", s2((r) => r.targetPanen), s2((r) => r.realisasiPanen), rasio(s2((r) => r.realisasiPanen), s2((r) => r.targetPanen)),
+      ],
+    });
   }
-  return kirimXlsx(wb, ["Rekap_LTT", p.nama, `${NAMA_BULAN[bulan - 1]}_${tahun}`]);
+  return kirim({
+    namaFile: ["Rekap_LTT", p.nama, `${NAMA_BULAN[bulan - 1]}_${tahun}`],
+    lembar: [{ nama: "Rekap LTT", judul: `REKAP LAPORAN LTT – ${p.nama}`, info: [`Periode: ${NAMA_BULAN[bulan - 1]} ${tahun}`], kolom, blok }],
+  });
 }
 
-// ─── Produktivitas & sarana — _buatExcelProduktivitas ─────────────────────────
+// ─── Produktivitas & sarana ───────────────────────────────────────────────────
 async function unduhProduktivitas(s: Supa, p: Pengguna, q: URLSearchParams) {
   const now = bulanTahunWIB().tahun;
   const tDari = angka(q.get("tahunDari"), 2000, 2100, now);
@@ -312,40 +425,46 @@ async function unduhProduktivitas(s: Supa, p: Pengguna, q: URLSearchParams) {
     .filter((k) => k.desa.length > 0);
   const wilayah = p.role === "penyuluh" ? p.nama : grup.length === 1 ? grup[0].nama : "Kabupaten";
 
-  const wb = bukuBaru();
   const kolomBulan: Kolom[] = [
     { judul: "No", lebar: 5, jenis: "bulat" },
     { judul: "Kecamatan", lebar: 18 },
     { judul: "Desa", lebar: 22 },
     ...NAMA_BULAN_PENDEK.map((b) => ({ judul: b, lebar: 8, jenis: "angka" as const })),
   ];
+  const lembar: Lembar[] = [];
 
-  for (let tahun = tDari; tahun <= tSampai; tahun++) {
-    const nilai = await ambilProduktivitas(s, tahun, ids);
+  const tahunList = Array.from({ length: tSampai - tDari + 1 }, (_, i) => tDari + i);
+  const nilaiTahun = await Promise.all(tahunList.map((t) => ambilProduktivitas(s, t, ids)));
+  tahunList.forEach((tahun, ti) => {
+    const nilai = nilaiTahun[ti];
     for (const kom of KOMODITAS) {
-      const ws = wb.addWorksheet(`${kom} ${tahun}`, { views: [{ state: "frozen", xSplit: 3, ySplit: 5 }] });
-      kepala(ws, kolomBulan.length, `PRODUKTIVITAS ${kom.toUpperCase()} (TON/HA) TAHUN ${tahun}`, [wilayah]);
-      kolomBulan.forEach((k, i) => (ws.getColumn(i + 1).width = k.lebar));
-      gayaHeader(ws.addRow(kolomBulan.map((k) => k.judul)), "FF15803D");
+      const blok: Blok[] = [headerKolom(kolomBulan, "FF15803D")];
       const rataKec: number[][] = [];
       let no = 0;
       for (const k of grup) {
         const vals = k.desa.map((d) => nilai.get(`${d.id}|${kom}`) ?? new Array(12).fill(0));
-        k.desa.forEach((d, i) => barisData(ws, kolomBulan, [++no, k.nama, d.nama, ...vals[i].map((v) => v || null)]));
+        blok.push({ t: "data", baris: k.desa.map((d, i) => [++no, k.nama, d.nama, ...vals[i].map((v) => v || null)]) });
         const rata = Array.from({ length: 12 }, (_, b) => rataPositif(vals.map((v) => v[b])));
         rataKec.push(rata);
-        if (p.role !== "penyuluh") barisTotal(ws, kolomBulan, ["", `Rata-rata Kec. ${k.nama}`, "", ...rata]);
+        if (p.role !== "penyuluh") blok.push({ t: "total", nilai: ["", `Rata-rata Kec. ${k.nama}`, "", ...rata] });
       }
       if (grup.length > 1) {
         const rataKab = Array.from({ length: 12 }, (_, b) => rataPositif(rataKec.map((r) => r[b])));
-        barisTotal(ws, kolomBulan, ["", "Rata-rata Kabupaten", "", ...rataKab]);
+        blok.push({ t: "total", nilai: ["", "Rata-rata Kabupaten", "", ...rataKab] });
       }
+      lembar.push({
+        nama: `${kom} ${tahun}`,
+        judul: `PRODUKTIVITAS ${kom.toUpperCase()} (TON/HA) TAHUN ${tahun}`,
+        info: [wilayah],
+        kolom: kolomBulan,
+        beku: { x: 3, y: 5 },
+        blok,
+      });
     }
-  }
+  });
 
   // Sarana (tanpa tahun)
   const sarana = await ambilSarana(s, ids);
-  const ws = wb.addWorksheet("Sarana Desa", { views: [{ state: "frozen", xSplit: 3, ySplit: 5 }] });
   const kolomS: Kolom[] = [
     { judul: "No", lebar: 5, jenis: "bulat" },
     { judul: "Kecamatan", lebar: 18 },
@@ -353,15 +472,14 @@ async function unduhProduktivitas(s: Supa, p: Pengguna, q: URLSearchParams) {
     ...KOLOM_SARANA.map((k) => ({ judul: k.label, lebar: 14, jenis: "bulat" as const })),
     { judul: "Terakhir Update", lebar: 20 },
   ];
-  kepala(ws, kolomS.length, "SARANA PASCAPANEN PER DESA", [wilayah]);
-  kolomS.forEach((k, i) => (ws.getColumn(i + 1).width = k.lebar));
-  gayaHeader(ws.addRow(kolomS.map((k) => k.judul)), "FF15803D");
+  const blokS: Blok[] = [headerKolom(kolomS, "FF15803D")];
   let no = 0;
-  const totalKab = [0, 0, 0, 0];
+  const totalKab = KOLOM_SARANA.map(() => 0);
   let terisiKab = 0;
   for (const k of grup) {
-    const totalKec = [0, 0, 0, 0];
+    const totalKec = KOLOM_SARANA.map(() => 0);
     let terisi = 0;
+    const baris: Sel[][] = [];
     for (const d of k.desa) {
       const sr = sarana.get(d.id);
       const v = KOLOM_SARANA.map((c) => (sr ? Number(sr[c.kunci]) || 0 : null));
@@ -369,16 +487,16 @@ async function unduhProduktivitas(s: Supa, p: Pengguna, q: URLSearchParams) {
         terisi++;
         v.forEach((x, i) => (totalKec[i] += x ?? 0));
       }
-      barisData(ws, kolomS, [++no, k.nama, d.nama, ...v, sr ? formatTanggalJam(sr.updated_at) : "Belum diisi"]);
+      baris.push([++no, k.nama, d.nama, ...v, sr ? formatTanggalJam(sr.updated_at) : "Belum diisi"]);
     }
     totalKec.forEach((x, i) => (totalKab[i] += x));
     terisiKab += terisi;
-    barisTotal(ws, kolomS, ["", `Jumlah Kec. ${k.nama} (terisi ${terisi}/${k.desa.length} desa)`, "", ...totalKec, ""]);
+    blokS.push({ t: "data", baris }, { t: "total", nilai: ["", `Jumlah Kec. ${k.nama} (terisi ${terisi}/${k.desa.length} desa)`, "", ...totalKec, ""] });
   }
   if (grup.length > 1) {
-    barisTotal(ws, kolomS, ["", `Total Kabupaten (terisi ${terisiKab}/${desa.length} desa)`, "", ...totalKab, ""]);
+    blokS.push({ t: "total", nilai: ["", `Total Kabupaten (terisi ${terisiKab}/${desa.length} desa)`, "", ...totalKab, ""] });
   }
+  lembar.push({ nama: "Sarana Desa", judul: "SARANA PASCAPANEN PER DESA", info: [wilayah], kolom: kolomS, beku: { x: 3, y: 5 }, blok: blokS });
 
-  return kirimXlsx(wb, ["Produktivitas", wilayah, tDari === tSampai ? `${tDari}` : `${tDari}-${tSampai}`]);
+  return kirim({ namaFile: ["Produktivitas", wilayah, tDari === tSampai ? `${tDari}` : `${tDari}-${tSampai}`], lembar });
 }
-

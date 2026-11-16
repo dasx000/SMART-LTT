@@ -30,22 +30,34 @@ async function Isi() {
   return (
     <>
       <div className="rounded-b-[2rem] bg-green-600 px-5 pt-8 pb-6 shadow-md">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold tracking-wider text-green-100">PPL KEMENTAN RI</p>
-            <h1 className="mt-1 text-xl font-bold text-white uppercase">{p.nama}</h1>
-            <p className="mt-1 text-xs text-green-200">WKPP: {desa.length ? desa.map((d) => d.nama).join(", ") : "Belum ditentukan"}</p>
+        {/* Baris atas: label + tombol (Mode BPP │ Keluar); nama di bawah dengan lebar penuh */}
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs font-semibold tracking-wider text-green-100">PPL KEMENTAN RI</p>
+          <div className="flex shrink-0 items-center gap-2">
+            {p.role === "admin_bpp" && (
+              <>
+                <Link
+                  href="/bpp"
+                  className="flex h-7 items-center gap-1 rounded-full bg-white/15 px-2.5 text-[11px] font-bold text-white ring-1 ring-white/40 transition hover:bg-white/25 active:scale-95"
+                >
+                  <Shuffle size={12} /> Mode BPP
+                </Link>
+                <span aria-hidden className="h-5 w-px bg-white/40" />
+              </>
+            )}
+            <form action={logout}>
+              <button
+                type="submit"
+                aria-label="Keluar"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-md transition hover:scale-105 active:scale-95"
+              >
+                <LogOut size={14} className="text-red-500" />
+              </button>
+            </form>
           </div>
-          <form action={logout}>
-            <button
-              type="submit"
-              aria-label="Keluar"
-              className="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-lg transition hover:scale-105 active:scale-95"
-            >
-              <LogOut size={18} className="text-red-500" />
-            </button>
-          </form>
         </div>
+        <h1 className="mt-3 text-xl font-bold text-white uppercase">{p.nama}</h1>
+        <p className="mt-1 mb-2 text-xs text-green-200">WKPP: {desa.length ? desa.map((d) => d.nama).join(", ") : "Belum ditentukan"}</p>
       </div>
 
       <div className="mt-6 px-5 pb-10">
@@ -62,10 +74,7 @@ async function Isi() {
           <Ikon href="/ppl/produktivitas?tab=sarana" label={<>Sarana<br />Desa</>} warna="bg-orange-100 text-orange-600 border-orange-200"><Warehouse size={30} /></Ikon>
           <Ikon href="/ppl/target" label={<>Target<br />Bulanan</>} warna="bg-cyan-100 text-cyan-600 border-cyan-200"><Goal size={30} /></Ikon>
           <Ikon href="/ppl/rekap" label={<>Rekap<br />Saya</>} warna="bg-purple-100 text-purple-600 border-purple-200"><TableProperties size={30} /></Ikon>
-          {p.role === "admin_bpp" && (
-            <Ikon href="/bpp" label={<>Mode<br />BPP</>} warna="bg-emerald-100 text-emerald-600 border-emerald-200"><Shuffle size={30} /></Ikon>
-          )}
-          <Ikon href="/ganti-password" label={<>Ubah<br />Password</>} warna="bg-amber-100 text-amber-600 border-amber-200"><UserCog size={30} /></Ikon>
+          <Ikon href="/profil" label={<>Ubah<br />Profil</>} warna="bg-amber-100 text-amber-600 border-amber-200"><UserCog size={30} /></Ikon>
         </div>
       </div>
     </>

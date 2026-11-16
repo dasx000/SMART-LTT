@@ -4,71 +4,12 @@ import { revalidatePath } from "next/cache";
 import { wajibRole } from "@/lib/auth";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseSiap } from "@/lib/env";
-import { skemaTargetKecamatan, skemaEditLaporanBpp } from "./skema";
+import { skemaEditLaporanBpp } from "./skema";
 
 export type ResponsAksiBpp = {
   sukses: boolean;
   pesan: string;
 };
-
-/**
- * Simpan / perbarui target kecamatan (diisi oleh Admin BPP)
- */
-export async function simpanTargetKecamatanAction(formData: FormData): Promise<ResponsAksiBpp> {
-  const pengguna = await wajibRole("admin_bpp");
-
-  if (!supabaseSiap()) {
-    return { sukses: false, pesan: "Koneksi Supabase belum aktif." };
-  }
-
-  const parse = skemaTargetKecamatan.safeParse({
-    bulan: formData.get("bulan"),
-    komoditas: formData.get("komoditas"),
-    targetTanam: formData.get("targetTanam"),
-    targetPanen: formData.get("targetPanen"),
-  });
-
-  if (!parse.success) {
-    return {
-      sukses: false,
-      pesan: parse.error.issues[0]?.message ?? "Isian target tidak valid.",
-    };
-  }
-
-  const { bulan, komoditas, targetTanam, targetPanen } = parse.data;
-  const kecamatanId = pengguna.kecamatanId;
-
-  if (!kecamatanId) {
-    return { sukses: false, pesan: "Akun Anda belum terikat ke kecamatan tertentu." };
-  }
-
-  try {
-    const supabase = await supabaseServer();
-
-    const { error } = await supabase.from("target_kecamatan").upsert(
-      {
-        bulan,
-        kecamatan_id: kecamatanId,
-        komoditas,
-        target_tanam: targetTanam,
-        target_panen: targetPanen,
-        pembuat_id: pengguna.id,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "bulan, kecamatan_id, komoditas" }
-    );
-
-    if (error) {
-      return { sukses: false, pesan: `Gagal menyimpan target: ${error.message}` };
-    }
-
-    revalidatePath("/bpp", "layout");
-    return { sukses: true, pesan: `Target ${komoditas} bulan ${bulan} berhasil disimpan!` };
-  } catch (err: unknown) {
-    const pesan = err instanceof Error ? err.message : "Terjadi kesalahan internal.";
-    return { sukses: false, pesan };
-  }
-}
 
 /**
  * Edit laporan LTT oleh Koordinator BPP
@@ -138,58 +79,6 @@ export async function editLaporanBppAction(formData: FormData): Promise<ResponsA
 
     revalidatePath("/bpp", "layout");
     return { sukses: true, pesan: "Laporan berhasil diperbarui oleh BPP!" };
-  } catch (err: unknown) {
-    const pesan = err instanceof Error ? err.message : "Terjadi kesalahan internal.";
-    return { sukses: false, pesan };
-  }
-}
-
-/**
- * Hapus laporan LTT oleh Koordinator BPP (soft-delete)
- */
-export async function hapusLaporanBppAction(id: number): Promise<ResponsAksiBpp> {
-  const pengguna = await wajibRole("admin_bpp");
-
-  if (!supabaseSiap()) {
-    return { sukses: false, pesan: "Koneksi Supabase belum aktif." };
-  }
-
-  try {
-    const supabase = await supabaseServer();
-
-    const { data: lap, error: errLap } = await supabase
-      .from("laporan_ltt")
-      .select("id, desa:desa_id(kecamatan_id)")
-      .eq("id", id)
-      .is("dihapus_pada", null)
-      .single();
-
-    if (errLap || !lap) {
-      return { sukses: false, pesan: "Laporan tidak ditemukan." };
-    }
-
-    const d = lap.desa as unknown as { kecamatan_id: number } | null;
-    if (pengguna.role === "admin_bpp" && d?.kecamatan_id !== pengguna.kecamatanId) {
-      return { sukses: false, pesan: "Anda hanya berwenang menghapus laporan di kecamatan Anda." };
-    }
-
-    const { data: berubahDel, error: errDel } = await supabase
-      .from("laporan_ltt")
-      .update({ dihapus_pada: new Date().toISOString() })
-      .eq("id", id)
-      .select("id");
-
-    if (errDel) {
-      return { sukses: false, pesan: `Gagal menghapus: ${errDel.message}` };
-    }
-
-    // RLS menolak diam-diam (0 baris) → jangan laporkan "berhasil"
-    if (!berubahDel?.length) {
-      return { sukses: false, pesan: "Tidak ada data yang berubah. Laporan mungkin sudah dihapus atau di luar wilayah kewenangan Anda." };
-    }
-
-    revalidatePath("/bpp", "layout");
-    return { sukses: true, pesan: "Laporan berhasil dihapus oleh BPP." };
   } catch (err: unknown) {
     const pesan = err instanceof Error ? err.message : "Terjadi kesalahan internal.";
     return { sukses: false, pesan };

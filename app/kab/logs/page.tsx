@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Check, ChevronLeft, ChevronRight, RotateCw, TriangleAlert } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, TriangleAlert } from "lucide-react";
+import { TombolMuatUlang } from "@/components/tombol-muat-ulang";
 import { wajibRole } from "@/lib/auth";
 import { KerangkaHalaman } from "@/components/kerangka-halaman";
 import { supabaseServer } from "@/lib/supabase/server";
@@ -49,9 +50,7 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
           <h2 className="text-xl font-bold text-gray-800">Log Sinkronisasi e-Pusluh</h2>
           <p className="text-[11px] text-gray-500">Pantau aktivitas penarikan data padi otomatis</p>
         </div>
-        <Link href="/kab/logs" className="flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-bold text-blue-600">
-          <RotateCw size={14} /> Refresh
-        </Link>
+        <TombolMuatUlang href="/kab/logs" label="Refresh" className="flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-bold text-blue-600" />
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
