@@ -4,6 +4,7 @@ Output: File-file JSON bersih di folder scripts/etl/data_bersih/
 CATATAN: Script ini HANYA memproses data secara lokal (dry-run). TIDAK memasukkan data ke Supabase.
 """
 
+import html
 import os
 import re
 import json
@@ -19,7 +20,11 @@ OUTPUT_DIR = os.path.join("scripts", "etl", "data_bersih")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 def norm(s):
-    return re.sub(r"\s+", " ", str(s or "").strip())
+    """Teks rapi: entitas HTML diurai (sheet lama menyimpan mis. "MA&#039;RUF"), spasi dirapikan."""
+    t = str(s or "")
+    if "&" in t:
+        t = html.unescape(html.unescape(t))
+    return re.sub(r"\s+", " ", t.strip())
 
 def parse_num(v):
     """Angka dari sel: 12 / 12.5 / "12,5" / "1.234,5" → float. Gagal → 0.0."""

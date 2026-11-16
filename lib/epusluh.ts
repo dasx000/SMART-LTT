@@ -3,7 +3,25 @@ import "server-only";
 // Aturan baca data e-Pusluh — dipakai bersama oleh sinkron bot (/api/v1/epusluh/padi)
 // dan impor Excel e-Pusluh (Admin Kab), supaya kedua jalur menghasilkan data yang sama persis.
 
-export const teks = (v: unknown) => String(v ?? "").trim();
+const ENTITAS: Record<string, string> = { amp: "&", quot: '"', apos: "'", lt: "<", gt: ">", nbsp: " " };
+
+/**
+ * Ubah entitas HTML jadi karakter asli: "MA&#039;RUF" → "MA'RUF".
+ * Teks dari tabel HTML e-Pusluh (bot) & sheet lama sering ter-escape. Diulang sekali untuk "&amp;#039;".
+ */
+export function decodeHtml(s: string): string {
+  const satu = (x: string) =>
+    x.replace(/&(#\d{1,7}|#x[0-9a-f]{1,6}|amp|quot|apos|lt|gt|nbsp);/gi, (asli, k: string) => {
+      const kecil = k.toLowerCase();
+      if (kecil[0] !== "#") return ENTITAS[kecil] ?? asli;
+      const kode = kecil[1] === "x" ? Number.parseInt(kecil.slice(2), 16) : Number(kecil.slice(1));
+      return kode > 0 && kode <= 0x10ffff ? String.fromCodePoint(kode) : asli;
+    });
+  return s.includes("&") ? satu(satu(s)) : s;
+}
+
+/** Teks rapi: entitas HTML diurai, spasi tepi dibuang. */
+export const teks = (v: unknown) => decodeHtml(String(v ?? "")).trim();
 
 /** Kunci pencocokan nama wilayah: huruf kecil, spasi tunggal. */
 export const kunciNama = (s: unknown) => teks(s).toLowerCase().replace(/\s+/g, " ");
