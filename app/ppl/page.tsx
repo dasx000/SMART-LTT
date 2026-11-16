@@ -8,6 +8,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { desaBinaanSaya, type DesaRef } from "@/lib/data";
 import { NAMA_BULAN, tanggalIsoWIB } from "@/lib/format";
 import { logout } from "@/app/(auth)/login/actions";
+import { IkonPasangAplikasi, KartuPasangAplikasi } from "@/components/pasang-aplikasi";
 
 export const metadata: Metadata = { title: "Penyuluh — SMART LTT" };
 
@@ -65,6 +66,7 @@ async function Isi() {
 
       <div className="mt-6 px-5 pb-10">
         {kurang && <PeringatanTargetPadi {...kurang} />}
+        <KartuPasangAplikasi />
 
         <h2 className="mb-4 border-b border-gray-200 pb-2 text-sm font-bold text-gray-800">Menu Laporan LTT</h2>
         <div className="grid grid-cols-4 gap-3">
@@ -80,6 +82,7 @@ async function Isi() {
           <Ikon href="/ppl/target" label={<>Target<br />Bulanan</>} warna="bg-cyan-100 text-cyan-600 border-cyan-200"><Goal size={30} /></Ikon>
           <Ikon href="/ppl/rekap" label={<>Rekap<br />Saya</>} warna="bg-purple-100 text-purple-600 border-purple-200"><TableProperties size={30} /></Ikon>
           <Ikon href="/profil" label={<>Ubah<br />Profil</>} warna="bg-amber-100 text-amber-600 border-amber-200"><UserCog size={30} /></Ikon>
+          <IkonPasangAplikasi />
         </div>
       </div>
     </>
