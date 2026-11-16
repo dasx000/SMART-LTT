@@ -12,13 +12,13 @@ const TAB = [
 export function TabDashboardKab({ aktif, kanan }: { aktif: string; kanan?: ReactNode }) {
   return (
     <div className="mb-6 flex flex-col justify-between gap-3 border-b border-gray-200 pb-3 sm:flex-row sm:items-center">
-      <nav className="flex w-full items-center gap-2 overflow-x-auto pb-1" aria-label="Tab dashboard">
+      <nav className="flex w-full items-center gap-1 overflow-x-auto pb-1 [scrollbar-width:none] sm:gap-2 [&::-webkit-scrollbar]:hidden" aria-label="Tab dashboard">
         {TAB.map((t) => (
           <Link
             key={t.href}
             href={t.href}
             aria-current={aktif === t.href ? "page" : undefined}
-            className={`shrink-0 rounded-lg px-4 py-2 text-sm font-bold transition-all ${
+            className={`shrink-0 rounded-lg px-3 py-2 text-[13px] font-bold sm:px-4 sm:text-sm transition-all ${
               aktif === t.href ? "bg-green-600 text-white" : "text-gray-500 hover:text-green-600"
             }`}
           >

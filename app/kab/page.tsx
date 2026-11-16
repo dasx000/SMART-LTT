@@ -199,7 +199,7 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
             <thead>
               <tr className="text-[11px] font-bold text-gray-600 uppercase">
                 <th rowSpan={2} className="border border-gray-100 bg-gray-50 p-2">No</th>
-                <th rowSpan={2} className="border border-gray-100 bg-gray-50 p-2 text-left">Kecamatan</th>
+                <th rowSpan={2} className="sticky left-0 z-10 border border-gray-100 bg-gray-50 p-2 text-left shadow-[2px_0_0_0_#f3f4f6]">Kecamatan</th>
                 {KOLOM_DINAS.map((g) => (
                   <th key={g.kunci} colSpan={2} className={`border border-gray-100 p-2 ${WARNA_DINAS[g.kunci]}`}>{g.label}</th>
                 ))}
@@ -213,9 +213,9 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
             </thead>
             <tbody>
               {dinas.map((b, i) => (
-                <tr key={b.kecamatan} className="hover:bg-gray-50">
+                <tr key={b.kecamatan} className="group hover:bg-gray-50">
                   <td className="border border-gray-100 p-2 text-center text-gray-500">{i + 1}</td>
-                  <td className="border border-gray-100 p-2 font-semibold text-gray-700">{b.kecamatan}</td>
+                  <td className="sticky left-0 z-10 border border-gray-100 bg-white p-2 font-semibold whitespace-nowrap text-gray-700 shadow-[2px_0_0_0_#f3f4f6] group-hover:bg-gray-50">{b.kecamatan}</td>
                   {KOLOM_DINAS.flatMap(({ kunci }) => [
                     <Sel key={`t${kunci}`} n={b[kunci].tanam} />,
                     <Sel key={`p${kunci}`} n={b[kunci].panen} />,
@@ -225,7 +225,8 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
             </tbody>
             <tfoot>
               <tr className="bg-yellow-50 font-bold text-yellow-800">
-                <td colSpan={2} className="border border-gray-100 p-2 text-center uppercase">Jumlah</td>
+                <td className="border border-gray-100 p-2" />
+                <td className="sticky left-0 z-10 border border-gray-100 bg-yellow-50 p-2 text-left uppercase shadow-[2px_0_0_0_#f3f4f6]">Jumlah</td>
                 {KOLOM_DINAS.map((g) => g.kunci).flatMap((k) => [
                   <td key={`t${k}`} className="border border-gray-100 p-2 text-right">{formatAngka(dinas.reduce((a, b) => a + b[k].tanam, 0))}</td>,
                   <td key={`p${k}`} className="border border-gray-100 p-2 text-right">{formatAngka(dinas.reduce((a, b) => a + b[k].panen, 0))}</td>,

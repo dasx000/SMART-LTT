@@ -176,7 +176,7 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
             <thead>
               <tr className="text-[11px] font-bold text-gray-600 uppercase">
                 <th rowSpan={2} className="border border-gray-100 bg-gray-50 p-2">No</th>
-                <th rowSpan={2} className="border border-gray-100 bg-gray-50 p-2 text-left">Kecamatan</th>
+                <th rowSpan={2} className="sticky left-0 z-10 shadow-[2px_0_0_0_#f3f4f6] border border-gray-100 bg-gray-50 p-2 text-left">Kecamatan</th>
                 <th colSpan={4} className="border border-gray-100 bg-green-50 p-2">PM AAS (Padi)</th>
               </tr>
               <tr className="text-[10px] font-bold text-gray-400 uppercase">
@@ -193,9 +193,9 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
                 </tr>
               )}
               {barisRekap.map((b, i) => (
-                <tr key={b.id} className="hover:bg-gray-50">
+                <tr key={b.id} className="group hover:bg-gray-50">
                   <td className="border border-gray-100 p-2 text-center text-gray-500">{i + 1}</td>
-                  <td className="border border-gray-100 p-2 font-semibold text-gray-700">{b.nama}</td>
+                  <td className="sticky left-0 z-10 shadow-[2px_0_0_0_#f3f4f6] border border-gray-100 bg-white p-2 font-semibold whitespace-nowrap text-gray-700 group-hover:bg-gray-50">{b.nama}</td>
                   <td className={`border border-gray-100 p-2 text-right ${tgt.perKec.get(b.id) ? "font-bold text-blue-700" : "text-gray-300"}`}>{formatAngka(tgt.perKec.get(b.id) ?? 0)}</td>
                   <td className={`border border-gray-100 p-2 text-right ${b.pmAas.tanam ? "font-bold" : "text-gray-300"}`}>{formatAngka(b.pmAas.tanam)}</td>
                   <SelCapaian realisasi={b.pmAas.tanam} t={tgt.perKec.get(b.id) ?? 0} />
@@ -205,7 +205,8 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
             </tbody>
             <tfoot>
               <tr className="bg-yellow-50 font-bold text-yellow-800">
-                <td colSpan={2} className="border border-gray-100 p-2 text-center uppercase">Jumlah</td>
+                <td className="border border-gray-100 p-2" />
+                <td className="sticky left-0 z-10 shadow-[2px_0_0_0_#f3f4f6] border border-gray-100 bg-yellow-50 p-2 text-left uppercase">Jumlah</td>
                 <td className="border border-gray-100 p-2 text-right">{formatAngka(target)}</td>
                 <td className="border border-gray-100 p-2 text-right">{formatAngka(r.pmAas.tanam)}</td>
                 <SelCapaian realisasi={r.pmAas.tanam} t={target} tebal />

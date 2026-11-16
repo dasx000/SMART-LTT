@@ -26,7 +26,7 @@ const kelasLbl = "flex flex-col gap-1 text-[11px] font-semibold text-gray-500";
 
 /**
  * Form tambah/ubah pengguna. Dibuka lewat URL (?edit=<id> atau ?edit=baru); selesai → kembali ke daftar.
- * mode "bpp": role/kecamatan terkunci (server juga memeriksa).
+ * mode "bpp": role/kecamatan terkunci; nama terkunci saat ubah (server juga memeriksa).
  */
 export function FormPengguna({
   mode, awal, desa, kecamatan, kecamatanSaya, idSaya, kembali,
@@ -97,7 +97,7 @@ export function FormPengguna({
         </label>
         <label className={kelasLbl}>
           Nama
-          <input value={nama} onChange={(e) => setNama(e.target.value)} required className={kelasIn} />
+          <input value={nama} onChange={(e) => setNama(e.target.value)} disabled={!baru && mode === "bpp"} required className={`${kelasIn} disabled:opacity-60`} />
         </label>
         <label className={kelasLbl}>
           WhatsApp

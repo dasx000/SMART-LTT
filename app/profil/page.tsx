@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Profil Saya" };
 
 const LABEL_ROLE = { penyuluh: "Penyuluh", admin_bpp: "Koordinator BPP", admin_kab: "Admin Kabupaten", viewer: "Viewer" } as const;
 
-// Profil sendiri: nama, NIP, kecamatan, desa binaan hanya ditampilkan (dikunci, diubah Admin Kab).
+// Profil sendiri: nama, NIP, kecamatan, desa binaan hanya ditampilkan (nama/NIP/peran/kecamatan diubah Admin Kab; desa binaan juga oleh BPP).
 // Yang bisa diubah: nomor WhatsApp, dan password lewat /ganti-password.
 export default function HalamanProfil() {
   return (
@@ -41,8 +41,12 @@ async function Isi() {
           {namaKec && <Baris label="Kecamatan" nilai={namaKec} />}
           {desa.length > 0 && <Baris label="Desa binaan" nilai={desa.map((d) => d.nama).join(", ")} />}
         </dl>
-        <p className="mt-3 flex items-center gap-1.5 text-xs text-gray-500">
-          <Lock size={12} /> Data di atas hanya bisa diubah oleh Admin Kabupaten.
+        <p className="mt-3 flex items-start gap-1.5 text-xs text-gray-500">
+          <Lock size={12} className="mt-0.5 shrink-0" />
+          <span>
+            Nama, NIP, peran, dan kecamatan hanya bisa diubah oleh Admin Kabupaten.
+            {desa.length > 0 && " Desa binaan diatur oleh Koordinator BPP atau Admin Kabupaten."}
+          </span>
         </p>
       </section>
 

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { DatabaseBackup } from "lucide-react";
 import { supabaseServer } from "@/lib/supabase/server";
-import { formatTanggalJam } from "@/lib/format";
+import { formatTanggalJam, tanggalIsoWIB } from "@/lib/format";
 import { BATAS_HARI_BACKUP } from "@/lib/backup";
 
 export type BackupTerakhir = { waktu: string; nama: string | null } | null;
@@ -14,7 +14,12 @@ export async function ambilBackupTerakhir(): Promise<BackupTerakhir> {
   return data;
 }
 
-export const hariSejak = (waktu: string) => Math.floor((Date.now() - new Date(waktu).getTime()) / 86_400_000);
+/**
+ * Selisih hari KALENDER menurut WIB (bukan kelipatan 24 jam): backup tgl 16 pukul 20.00
+ * dilihat tgl 17 pukul 08.00 → 1 hari lalu, bukan "hari ini".
+ */
+export const hariSejak = (waktu: string) =>
+  Math.round((Date.parse(tanggalIsoWIB()) - Date.parse(tanggalIsoWIB(waktu))) / 86_400_000);
 
 /** Pita pengingat di dashboard Admin Kab. Hijau ≤ 7 hari, merah lebih lama / belum pernah. */
 export async function PengingatBackup() {

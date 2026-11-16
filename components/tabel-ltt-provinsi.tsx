@@ -52,9 +52,10 @@ export function TabelLttProvinsi({ data }: { data: Data }) {
   const sd = `1 s.d ${hariIniTeks}`;
   const th = "border border-gray-200 p-2";
   const td = "border border-gray-100 p-2 text-right";
-  // Kolom No & Kecamatan tetap terlihat saat tabel digeser ke samping.
-  const lekatNo = "sticky left-0 z-10 w-10 min-w-10";
-  const lekatKec = "sticky left-10 z-10 shadow-[2px_0_0_0_#f3f4f6]";
+  // Hanya kolom Kecamatan yang tetap terlihat saat tabel digeser; No ikut bergeser
+  // supaya ruang untuk kolom angka lebih lega di layar sempit.
+  const lekatNo = "w-10 min-w-10";
+  const lekatKec = "sticky left-0 z-10 shadow-[2px_0_0_0_#f3f4f6]";
 
   return (
     <div className="mb-6 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:mb-8">
@@ -89,7 +90,8 @@ export function TabelLttProvinsi({ data }: { data: Data }) {
               <th className={`${th} bg-blue-50 text-blue-900`}>Total LTT</th>
             </tr>
             <tr className="bg-yellow-50 text-[11px] font-bold text-yellow-800">
-              <td colSpan={2} className={`sticky left-0 z-10 border border-gray-100 bg-yellow-50 p-2 text-center uppercase`}>Jumlah</td>
+              <td className="border border-gray-100 bg-yellow-50 p-2" />
+              <td className={`${lekatKec} border border-gray-100 bg-yellow-50 p-2 text-left uppercase`}>Jumlah</td>
               <td className={td}><N n={data.total.target} /></td>
               {KOLOM_PROV.map((k) => (
                 <td key={k.kunci} className={td}><N n={data.total.hariIni[k.kunci]} /></td>

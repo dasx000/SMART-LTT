@@ -138,7 +138,7 @@ export async function ubahPenggunaAction(input: z.input<typeof skemaUbah>): Prom
   if (!bolehKelola(p, t)) return { sukses: false, pesan: "Anda tidak berhak mengubah pengguna ini." };
   if (d.id === p.id && !d.aktif) return { sukses: false, pesan: "Tidak bisa menonaktifkan akun sendiri." };
 
-  // BPP tidak boleh mengubah role / kecamatan
+  // BPP tidak boleh mengubah nama / role / kecamatan
   const role = p.role === "admin_kab" && d.role ? d.role : t.role;
   const kecamatanId = p.role === "admin_kab" && d.kecamatanId !== undefined ? d.kecamatanId : t.kecamatanId;
   if (d.id === p.id && role !== p.role) return { sukses: false, pesan: "Tidak bisa mengubah role akun sendiri." };
@@ -146,8 +146,11 @@ export async function ubahPenggunaAction(input: z.input<typeof skemaUbah>): Prom
 
   const a = supabaseAdmin();
   try {
-    const { error: ep } = await a.schema("core").from("profiles").update({ nama: d.nama }).eq("id", d.id);
-    if (ep) throw new Error(ep.message);
+    // Nama hanya boleh diubah Admin Kabupaten
+    if (p.role === "admin_kab") {
+      const { error: ep } = await a.schema("core").from("profiles").update({ nama: d.nama }).eq("id", d.id);
+      if (ep) throw new Error(ep.message);
+    }
     if (role !== t.role) {
       const { error } = await a.schema("core").from("memberships").update({ role }).eq("user_id", d.id).eq("app_slug", "ltt");
       if (error) throw new Error(error.message);
