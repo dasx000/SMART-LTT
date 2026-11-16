@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 
-// PWA ringan: manifest + service worker KHUSUS push notifikasi (public/sw.js). TANPA mode offline /
-// cache (keputusan user 16 Nov 2026) — data selalu diambil langsung dari server.
+// PWA ringan: hanya manifest (nama, ikon, warna, mode layar penuh). TANPA service worker / mode offline
+// (keputusan user 16 Nov 2026) — data selalu diambil langsung dari server.
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",

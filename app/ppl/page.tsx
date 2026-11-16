@@ -7,8 +7,6 @@ import { KerangkaHalaman } from "@/components/kerangka-halaman";
 import { supabaseServer } from "@/lib/supabase/server";
 import { desaBinaanSaya } from "@/lib/data";
 import { logout } from "@/app/(auth)/login/actions";
-import { PengaturanNotifikasi } from "@/components/pengaturan-notifikasi";
-import { sakelarNotifPpl } from "@/lib/pengaturan";
 
 export const metadata: Metadata = { title: "Penyuluh — SMART LTT" };
 
@@ -27,8 +25,7 @@ export default function HalamanPPL() {
 
 async function Isi() {
   const p = await wajibRole("penyuluh", "admin_bpp");
-  const s = await supabaseServer();
-  const [desa, notif] = await Promise.all([desaBinaanSaya(s, p.id), sakelarNotifPpl(s)]);
+  const desa = await desaBinaanSaya(await supabaseServer(), p.id);
 
   return (
     <>
@@ -64,7 +61,6 @@ async function Isi() {
       </div>
 
       <div className="mt-6 px-5 pb-10">
-        {notif.aktif && <PengaturanNotifikasi ringkas />}
         <h2 className="mb-4 border-b border-gray-200 pb-2 text-sm font-bold text-gray-800">Menu Laporan LTT</h2>
         <div className="grid grid-cols-4 gap-3">
           <Ikon href="/ppl/lapor/padi" label="Padi" warna="bg-blue-100 text-blue-600 border-blue-200"><Wheat size={30} /></Ikon>

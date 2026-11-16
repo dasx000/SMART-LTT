@@ -6,8 +6,6 @@ import { KerangkaHalaman } from "@/components/kerangka-halaman";
 import { supabaseServer } from "@/lib/supabase/server";
 import { daftarKecamatan, desaBinaanSaya } from "@/lib/data";
 import { FormWhatsApp } from "./form-whatsapp";
-import { PengaturanNotifikasi } from "@/components/pengaturan-notifikasi";
-import { sakelarNotifPpl } from "@/lib/pengaturan";
 
 export const metadata: Metadata = { title: "Profil Saya" };
 
@@ -26,11 +24,10 @@ export default function HalamanProfil() {
 async function Isi() {
   const p = await getPengguna();
   const s = await supabaseServer();
-  const [kecs, desa, { data: ang }, notif] = await Promise.all([
+  const [kecs, desa, { data: ang }] = await Promise.all([
     daftarKecamatan(s),
     desaBinaanSaya(s, p.id),
     s.from("anggota").select("whatsapp").eq("user_id", p.id).maybeSingle(),
-    sakelarNotifPpl(s),
   ]);
   const namaKec = kecs.find((k) => k.id === p.kecamatanId)?.nama;
 
@@ -50,8 +47,6 @@ async function Isi() {
       </section>
 
       <FormWhatsApp awal={ang?.whatsapp ?? ""} />
-
-      {(p.role === "penyuluh" || p.role === "admin_bpp") && <PengaturanNotifikasi dimatikanAdmin={!notif.aktif} />}
 
       <Link
         href="/ganti-password"

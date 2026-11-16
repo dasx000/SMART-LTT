@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  ArrowLeft, Bell, DatabaseBackup, Goal, ChartLine, ChartPie, FileText, History, House, KeyRound, Leaf, LockKeyhole, Map as Peta, Menu, Power,
+  ArrowLeft, DatabaseBackup, Goal, ChartLine, ChartPie, FileText, History, House, KeyRound, Leaf, LockKeyhole, Map as Peta, Menu, Power,
   Scale, Shuffle, Sprout, Tags, UserCog, Users, Warehouse, X, Shield, Target,
 } from "lucide-react";
 import { logout } from "@/app/(auth)/login/actions";
@@ -33,7 +33,6 @@ const MENU_KAB: Item[] = [
   { href: "/kab/target", label: "Target Komoditas", ikon: <Goal size={18} />, role: ["admin_kab"] },
   { href: "/kab/logs", label: "Log Sinkronisasi", ikon: <History size={18} />, role: ["admin_kab"] },
   { href: "/kab/backup", label: "Backup Data", ikon: <DatabaseBackup size={18} />, role: ["admin_kab"] },
-  { href: "/kab/notifikasi", label: "Notifikasi", ikon: <Bell size={18} />, role: ["admin_kab"] },
   { href: "/kab/master/kecamatan", label: "Kecamatan", ikon: <Peta size={18} />, role: ["admin_kab"], grup: "Master Data" },
   { href: "/kab/master/desa", label: "Desa", ikon: <House size={18} />, role: ["admin_kab"] },
   { href: "/kab/master/jenis-ltt", label: "Jenis LTT", ikon: <Tags size={18} />, role: ["admin_kab"] },

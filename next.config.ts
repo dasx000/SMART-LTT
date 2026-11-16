@@ -15,7 +15,7 @@ const nextConfig: NextConfig = {
   partialPrefetching: true,
   poweredByHeader: false,
   // ExcelJS hanya dipakai di server (route /api/unduh) — tidak dibundel, tidak dikirim ke HP.
-  serverExternalPackages: ["exceljs", "web-push"],
+  serverExternalPackages: ["exceljs"],
   // Impor Excel e-Pusluh (Admin Kab) dikirim lewat Server Action: file maks. 5 MB + overhead multipart.
   experimental: {
     serverActions: { bodySizeLimit: "6mb" },
@@ -29,18 +29,7 @@ const nextConfig: NextConfig = {
     },
   },
   async headers() {
-    return [
-      { source: "/:path*", headers: securityHeaders },
-      // Service worker push (public/sw.js): selalu ambil versi terbaru, jangan di-cache.
-      {
-        source: "/sw.js",
-        headers: [
-          { key: "Content-Type", value: "application/javascript; charset=utf-8" },
-          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
-          { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self'" },
-        ],
-      },
-    ];
+    return [{ source: "/:path*", headers: securityHeaders }];
   },
 };
 
