@@ -42,7 +42,8 @@ export function FormTarget({
         <p className="font-bold">Petunjuk pengisian</p>
         <ul className="mt-1 list-disc space-y-0.5 pl-4">
           <li>Isi target <b>setiap desa</b>, lalu tekan <b>Simpan</b> di kartu desa tersebut.</li>
-          <li>Kalau desa <b>tidak punya target</b> bulan ini, <b>tetap isi 0 lalu Simpan</b>. Desa baru dihitung sudah mengisi setelah disimpan (label berubah jadi &ldquo;Sudah diisi&rdquo;).</li>
+          <li>Kalau desa <b>tidak punya target</b> bulan ini, <b>tidak perlu mengetik apa pun, langsung klik Simpan</b>. Kolom kosong otomatis tersimpan 0.</li>
+          <li>Desa baru dihitung sudah mengisi setelah disimpan (label berubah jadi &ldquo;Sudah diisi&rdquo;).</li>
         </ul>
       </div>
       {desa.map((d) => {
