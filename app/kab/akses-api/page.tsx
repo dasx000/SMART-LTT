@@ -30,6 +30,9 @@ const ENDPOINT = [
   { m: "GET", jalur: "/api/v1/laporan", izin: "laporan:baca", ket: "Laporan LTT. Opsi: dari, sampai (YYYY-MM-DD, maks. 92 hari), komoditas, kecamatan, desa, sumber, nip, halaman, per (maks. 1000)" },
   { m: "POST", jalur: "/api/v1/laporan", izin: "laporan:tulis", ket: "Kirim laporan Jagung/Ubi Kayu: { nip, desa, komoditas, realisasi_tanam, realisasi_panen, keterangan?, id_kirim? }" },
   { m: "POST", jalur: "/api/v1/epusluh/padi", izin: "epusluh:tulis", ket: "Sinkron data padi hasil tarikan e-Pusluh oleh bot: { data: [[18 kolom]], logData? }. Tambah/perbarui per ID e-Pusluh, nihil dilewati" },
+  { m: "GET", jalur: "/api/v1/unduh/rekap-dinas", izin: "unduh:baca", ket: "Spesifikasi Excel Rekap LTT format Dinas (sama dengan tombol unduh). Opsi: tanggal (satu hari) atau tahun & bulan" },
+  { m: "GET", jalur: "/api/v1/unduh/ltt-provinsi", izin: "unduh:baca", ket: "Spesifikasi Excel LTT Padi format Provinsi: realisasi hari ini + kumulatif 1 s.d hari ini, target & persentase. Opsi: tahun & bulan" },
+  { m: "GET", jalur: "/api/v1/unduh/laporan", izin: "unduh:baca", ket: "Spesifikasi Excel Laporan LTT (data mentah). Opsi: dari, sampai (maks. 92 hari), komoditas, kecamatan (kode 6 angka)" },
 ];
 
 async function Isi({ searchParams }: { searchParams: CariParam }) {

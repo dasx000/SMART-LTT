@@ -89,6 +89,7 @@ const DAFTAR_ISI = [
   ["laporan-baca", "GET /laporan"],
   ["laporan-kirim", "POST /laporan"],
   ["epusluh", "POST /epusluh/padi"],
+  ["unduh", "GET /unduh/…"],
   ["contoh", "Contoh Kode"],
   ["catatan", "Catatan Perilaku"],
 ] as const;
@@ -412,6 +413,45 @@ Content-Type: application/json
               <li><b>Data lama</b>: tanggal + kecamatan yang masih berisi data bot lama ber-ID <K>SYNC-…</K> dilewati agar tidak ganda (<K>dilewati_data_lama</K>, <K>wilayah_dilewati</K>).</li>
               <li>Semua baris diproses dalam satu transaksi: kalau gagal di tengah (<K>500</K>), tidak ada data yang berubah. Kirim ulang aman.</li>
             </ul>
+          </Bagian>
+
+          <Bagian id="unduh" judul="Unduh Excel (Rekap Dinas, LTT Provinsi & Laporan)">
+            <Endpoint metode="GET" jalur="/api/v1/unduh/rekap-dinas" izin="unduh:baca" />
+            <Endpoint metode="GET" jalur="/api/v1/unduh/ltt-provinsi" izin="unduh:baca" />
+            <Endpoint metode="GET" jalur="/api/v1/unduh/laporan" izin="unduh:baca" />
+            <p>
+              Mengembalikan <b>spesifikasi Excel</b> yang sama persis dengan tombol unduh di aplikasi (judul, kolom, baris, total, gaya). Server tidak membuat
+              file .xlsx; klien merakitnya sendiri dengan ExcelJS (contoh perender: <K>lib/excel.ts</K> di aplikasi, atau <K>DASBOT/lib/smartltt-excel.js</K>).
+              Dengan begitu angka dan format di file bot selalu sama dengan unduhan aplikasi.
+            </p>
+            <TabelParam
+              baris={[
+                ["rekap-dinas: tanggal", "tidak", <>Rekap <b>satu hari</b> <K>YYYY-MM-DD</K> (WIB). Kalau diisi, tahun & bulan diabaikan.</>],
+                ["rekap-dinas: tahun, bulan", "tidak", "Rekap satu bulan. Bawaan: bulan berjalan."],
+                ["ltt-provinsi: tahun, bulan", "tidak", <>Bawaan: bulan berjalan → realisasi <b>hari ini</b> + kumulatif <b>1 s.d hari ini</b>, target & persentase (sama dengan tabel LTT Padi format Provinsi di dashboard). Bulan lalu → s.d tanggal terakhir bulan itu.</>],
+                ["laporan: dari, sampai", "tidak", <>Rentang <K>YYYY-MM-DD</K>. Bawaan: hari ini. Maks. <b>92 hari</b>.</>],
+                ["laporan: komoditas", "tidak", <><K>Padi</K>, <K>Jagung</K>, atau <K>Ubi Kayu</K>. Bawaan: semua.</>],
+                ["laporan: kecamatan", "tidak", "Kode 6 angka. Bawaan: semua kecamatan."],
+              ]}
+            />
+            <Kode judul="Permintaan">{`GET ${BASE}/api/v1/unduh/rekap-dinas?tanggal=2026-11-17`}</Kode>
+            <Kode judul="Balasan 200 (dipendekkan)">{`{
+  "status": "success",
+  "namaFile": ["Rekap_LTT", "2026-11-17"],
+  "lembar": [
+    {
+      "nama": "Rekap LTT",
+      "judul": "LAPORAN REKAPITULASI LUAS TAMBAH TANAM (LTT)",
+      "info": ["Tanggal Laporan: 17 November 2026"],
+      "kolom": [{ "judul": "NO", "lebar": 5, "jenis": "bulat" }, "..."],
+      "blok": [{ "t": "header", "baris": [["NO", "KECAMATAN", "LTT PADI REGULER", "..."]] }, { "t": "data", "baris": [[1, "Baradatu", 12.5, 0, "..."]] }, { "t": "total", "nilai": ["JUMLAH", "", "..."] }]
+    }
+  ]
+}`}</Kode>
+            <p>
+              Nama file yang dipakai aplikasi: <K>SMART-LTT_</K> + isi <K>namaFile</K> digabung garis bawah + <K>.xlsx</K>. Beberapa spesifikasi boleh digabung
+              menjadi satu file dengan menggabungkan array <K>lembar</K>.
+            </p>
           </Bagian>
 
           <Bagian id="contoh" judul="Contoh Kode">

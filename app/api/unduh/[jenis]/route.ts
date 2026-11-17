@@ -4,12 +4,13 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { NAMA_BULAN, NAMA_BULAN_PENDEK, bulanTahunWIB, formatTanggalJam, tanggalIsoWIB } from "@/lib/format";
 import { HIJAU_TUA, headerKolom, rasio, type Blok, type Kolom, type Lembar, type Sel, type SpesifikasiExcel } from "@/lib/excel-spec";
 import {
-  KOLOM_PROV, KOLOM_SARANA, KOMODITAS,
+  KOLOM_SARANA, KOMODITAS,
   ambilLaporan, ambilProduktivitas, ambilSarana, daftarDesa, daftarKecamatan, desaBinaanSaya, desaRekapPpl,
-  KOLOM_DINAS, laporanBulan, rataPositif, rekapBulananPpl, rekapDinas, rekapHarianPpl,
-  rekapPerKecamatan, rekapProvinsiPadi,
+  rataPositif, rekapBulananPpl, rekapHarianPpl,
+  rekapPerKecamatan,
   type Komoditas, type Supa,
 } from "@/lib/data";
+import { lembarTabel, rentangTanggal, specLaporan, specLttProvinsi, specRekapDinas } from "@/lib/unduh";
 
 /**
  * GET /api/unduh/<jenis>?... — data untuk semua tombol unduh Excel.
@@ -36,13 +37,6 @@ const angka = (v: string | null, min: number, max: number, def: number) => {
   return Number.isInteger(n) && n >= min && n <= max ? n : def;
 };
 const komValid = (v: string | null): Komoditas | null => (KOMODITAS as string[]).includes(v ?? "") ? (v as Komoditas) : null;
-
-/** [dari, sampai] inklusif (YYYY-MM-DD) → rentang ISO [dari 00:00, sampai+1 00:00) WIB. */
-function rentangTanggal(dari: string, sampai: string) {
-  const akhir = new Date(`${sampai}T00:00:00+07:00`);
-  akhir.setUTCDate(akhir.getUTCDate() + 1);
-  return { dari: `${dari}T00:00:00+07:00`, sampai: `${tanggalIsoWIB(akhir)}T00:00:00+07:00` };
-}
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ jenis: string }> }) {
   const { jenis } = await ctx.params;
@@ -71,66 +65,15 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ jenis: stri
   return teksErr("Jenis unduhan tidak dikenal.", 404);
 }
 
-/** Lembar tabel sederhana: header + data + (opsional) total. */
-function lembarTabel(
-  nama: string, judul: string, info: string[], kolom: Kolom[], data: Sel[][],
-  total?: { nilai: Sel[]; gabung?: number }, extra?: Partial<Lembar>,
-): Lembar {
-  const blok: Blok[] = [headerKolom(kolom), { t: "data", baris: data }];
-  if (total) blok.push({ t: "total", ...total });
-  return { nama, judul, info, kolom, blok, ...extra };
-}
-
 // ─── Laporan LTT (Kab & BPP) ──────────────────────────────────────────────────
 async function unduhLaporan(s: Supa, p: Pengguna, q: URLSearchParams) {
-  const hariIni = tanggalIsoWIB();
   const { tahun, bulan } = bulanTahunWIB();
   const dari = tglValid(q.get("dari")) ?? `${tahun}-${String(bulan).padStart(2, "0")}-01`;
-  const sampai = tglValid(q.get("sampai")) ?? hariIni;
-  const komoditas = komValid(q.get("komoditas"));
-
-  const kecs = await daftarKecamatan(s);
+  const sampai = tglValid(q.get("sampai")) ?? tanggalIsoWIB();
   // BPP dikunci ke kecamatannya sendiri
   const kecId = p.role === "admin_bpp" ? p.kecamatanId : angka(q.get("kecamatan"), 1, 100000, 0) || null;
   if (p.role === "admin_bpp" && !kecId) return teksErr("Akun belum terikat ke kecamatan.", 400);
-  const desaIds = kecId ? (await daftarDesa(s, kecId)).map((d) => d.id) : null;
-
-  const data = await ambilLaporan(s, { ...rentangTanggal(dari, sampai), komoditas, desaIds }, kecs);
-  const namaKec = kecId ? (kecs.find((k) => k.id === kecId)?.nama ?? "") : "Semua Kecamatan";
-
-  const kolom: Kolom[] = [
-    { judul: "No", lebar: 5, jenis: "bulat" },
-    { judul: "Tanggal Laporan", lebar: 20 },
-    { judul: "Nama Penyuluh", lebar: 24 },
-    { judul: "Kecamatan", lebar: 18 },
-    { judul: "Desa", lebar: 18 },
-    { judul: "Komoditas", lebar: 11 },
-    { judul: "Jenis LTT", lebar: 16 },
-    { judul: "Lahan Bera (Ha)", lebar: 12, jenis: "angka" },
-    { judul: "Olah Lahan (Ha)", lebar: 12, jenis: "angka" },
-    { judul: "Luas Tanam (Ha)", lebar: 12, jenis: "angka" },
-    { judul: "Luas Panen (Ha)", lebar: 12, jenis: "angka" },
-    { judul: "Metode Penanaman", lebar: 14 },
-    { judul: "Keterangan", lebar: 28 },
-  ];
-  const sum = (f: (l: (typeof data)[number]) => number) => data.reduce((a, l) => a + f(l), 0);
-  return kirim({
-    namaFile: ["Laporan", namaKec, komoditas ?? "", `${dari}_sd_${sampai}`],
-    lembar: [
-      lembarTabel(
-        "Laporan LTT",
-        `LAPORAN LTT ${komoditas?.toUpperCase() ?? "SEMUA KOMODITAS"} — ${namaKec.toUpperCase()}`,
-        [`Periode: ${dari} s/d ${sampai}`],
-        kolom,
-        data.map((l, i) => [
-          i + 1, formatTanggalJam(l.waktu), l.pelapor, l.kecamatan, l.desa, l.komoditas, l.jenis ?? "-",
-          l.bera, l.olah, l.tanam, l.panen, l.metode ?? "-", l.keterangan ?? "",
-        ]),
-        { nilai: ["TOTAL", "", "", "", "", "", "", sum((l) => l.bera), sum((l) => l.olah), sum((l) => l.tanam), sum((l) => l.panen), "", ""], gabung: 7 },
-        { beku: { y: 5 } },
-      ),
-    ],
-  });
+  return kirim(await specLaporan(s, { dari, sampai, komoditas: komValid(q.get("komoditas")), kecId }));
 }
 
 // ─── Rekap per kecamatan, rentang tanggal ─────────────────────────────────────
@@ -175,158 +118,14 @@ function bulanDariQuery(q: URLSearchParams) {
 
 // ─── Rekap LTT format Dinas ───────────────────────────────────────────────────
 async function unduhRekapDinas(s: Supa, q: URLSearchParams) {
-  const { tahun, bulan } = bulanDariQuery(q);
-  const kecs = await daftarKecamatan(s);
-  const rows = rekapDinas(kecs, await laporanBulan(s, tahun, bulan, kecs));
-  const nG = KOLOM_DINAS.length;
-
-  const kolom: Kolom[] = [
-    { judul: "NO", lebar: 5, jenis: "bulat" },
-    { judul: "KECAMATAN", lebar: 22 },
-    ...Array.from({ length: nG * 2 }, () => ({ judul: "", lebar: 12, jenis: "angka" as const })),
-  ];
-  const grup = KOLOM_DINAS.map((g) => g.label.toUpperCase());
-  const nilai = (b: (typeof rows)[number]) => KOLOM_DINAS.flatMap(({ kunci }) => [b[kunci].tanam, b[kunci].panen]);
-  const total = Array.from({ length: nG * 2 }, (_, c) => rows.reduce((a, b) => a + nilai(b)[c], 0));
-
-  return kirim({
-    namaFile: ["Rekap_LTT", `${NAMA_BULAN[bulan - 1]}_${tahun}`],
-    lembar: [{
-      nama: "Rekap LTT",
-      judul: "LAPORAN REKAPITULASI LUAS TAMBAH TANAM (LTT)",
-      info: [`Periode: ${NAMA_BULAN[bulan - 1]} ${tahun}`],
-      kolom,
-      blok: [
-        {
-          t: "header",
-          baris: [
-            ["NO", "KECAMATAN", ...grup.flatMap((g) => [g, ""])],
-            ["", "", ...grup.flatMap(() => ["Tanam (Ha)", "Panen (Ha)"])],
-          ],
-          gabung: [[1, 1, 2, 1], [1, 2, 2, 2], ...grup.map((_, i) => [1, 3 + i * 2, 1, 4 + i * 2] as [number, number, number, number])],
-        },
-        { t: "data", baris: rows.map((b, i) => [i + 1, b.kecamatan, ...nilai(b)]) },
-        { t: "total", nilai: ["JUMLAH", "", ...total], gabung: 2 },
-      ],
-    }],
-  });
+  // ?tanggal=YYYY-MM-DD → rekap satu hari; tanpa tanggal → per bulan (tahun, bulan)
+  const tanggal = tglValid(q.get("tanggal"));
+  return kirim(await specRekapDinas(s, tanggal ? { tanggal } : bulanDariQuery(q)));
 }
 
 // ─── LTT Padi format Provinsi (hari ini + 1 s.d hari ini) ─────────────────────
-/** Warna persentase (sama dengan dashboard): <60 merah, 60–84 kuning, ≥85 hijau. */
-const PERSEN_MERAH = { bg: "FFEF4444", fc: "FFFFFFFF" };
-const PERSEN_KUNING = { bg: "FFFDE047", fc: "FF713F12" };
-const PERSEN_HIJAU = { bg: "FF16A34A", fc: "FFFFFFFF" };
-const WARNA_PERSEN = (p: number) => (p >= 85 ? PERSEN_HIJAU : p >= 60 ? PERSEN_KUNING : PERSEN_MERAH);
-
 async function unduhLttProvinsi(s: Supa, q: URLSearchParams) {
-  const { tahun, bulan } = bulanDariQuery(q);
-  const d = await rekapProvinsiPadi(s, tahun, bulan);
-  const tgl = Number(d.akhir.slice(8, 10));
-  const bln = NAMA_BULAN[d.bulan - 1];
-  const hariIniTeks = `${tgl} ${bln} ${d.tahun}`;
-  const sd = `1 s.d ${hariIniTeks}`;
-  const nK = KOLOM_PROV.length;
-
-  // Warna = kelas Tailwind yang dipakai tabel di dashboard (components/tabel-ltt-provinsi.tsx).
-  const W = {
-    abu: { bg: "FFF9FAFB", fc: "FF4B5563" }, // gray-50 / gray-600 — No, Kecamatan, Target
-    biruGrup: { bg: "FFDBEAFE", fc: "FF1E3A8A" }, // blue-100 / blue-900 — judul grup Realisasi
-    biru: { bg: "FFEFF6FF", fc: "FF1E3A8A" }, // blue-50 — sub-kolom Realisasi
-    ungu: { bg: "FFEDE9FE", fc: "FF4C1D95" }, // violet-100 — Total PM-AAS 1 s.d
-    oranye: { bg: "FFFFEDD5", fc: "FF7C2D12" }, // orange-100 — Total LTT 1 s.d & Persentase (terkait)
-    jumlah: { bg: "FFFEFCE8", fc: "FF854D0E" }, // yellow-50 / yellow-800 — baris JUMLAH
-  };
-  const ISI = { biru: "FFF7FAFF", ungu: "FFFAF8FF", oranye: "FFFFFBF5" }; // latar isi kolom (…-50 tipis)
-  const NOL = "FFD1D5DB"; // gray-300 — angka 0 samar
-  const TEKS = "FF1F2937"; // gray-800
-
-  const kolom: Kolom[] = [
-    { judul: "", lebar: 5, jenis: "bulat", rata: "center" },
-    { judul: "", lebar: 22 },
-    { judul: "", lebar: 16, jenis: "angka" },
-    ...KOLOM_PROV.map(() => ({ judul: "", lebar: 13, jenis: "angka" as const })),
-    { judul: "", lebar: 11, jenis: "angka" },
-    { judul: "", lebar: 16, jenis: "angka" },
-    { judul: "", lebar: 16, jenis: "angka" },
-    { judul: "", lebar: 16, jenis: "angka" },
-  ];
-  const h = (v: string, w: { bg: string; fc: string }): Sel => ({ v: v.toUpperCase(), ...w });
-  /** angka; 0 → abu-abu samar. `bg` = latar kolom, `tebal` = semibold di web. */
-  const n = (x: number, bg?: string, tebal = false): Sel => (x ? { v: x, bg, fc: TEKS, tebal } : { v: 0, bg, fc: NOL });
-  const persen = (p: number, ada: boolean): Sel =>
-    ada ? { v: Math.round(p * 100) / 100, ...WARNA_PERSEN(p), tebal: true } : { v: "-", bg: W.abu.bg, fc: "FF9CA3AF" };
-  const j = (x: number): Sel => (x ? { v: x, ...W.jumlah } : { v: 0, bg: W.jumlah.bg, fc: NOL });
-  const cR = 4; // kolom pertama realisasi
-  const cA = cR + nK + 1; // kolom setelah "Total LTT" harian
-
-  return kirim({
-    namaFile: ["LTT_Padi_Provinsi", d.akhir],
-    lembar: [{
-      nama: "LTT Padi",
-      judul: "LAPORAN LTT PADI (FORMAT PROVINSI)",
-      info: [`Realisasi ${d.bulanBerjalan ? "hari ini" : "tanggal terakhir"} (${hariIniTeks}) dan kumulatif ${sd}`],
-      kolom,
-      beku: { x: 2, y: 7 },
-      garis: "FFE5E7EB", // gray-200
-      tanpaZebra: true,
-      blok: [
-        {
-          t: "header",
-          baris: [
-            [
-              h("No", W.abu), h("Kecamatan", W.abu), h(`Target LTT Bulan ${bln} ${d.tahun}`, W.abu),
-              h(`Realisasi LTT ${hariIniTeks}`, W.biruGrup), ...Array.from({ length: nK }, () => h("", W.biruGrup)),
-              h(`Total LTT PM-AAS ${sd}`, W.ungu), h(`Total LTT ${sd}`, W.oranye), h(`Persentase Total LTT ${sd}`, W.oranye),
-            ],
-            [
-              h("", W.abu), h("", W.abu), h("", W.abu),
-              ...KOLOM_PROV.map((k) => h(k.label, W.biru)), h("Total LTT", W.biru),
-              h("", W.ungu), h("", W.oranye), h("", W.oranye),
-            ],
-          ],
-          gabung: [
-            [1, 1, 2, 1], [1, 2, 2, 2], [1, 3, 2, 3],
-            [1, cR, 1, cR + nK],
-            [1, cA, 2, cA], [1, cA + 1, 2, cA + 1], [1, cA + 2, 2, cA + 2],
-          ],
-        },
-        {
-          t: "total",
-          gabung: 2,
-          nilai: [
-            { v: "JUMLAH", ...W.jumlah }, { v: "", ...W.jumlah }, j(d.total.target),
-            ...KOLOM_PROV.map((k) => j(d.total.hariIni[k.kunci])), j(d.total.hariIni.total),
-            j(d.total.kumulatifPmAas), j(d.total.kumulatif), persen(d.total.persen, d.total.target > 0),
-          ],
-        },
-        {
-          t: "data",
-          baris: d.baris.map((b, i) => [
-            { v: i + 1, fc: "FF6B7280" },
-            { v: b.kecamatan, fc: "FF374151", tebal: true },
-            b.target > 0 ? { v: b.target, fc: TEKS } : { v: "-", fc: "FF9CA3AF" },
-            ...KOLOM_PROV.map((k) => n(b.hariIni[k.kunci])),
-            n(b.hariIni.total, ISI.biru, true),
-            n(b.kumulatifPmAas, ISI.ungu),
-            n(b.kumulatif, ISI.oranye, true),
-            persen(b.persen, b.target > 0),
-          ]),
-        },
-        { t: "kosong" },
-        { t: "catatan", teks: "Keterangan", fc: "FF374151" },
-        { t: "catatan", teks: "< 60% — Rendah", ...PERSEN_MERAH },
-        { t: "catatan", teks: "60% – 84,99% — Sedang", ...PERSEN_KUNING },
-        { t: "catatan", teks: "≥ 85% — Baik / tercapai", ...PERSEN_HIJAU },
-        { t: "catatan", teks: "-  Target belum diisi", bg: W.abu.bg, fc: "FF9CA3AF" },
-        { t: "catatan", teks: `• Kolom Realisasi LTT ${hariIniTeks} hanya berisi laporan tanggal ${hariIniTeks}${d.bulanBerjalan ? " (hari ini)" : " (tanggal terakhir bulan ini)"}.` },
-        { t: "catatan", teks: `• Total LTT PM-AAS dan Total LTT = akumulasi tanggal ${sd}.` },
-        { t: "catatan", teks: `• Persentase = Total LTT ${sd} ÷ Target LTT bulan ${bln} × 100%.` },
-        { t: "catatan", teks: "• Hanya jenis yang tampil di tabel yang dihitung; Oplah 2024/2025 (non PM-AAS), CSR, dan Rehab Bencana tidak dihitung." },
-        { t: "catatan", teks: "• Angka 0 ditulis samar agar data yang berisi lebih mudah terlihat." },
-      ],
-    }],
-  });
+  return kirim(await specLttProvinsi(s, bulanDariQuery(q)));
 }
 
 // ─── Rekap PPL bulanan / harian ───────────────────────────────────────────────
