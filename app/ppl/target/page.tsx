@@ -45,6 +45,9 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
       ) : (
         <>
           <PilihBulanKomoditas dasar="/ppl/target" tahun={tahun} bulan={bulan} kom={kom} info={<>Terisi <b>{target.length}</b> / {desa.length} desa</>} />
+          <p className="-mt-1 mb-3 text-xs text-gray-600">
+            Target <b className="text-red-600">Padi WAJIB diisi</b>. Target Jagung dan Ubi Kayu <b>Opsional</b>.
+          </p>
           <FormTarget desa={desa} jenis={jenis} target={target} luasBakuLalu={luasBakuLalu} tahun={tahun} bulan={bulan} kom={kom} />
         </>
       )}

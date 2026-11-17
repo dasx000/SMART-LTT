@@ -27,13 +27,14 @@ function Kotak({ label, nilai, satuan, ket, kelas = "border-gray-100 bg-white", 
 }
 
 /** Kartu ringkasan: Target (jumlah target desa), Realisasi, Capaian (berwarna), Status isi target. */
-export function RingkasanRealisasi({ d, lingkup, saya }: { d: RekapRealisasiPpl; lingkup: string; saya?: PplRealisasi | null }) {
+export function RingkasanRealisasi({ d, lingkup, saya, komoditas = "Padi" }: { d: RekapRealisasiPpl; lingkup: string; saya?: PplRealisasi | null; komoditas?: string }) {
+  const kom = komoditas.toLowerCase();
   const cap = d.capaian;
   const lv = cap == null ? null : levelPersen(cap);
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <Kotak label={`Target Tanam · ${lingkup}`} nilai={formatAngka(d.target)} satuan="Ha" ket="Jumlah target desa padi" />
-      <Kotak label="Realisasi Tanam" nilai={formatAngka(d.realisasi)} satuan="Ha" ket="Padi semua jenis LTT" />
+      <Kotak label={`Target Tanam · ${lingkup}`} nilai={formatAngka(d.target)} satuan="Ha" ket={`Jumlah target desa ${kom}`} />
+      <Kotak label="Realisasi Tanam" nilai={formatAngka(d.realisasi)} satuan="Ha" ket={`${komoditas} semua jenis LTT`} />
       <Kotak
         label="Capaian"
         nilai={cap == null ? "–" : `${formatAngka(cap)}%`}
@@ -72,7 +73,7 @@ export function LegendaRealisasi() {
   );
 }
 
-/** Alert PPL yang belum / baru sebagian mengisi target padi bulan itu, dengan tombol Isi Target. */
+/** Alert PPL yang belum / baru sebagian mengisi target komoditas bulan itu, dengan tombol Isi Target. */
 export function AlertTargetPpl({ p, href }: { p: PplRealisasi; href: string }) {
   const kosong = p.desa.filter((d) => d.target == null).map((d) => d.nama);
   if (kosong.length === 0) return null;

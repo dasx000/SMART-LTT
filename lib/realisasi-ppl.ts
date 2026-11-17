@@ -1,11 +1,11 @@
 import "server-only";
 import { rentangBulanWIB, tanggalIsoWIB } from "@/lib/format";
-import { ambilLaporan, ambilTargetDesa, daftarDesa, daftarKecamatan, type Supa } from "@/lib/data";
+import { ambilLaporan, ambilTargetDesa, daftarDesa, daftarKecamatan, type Komoditas, type Supa } from "@/lib/data";
 import { daftarAnggota } from "@/lib/pengguna";
 import type { Role } from "@/lib/auth";
 
 /**
- * Realisasi LTT Padi per PPL.
+ * Realisasi LTT per PPL, satu komoditas (bawaan Padi; menu PPL bisa memilih Jagung / Ubi Kayu).
  * - Target PPL   = jumlah `target_desa` padi (semua jenis LTT) desa binaannya, tahun+bulan itu.
  * - Realisasi    = jumlah luas tanam laporan padi (semua jenis LTT) di desa binaannya, bulan itu
  *                  (bulan berjalan otomatis = 1 s.d. hari ini).
@@ -60,8 +60,9 @@ const urutCapaian = (a: number | null, b: number | null) => (a ?? -1) - (b ?? -1
 
 export async function rekapRealisasiPpl(
   s: Supa,
-  f: { tahun: number; bulan: number; kecamatanId?: number | null; userId?: string | null },
+  f: { tahun: number; bulan: number; kecamatanId?: number | null; userId?: string | null; komoditas?: Komoditas },
 ): Promise<RekapRealisasiPpl> {
+  const komoditas = f.komoditas ?? "Padi";
   const { dari, sampai } = rentangBulanWIB(f.tahun, f.bulan);
   const hariIni = tanggalIsoWIB();
   const akhirBulan = tanggalIsoWIB(new Date(new Date(sampai).getTime() - 1));
@@ -77,8 +78,8 @@ export async function rekapRealisasiPpl(
   const ids = [...new Set(ppl.flatMap((u) => u.desaIds))].filter((id) => desaPeta.has(id));
 
   const [target, lap] = await Promise.all([
-    ambilTargetDesa(s, ids, { tahun: f.tahun, bulan: f.bulan, komoditas: "Padi" }),
-    ids.length ? ambilLaporan(s, { dari, sampai, komoditas: "Padi", desaIds: ids }, kecs) : Promise.resolve([]),
+    ambilTargetDesa(s, ids, { tahun: f.tahun, bulan: f.bulan, komoditas }),
+    ids.length ? ambilLaporan(s, { dari, sampai, komoditas, desaIds: ids }, kecs) : Promise.resolve([]),
   ]);
   const tgtDesa = new Map<number, number>();
   for (const t of target) tgtDesa.set(t.desaId, (tgtDesa.get(t.desaId) ?? 0) + t.tanam);
