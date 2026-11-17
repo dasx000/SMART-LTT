@@ -38,9 +38,12 @@ export function FormTarget({
 }) {
   return (
     <div className="space-y-3">
-      {desa.map((d) => (
-        <KartuDesa key={`${d.id}-${tahun}-${bulan}-${kom}`} desa={d} tahun={tahun} bulan={bulan} kom={kom} jenis={jenis} awal={target.find((t) => t.desaId === d.id)} placeholderLuasBaku={tampil(luasBakuLalu[d.id]) || "0"} />
-      ))}
+      {desa.map((d) => {
+        const awal = target.find((t) => t.desaId === d.id);
+        // Data bulan ini sudah ada → rujuk bulan ini; belum ada → rujuk bulan lalu; tidak ada keduanya → 0.
+        const ph = tampil(awal ? awal.luasBaku : luasBakuLalu[d.id]) || "0";
+        return <KartuDesa key={`${d.id}-${tahun}-${bulan}-${kom}`} desa={d} tahun={tahun} bulan={bulan} kom={kom} jenis={jenis} awal={awal} placeholderLuasBaku={ph} />;
+      })}
     </div>
   );
 }
