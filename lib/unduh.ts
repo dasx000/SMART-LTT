@@ -110,6 +110,7 @@ export async function specRekapDinas(s: Supa, periode: PeriodeDinas): Promise<Sp
 
   return {
     namaFile: ["Rekap_LTT", harian ? periode.tanggal : `${NAMA_BULAN[periode.bulan - 1]}_${periode.tahun}`],
+    judulFile: harian ? `Rekap LTT Harian - ${labelPeriode}` : `Rekap LTT - ${labelPeriode}`,
     lembar: [{
       nama: "Rekap LTT",
       judul: "LAPORAN REKAPITULASI LUAS TAMBAH TANAM (LTT)",
@@ -181,6 +182,7 @@ export async function specLttProvinsi(s: Supa, { tahun, bulan }: { tahun: number
 
   return {
     namaFile: ["LTT_Padi_Provinsi", d.akhir],
+    judulFile: `Realisasi LTT Padi 1 sd ${hariIniTeks}`,
     lembar: [{
       nama: "LTT Padi",
       judul: "LAPORAN LTT PADI (FORMAT PROVINSI)",

@@ -36,6 +36,8 @@ export type Lembar = {
 export type SpesifikasiExcel = {
   /** bagian nama file → SMART-LTT_<bagian...>.xlsx */
   namaFile: string[];
+  /** Nama file utuh tanpa .xlsx (boleh berspasi, tanpa awalan SMART-LTT_). Bila ada, dipakai menggantikan namaFile. */
+  judulFile?: string;
   lembar: Lembar[];
 };
 

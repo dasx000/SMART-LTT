@@ -133,7 +133,9 @@ export async function unduhExcel(spec: SpesifikasiExcel) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `SMART-LTT_${spec.namaFile.filter(Boolean).map(aman).join("_")}.xlsx`;
+  a.download = spec.judulFile
+    ? `${spec.judulFile.replace(/[\\/:*?"<>|]+/g, "-").trim()}.xlsx` // spasi dipertahankan, hanya karakter terlarang diganti
+    : `SMART-LTT_${spec.namaFile.filter(Boolean).map(aman).join("_")}.xlsx`;
   document.body.appendChild(a);
   a.click();
   a.remove();
