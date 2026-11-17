@@ -73,6 +73,8 @@ export type BarisLaporan = {
   panen: number;
   metode: string | null;
   keterangan: string | null;
+  /** status laporan di e-Pusluh (khusus Padi), mis. "Diajukan" */
+  status: string | null;
   sumber: string;
 };
 
@@ -91,7 +93,7 @@ export async function ambilLaporan(
   type Mentah = {
     id: number; tanggal_lapor: string; nama_pelapor: string | null; desa_id: number; komoditas: Komoditas;
     luas_bera: number; realisasi_olah: number; realisasi_tanam: number; realisasi_panen: number;
-    metode_penanaman: string | null; keterangan: string | null; sumber: string;
+    metode_penanaman: string | null; keterangan: string | null; status_epusluh: string | null; sumber: string;
     desa: unknown; jenis: unknown;
   };
 
@@ -99,7 +101,7 @@ export async function ambilLaporan(
     let q = s
       .from("laporan_ltt")
       .select(
-        "id, tanggal_lapor, nama_pelapor, desa_id, komoditas, luas_bera, realisasi_olah, realisasi_tanam, realisasi_panen, metode_penanaman, keterangan, sumber, desa:desa_id(nama, kecamatan_id), jenis:jenis_ltt_id(nama)",
+        "id, tanggal_lapor, nama_pelapor, desa_id, komoditas, luas_bera, realisasi_olah, realisasi_tanam, realisasi_panen, metode_penanaman, keterangan, status_epusluh, sumber, desa:desa_id(nama, kecamatan_id), jenis:jenis_ltt_id(nama)",
       )
       .gte("tanggal_lapor", f.dari)
       .lt("tanggal_lapor", f.sampai)
@@ -132,6 +134,7 @@ export async function ambilLaporan(
       panen: Number(r.realisasi_panen) || 0,
       metode: r.metode_penanaman,
       keterangan: r.keterangan,
+      status: r.komoditas === "Padi" ? r.status_epusluh : null,
       sumber: r.sumber,
     };
   });
@@ -598,14 +601,25 @@ export async function cariLaporan(
   const kosong = { baris: [], total: 0, ringkas: { jumlah: 0, tanam: 0, panen: 0 } };
   if (f.desaIds && f.desaIds.length === 0) return kosong;
 
-  // Kata cari → nama pelapor ATAU desa/kecamatan yang cocok
+  // Kata cari → nama pelapor, desa/kecamatan, jenis LTT, metode, status e-Pusluh, atau keterangan yang cocok
   let orCari: string | null = null;
   if (f.cari) {
     const c = f.cari.toLowerCase();
     const kecCocok = new Set(kecs.filter((k) => k.nama.toLowerCase().includes(c)).map((k) => k.id));
     const desaCocok = semuaDesa.filter((d) => d.nama.toLowerCase().includes(c) || kecCocok.has(d.kecamatan_id)).map((d) => d.id);
     const aman = f.cari.replace(/[,()*%]/g, " ").trim();
-    orCari = [`nama_pelapor.ilike.*${aman}*`, desaCocok.length ? `desa_id.in.(${desaCocok.join(",")})` : null].filter(Boolean).join(",");
+    const { data: jenis } = await s.from("jenis_ltt").select("id").ilike("nama", `%${aman}%`);
+    const jenisCocok = (jenis ?? []).map((j) => j.id as number);
+    orCari = [
+      `nama_pelapor.ilike.*${aman}*`,
+      `keterangan.ilike.*${aman}*`,
+      `metode_penanaman.ilike.*${aman}*`,
+      `status_epusluh.ilike.*${aman}*`,
+      desaCocok.length ? `desa_id.in.(${desaCocok.join(",")})` : null,
+      jenisCocok.length ? `jenis_ltt_id.in.(${jenisCocok.join(",")})` : null,
+      // Padi tanpa jenis ditampilkan sebagai "LTT Reguler" → ikut tercari dengan kata itu
+      "ltt reguler".includes(c) ? "and(komoditas.eq.Padi,jenis_ltt_id.is.null)" : null,
+    ].filter(Boolean).join(",");
   }
   type Saring = {
     gte(k: string, v: string): Saring; lt(k: string, v: string): Saring; is(k: string, v: null): Saring;
@@ -626,7 +640,7 @@ export async function cariLaporan(
   const [{ data, error, count }, nilai] = await Promise.all([
     terapkan(
       s.from("laporan_ltt").select(
-        "id, tanggal_lapor, nama_pelapor, desa_id, komoditas, luas_bera, realisasi_olah, realisasi_tanam, realisasi_panen, metode_penanaman, keterangan, sumber, desa:desa_id(nama, kecamatan_id), jenis:jenis_ltt_id(nama)",
+        "id, tanggal_lapor, nama_pelapor, desa_id, komoditas, luas_bera, realisasi_olah, realisasi_tanam, realisasi_panen, metode_penanaman, keterangan, status_epusluh, sumber, desa:desa_id(nama, kecamatan_id), jenis:jenis_ltt_id(nama)",
         { count: "exact" },
       ),
     )
@@ -670,6 +684,7 @@ export async function cariLaporan(
       panen: Number(r.realisasi_panen) || 0,
       metode: r.metode_penanaman as string | null,
       keterangan: r.keterangan as string | null,
+      status: r.komoditas === "Padi" ? (r.status_epusluh as string | null) : null,
       sumber: r.sumber as string,
     };
   });
@@ -680,7 +695,7 @@ export async function cariLaporan(
 export async function satuLaporan(s: Supa, id: number) {
   const { data } = await s
     .from("laporan_ltt")
-    .select("id, desa_id, komoditas, jenis_ltt_id, luas_bera, realisasi_olah, realisasi_tanam, realisasi_panen, metode_penanaman, keterangan, sumber, desa:desa_id(nama, kecamatan_id), jenis:jenis_ltt_id(nama)")
+    .select("id, desa_id, komoditas, jenis_ltt_id, luas_bera, realisasi_olah, realisasi_tanam, realisasi_panen, metode_penanaman, keterangan, status_epusluh, sumber, desa:desa_id(nama, kecamatan_id), jenis:jenis_ltt_id(nama)")
     .eq("id", id)
     .is("dihapus_pada", null)
     .maybeSingle();

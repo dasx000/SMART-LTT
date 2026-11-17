@@ -6,7 +6,7 @@ import { wajibRole } from "@/lib/auth";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseSiap } from "@/lib/env";
 import { contohTakTerbaca, parseTanggalEpusluh } from "@/lib/tanggal-epusluh";
-import { SELECT_DESA, angka, idValid, jenisLtt, keterangan, kunciNama, metode, nihil, petaDesa, teks } from "@/lib/epusluh";
+import { SELECT_DESA, angka, idValid, jenisLtt, keterangan, kunciNama, metode, nihil, petaDesa, statusEpusluh, teks } from "@/lib/epusluh";
 
 const BATAS_BYTE = 5 * 1024 * 1024;
 const BATAS_BARIS = 5000;
@@ -45,9 +45,10 @@ const KOLOM = {
   olah: "realisasi luas olah lahan",
   panen: "realisasi luas panen",
   ket: "keterangan",
+  status: "status",
 } as const;
 type Kunci = keyof typeof KOLOM;
-const OPSIONAL: Kunci[] = ["metode", "ket"];
+const OPSIONAL: Kunci[] = ["metode", "ket", "status"];
 
 const judul = (v: unknown) => kunciNama(v).replace(/\(ha\)/g, "").trim();
 
@@ -143,6 +144,7 @@ export async function imporEpusluhAction(formData: FormData): Promise<HasilImpor
       realisasi_panen: luas.panen,
       metode_penanaman: metode(ambil("metode")),
       keterangan: keterangan(ambil("ket")),
+      status_epusluh: statusEpusluh(ambil("status")),
     });
   }
 

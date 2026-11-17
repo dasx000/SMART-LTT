@@ -161,7 +161,7 @@ export function DaftarLaporan({
         {["dari", "sampai", "komoditas", "metode", "kecamatan", "desa"].map((k) => (ambil(k) ? <input key={k} type="hidden" name={k} value={ambil(k)} /> : null))}
         <div className="relative w-full max-w-sm">
           <Search className="absolute top-2.5 left-3 h-4 w-4 text-gray-400" />
-          <InputCariOtomatis type="search" name="q" defaultValue={ambil("q")} placeholder="Cari penyuluh, kecamatan, desa..." className="w-full rounded-xl border border-gray-200 bg-white py-2 pr-3 pl-9 text-sm outline-none focus:border-green-500" />
+          <InputCariOtomatis type="search" name="q" defaultValue={ambil("q")} placeholder="Cari penyuluh, wilayah, jenis LTT, status..." className="w-full rounded-xl border border-gray-200 bg-white py-2 pr-3 pl-9 text-sm outline-none focus:border-green-500" />
         </div>
         <div className="flex items-center gap-2 text-xs text-gray-500">
           Tampilkan:
@@ -192,13 +192,14 @@ export function DaftarLaporan({
                 <th className="p-3 text-right">Tanam (Ha)</th>
                 <th className="p-3 text-right">Panen (Ha)</th>
                 <th className="p-3 text-left">Keterangan</th>
+                <th className="p-3 text-left">Status</th>
                 <th className="p-3 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {baris.length === 0 ? (
                 <tr>
-                  <td colSpan={14} className="p-8 text-center text-gray-500">
+                  <td colSpan={15} className="p-8 text-center text-gray-500">
                     Tidak ada laporan yang sesuai filter.
                     {hal > 1 && (
                       <Link href={urlDengan(dasar, q, { hal: null })} className="ml-1 font-bold text-green-700 underline">
@@ -225,6 +226,9 @@ export function DaftarLaporan({
                     <Angka n={l.tanam} warna="text-blue-600" />
                     <Angka n={l.panen} warna="text-amber-600" />
                     <td className="max-w-[160px] truncate p-3 text-gray-500" title={l.keterangan ?? ""}>{l.keterangan ?? "-"}</td>
+                    <td className="p-3 whitespace-nowrap">
+                      {l.status ? <span className="rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[10px] font-bold text-gray-600">{l.status}</span> : <span className="text-gray-400">-</span>}
+                    </td>
                     <td className="p-3">
                       <div className="flex items-center justify-center gap-1.5">
                         <Link

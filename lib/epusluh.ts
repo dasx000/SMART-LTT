@@ -58,6 +58,9 @@ export const nihil = (r: { tanam: number; panen: number; bera: number; olah: num
 /** Keterangan: "-" dianggap kosong. */
 export const keterangan = (v: unknown) => (teks(v) && teks(v) !== "-" ? teks(v) : null);
 
+/** Status laporan di e-Pusluh (mis. "Diajukan", "Verifikasi Korluh") disimpan apa adanya; "-" = kosong. */
+export const statusEpusluh = (v: unknown) => keterangan(v)?.replace(/\s+/g, " ").slice(0, 100) ?? null;
+
 /** Kolom yang dibutuhkan petaDesa() dari tabel ltt.desa. */
 export const SELECT_DESA = "id, nama, kecamatan:kecamatan_id(nama)";
 

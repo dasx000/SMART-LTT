@@ -3,7 +3,7 @@ import { z } from "zod";
 import { galat, jalankanApi, sukses } from "@/lib/api";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { contohTakTerbaca, parseTanggalEpusluh } from "@/lib/tanggal-epusluh";
-import { SELECT_DESA, angka, jenisLtt, idValid, keterangan, kunciNama, metode, nihil as barisNihil, petaDesa as bentukPetaDesa, teks } from "@/lib/epusluh";
+import { SELECT_DESA, angka, jenisLtt, idValid, keterangan, kunciNama, metode, nihil as barisNihil, petaDesa as bentukPetaDesa, statusEpusluh, teks } from "@/lib/epusluh";
 
 /**
  * POST /api/v1/epusluh/padi — izin: epusluh:tulis
@@ -93,6 +93,7 @@ export async function POST(req: NextRequest) {
           realisasi_panen: panen,
           metode_penanaman: metode(r[17]),
           keterangan: keterangan(r[13]),
+          status_epusluh: statusEpusluh(r[14]),
         });
       }
 

@@ -61,6 +61,7 @@ export async function specLaporan(
     { judul: "Luas Panen (Ha)", lebar: 12, jenis: "angka" },
     { judul: "Metode Penanaman", lebar: 14 },
     { judul: "Keterangan", lebar: 28 },
+    { judul: "Status e-Pusluh", lebar: 18 },
   ];
   const sum = (fn: (l: (typeof data)[number]) => number) => data.reduce((a, l) => a + fn(l), 0);
   return {
@@ -73,9 +74,9 @@ export async function specLaporan(
         kolom,
         data.map((l, i) => [
           i + 1, formatTanggalJam(l.waktu), l.pelapor, l.kecamatan, l.desa, l.komoditas, l.jenis ?? "-",
-          l.bera, l.olah, l.tanam, l.panen, l.metode ?? "-", l.keterangan ?? "",
+          l.bera, l.olah, l.tanam, l.panen, l.metode ?? "-", l.keterangan ?? "", l.status ?? "-",
         ]),
-        { nilai: ["TOTAL", "", "", "", "", "", "", sum((l) => l.bera), sum((l) => l.olah), sum((l) => l.tanam), sum((l) => l.panen), "", ""], gabung: 7 },
+        { nilai: ["TOTAL", "", "", "", "", "", "", sum((l) => l.bera), sum((l) => l.olah), sum((l) => l.tanam), sum((l) => l.panen), "", "", ""], gabung: 7 },
         { beku: { y: 5 } },
       ),
     ],

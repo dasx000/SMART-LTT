@@ -38,6 +38,13 @@ export function FormTarget({
 }) {
   return (
     <div className="space-y-3">
+      <div role="note" className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-900">
+        <p className="font-bold">Petunjuk pengisian</p>
+        <ul className="mt-1 list-disc space-y-0.5 pl-4">
+          <li>Isi target <b>setiap desa</b>, lalu tekan <b>Simpan</b> di kartu desa tersebut.</li>
+          <li>Kalau desa <b>tidak punya target</b> bulan ini, <b>tetap isi 0 lalu Simpan</b>. Desa baru dihitung sudah mengisi setelah disimpan (label berubah jadi &ldquo;Sudah diisi&rdquo;).</li>
+        </ul>
+      </div>
       {desa.map((d) => {
         const awal = target.find((t) => t.desaId === d.id);
         // Data bulan ini sudah ada → rujuk bulan ini; belum ada → rujuk bulan lalu; tidak ada keduanya → 0.

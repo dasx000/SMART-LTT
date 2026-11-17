@@ -53,6 +53,7 @@ export interface LaporanLtt {
   realisasi_panen: number;
   metode_penanaman: MetodePenanaman | null;
   keterangan: string | null;
+  status_epusluh: string | null;
   sumber: SumberLaporan;
   dihapus_pada: string | null;
   created_at: string;
