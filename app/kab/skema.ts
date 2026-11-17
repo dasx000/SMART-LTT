@@ -8,6 +8,7 @@ export const skemaEditLaporanKab = z.object({
   realisasiPanen: angkaHa("Luas panen"),
   luasBera: angkaHa("Luas bera"),
   realisasiOlah: angkaHa("Olah lahan"),
+  jenisLttId: z.coerce.number().int().positive("Jenis LTT tidak valid.").optional(),
   metodePenanaman: z.enum(["Regular", "PM AAS"]).nullable().optional(),
   keterangan: z.string().trim().max(500, "Keterangan maksimal 500 karakter.").optional().default(""),
 });

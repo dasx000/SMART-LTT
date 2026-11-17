@@ -11,6 +11,7 @@ export type DataEdit = {
   id: number;
   desaId: number;
   komoditas: string;
+  jenisId: number | null;
   tanam: number;
   panen: number;
   bera: number;
@@ -25,12 +26,14 @@ const lbl = "mb-1 block text-xs font-semibold text-gray-700";
 /**
  * Form koreksi laporan, dibuka lewat URL (?edit=ID) — bisa di-refresh / dibagikan.
  * `lengkap` (Admin Kab): bera, olah lahan, metode penanaman (satu-satunya jalan PM AAS terisi manual).
+ * Jenis LTT & metode penanaman hanya tampil untuk Padi (Jagung/Ubi Kayu selalu "LTT").
  */
 export function FormEditLaporan({
-  data, desa, aksi, kembali, lengkap,
+  data, desa, jenis, aksi, kembali, lengkap,
 }: {
   data: DataEdit;
   desa: { id: number; nama: string }[];
+  jenis: { id: number; nama: string }[];
   aksi: (fd: FormData) => Promise<{ sukses: boolean; pesan: string }>;
   kembali: string;
   lengkap: boolean;
@@ -38,6 +41,7 @@ export function FormEditLaporan({
   const router = useRouter();
   const [proses, mulai] = useTransition();
   const angka = (n: number) => formatAngka(n);
+  const padi = data.komoditas === "Padi";
 
   function simpan(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -71,6 +75,17 @@ export function FormEditLaporan({
               ))}
             </select>
           </div>
+          {padi && jenis.length > 0 && (
+            <div>
+              <label className={lbl}>Jenis LTT <span className="text-red-500">*</span></label>
+              <select name="jenisLttId" defaultValue={data.jenisId ?? ""} required className={kelasIn}>
+                {data.jenisId === null && <option value="" disabled>-- Pilih jenis LTT --</option>}
+                {jenis.map((j) => (
+                  <option key={j.id} value={j.id}>{j.nama}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={lbl}>Luas Tanam (Ha)</label>
@@ -93,14 +108,16 @@ export function FormEditLaporan({
                   <input name="realisasiOlah" inputMode="decimal" autoComplete="off" defaultValue={angka(data.olah)} className={kelasIn} />
                 </div>
               </div>
-              <div>
-                <label className={lbl}>Metode Penanaman (khusus padi)</label>
-                <select name="metodePenanaman" defaultValue={data.metode ?? ""} className={kelasIn}>
-                  <option value="">-- Standar (bukan PM AAS) --</option>
-                  <option value="Regular">Regular</option>
-                  <option value="PM AAS">PM AAS</option>
-                </select>
-              </div>
+              {padi && (
+                <div>
+                  <label className={lbl}>Metode Penanaman</label>
+                  <select name="metodePenanaman" defaultValue={data.metode ?? ""} className={kelasIn}>
+                    <option value="">-- Standar (bukan PM AAS) --</option>
+                    <option value="Regular">Regular</option>
+                    <option value="PM AAS">PM AAS</option>
+                  </select>
+                </div>
+              )}
             </>
           )}
           <div>

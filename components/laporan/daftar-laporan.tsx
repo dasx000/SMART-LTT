@@ -74,8 +74,12 @@ export function DaftarLaporan({
         </div>
       </div>
 
-      {/* Kartu filter (GET → URL) */}
-      <form method="get" className="mb-5 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+      {/* Kartu filter (GET → URL). `key` = nilai filter → form dipasang ulang saat URL berubah
+          (mis. tombol Reset), karena `defaultValue` hanya dibaca saat pertama dipasang. */}
+      <form
+        key={[dari, sampai, ...["komoditas", "metode", "kecamatan", "desa"].map((k) => ambil(k))].join("|")}
+        method="get"
+        className="mb-5 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
           <label>
             <span className={lbl}>Dari Tanggal</span>

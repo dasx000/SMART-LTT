@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { wajibRole } from "@/lib/auth";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseSiap } from "@/lib/env";
+import { cekJenisPadi } from "@/lib/data";
 import { skemaEditLaporanKab } from "./skema";
 
 export type ResponsAksiKab = {
@@ -29,6 +30,7 @@ export async function editLaporanKabAction(formData: FormData): Promise<ResponsA
     realisasiPanen: formData.get("realisasiPanen"),
     luasBera: formData.get("luasBera") || 0,
     realisasiOlah: formData.get("realisasiOlah") || 0,
+    jenisLttId: formData.get("jenisLttId") || undefined,
     metodePenanaman: formData.get("metodePenanaman") || null,
     keterangan: formData.get("keterangan"),
   });
@@ -40,10 +42,15 @@ export async function editLaporanKabAction(formData: FormData): Promise<ResponsA
     };
   }
 
-  const { id, desaId, realisasiTanam, realisasiPanen, luasBera, realisasiOlah, metodePenanaman, keterangan } = parse.data;
+  const { id, desaId, realisasiTanam, realisasiPanen, luasBera, realisasiOlah, jenisLttId, metodePenanaman, keterangan } = parse.data;
 
   try {
     const supabase = await supabaseServer();
+
+    if (jenisLttId) {
+      const salah = await cekJenisPadi(supabase, id, jenisLttId);
+      if (salah) return { sukses: false, pesan: salah };
+    }
 
     const { data: berubahUpdate, error: errUpdate } = await supabase
       .from("laporan_ltt")
@@ -54,6 +61,7 @@ export async function editLaporanKabAction(formData: FormData): Promise<ResponsA
         luas_bera: luasBera,
         realisasi_olah: realisasiOlah,
         metode_penanaman: metodePenanaman,
+        ...(jenisLttId ? { jenis_ltt_id: jenisLttId } : {}),
         keterangan: keterangan || null,
         updated_at: new Date().toISOString(),
       })

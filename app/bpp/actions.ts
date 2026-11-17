@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { wajibRole } from "@/lib/auth";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseSiap } from "@/lib/env";
+import { cekJenisPadi } from "@/lib/data";
 import { skemaEditLaporanBpp } from "./skema";
 
 export type ResponsAksiBpp = {
@@ -26,6 +27,7 @@ export async function editLaporanBppAction(formData: FormData): Promise<ResponsA
     desaId: formData.get("desaId"),
     realisasiTanam: formData.get("realisasiTanam"),
     realisasiPanen: formData.get("realisasiPanen"),
+    jenisLttId: formData.get("jenisLttId") || undefined,
     keterangan: formData.get("keterangan"),
   });
 
@@ -36,7 +38,7 @@ export async function editLaporanBppAction(formData: FormData): Promise<ResponsA
     };
   }
 
-  const { id, desaId, realisasiTanam, realisasiPanen, keterangan } = parse.data;
+  const { id, desaId, realisasiTanam, realisasiPanen, jenisLttId, keterangan } = parse.data;
 
   try {
     const supabase = await supabaseServer();
@@ -56,12 +58,18 @@ export async function editLaporanBppAction(formData: FormData): Promise<ResponsA
       return { sukses: false, pesan: "Anda hanya berwenang mengubah laporan di kecamatan Anda." };
     }
 
+    if (jenisLttId) {
+      const salah = await cekJenisPadi(supabase, id, jenisLttId);
+      if (salah) return { sukses: false, pesan: salah };
+    }
+
     const { data: berubahUpdate, error: errUpdate } = await supabase
       .from("laporan_ltt")
       .update({
         desa_id: desaId,
         realisasi_tanam: realisasiTanam,
         realisasi_panen: realisasiPanen,
+        ...(jenisLttId ? { jenis_ltt_id: jenisLttId } : {}),
         keterangan: keterangan || null,
         updated_at: new Date().toISOString(),
       })

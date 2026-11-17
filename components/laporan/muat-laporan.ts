@@ -1,7 +1,7 @@
 import "server-only";
 import { supabaseServer } from "@/lib/supabase/server";
 import { tanggalIsoWIB } from "@/lib/format";
-import { KOMODITAS, cariLaporan, daftarDesa, daftarKecamatan, satuLaporan, type Komoditas } from "@/lib/data";
+import { KOMODITAS, cariLaporan, daftarDesa, daftarKecamatan, jenisPadi, satuLaporan, type Komoditas } from "@/lib/data";
 import { angkaParam, teksParam, urlDengan } from "@/lib/param";
 import { PILIHAN_PER } from "./daftar-laporan";
 
@@ -47,6 +47,14 @@ export async function muatHalamanLaporan(
   ]);
 
   const kecEdit = edit ? (edit.desa as unknown as { kecamatan_id: number } | null)?.kecamatan_id : null;
+  // Pilihan jenis LTT hanya untuk laporan Padi; jenis lama yang sudah nonaktif tetap dimunculkan
+  let jenis: { id: number; nama: string }[] = [];
+  if (edit?.komoditas === "Padi") {
+    jenis = (await jenisPadi(s)).map(({ id, nama }) => ({ id, nama }));
+    const idLama = edit.jenis_ltt_id as number | null;
+    const namaLama = (edit.jenis as unknown as { nama: string } | null)?.nama;
+    if (idLama && namaLama && !jenis.some((j) => j.id === idLama)) jenis.push({ id: idLama, nama: `${namaLama} (nonaktif)` });
+  }
   return {
     daftar: {
       dasar, q, hal, per, dari, sampai, hariIni, kecs,
@@ -63,6 +71,7 @@ export async function muatHalamanLaporan(
             id: edit.id as number,
             desaId: edit.desa_id as number,
             komoditas: edit.komoditas as string,
+            jenisId: (edit.jenis_ltt_id as number | null) ?? null,
             tanam: Number(edit.realisasi_tanam) || 0,
             panen: Number(edit.realisasi_panen) || 0,
             bera: Number(edit.luas_bera) || 0,
@@ -71,6 +80,7 @@ export async function muatHalamanLaporan(
             keterangan: edit.keterangan as string | null,
           },
           desa: semuaDesa.filter((d) => d.kecamatan_id === kecEdit),
+          jenis,
           kembali: urlDengan(dasar, q, { edit: null }),
         }
       : null,

@@ -680,11 +680,26 @@ export async function cariLaporan(
 export async function satuLaporan(s: Supa, id: number) {
   const { data } = await s
     .from("laporan_ltt")
-    .select("id, desa_id, komoditas, luas_bera, realisasi_olah, realisasi_tanam, realisasi_panen, metode_penanaman, keterangan, sumber, desa:desa_id(nama, kecamatan_id)")
+    .select("id, desa_id, komoditas, jenis_ltt_id, luas_bera, realisasi_olah, realisasi_tanam, realisasi_panen, metode_penanaman, keterangan, sumber, desa:desa_id(nama, kecamatan_id), jenis:jenis_ltt_id(nama)")
     .eq("id", id)
     .is("dihapus_pada", null)
     .maybeSingle();
   return data;
+}
+
+/**
+ * Koreksi jenis LTT (khusus Padi). `null` = boleh disimpan, string = pesan galat.
+ * Laporan harus Padi dan jenis harus jenis Padi — Jagung/Ubi Kayu tetap "LTT".
+ */
+export async function cekJenisPadi(s: Supa, laporanId: number, jenisId: number): Promise<string | null> {
+  const [{ data: lap }, { data: jenis }] = await Promise.all([
+    s.from("laporan_ltt").select("komoditas").eq("id", laporanId).maybeSingle(),
+    s.from("jenis_ltt").select("id").eq("id", jenisId).eq("komoditas", "Padi").maybeSingle(),
+  ]);
+  if (!lap) return "Laporan tidak ditemukan.";
+  if (lap.komoditas !== "Padi") return "Jenis LTT hanya bisa diubah untuk laporan Padi.";
+  if (!jenis) return "Jenis LTT tidak valid.";
+  return null;
 }
 
 // ─── Ringkasan dashboard (Kab & BPP) — dihitung di server, browser hanya menerima angka ───
