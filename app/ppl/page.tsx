@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { Carrot, ChevronRight, Goal, Leaf, LogOut, TriangleAlert, Scale, Shuffle, TableProperties, UserCog, UserRoundCheck, Warehouse, Wheat } from "lucide-react";
 import { wajibRole } from "@/lib/auth";
 import { KerangkaHalaman } from "@/components/kerangka-halaman";
 import { supabaseServer } from "@/lib/supabase/server";
 import { desaBinaanSaya, type DesaRef } from "@/lib/data";
-import { NAMA_BULAN, tanggalIsoWIB } from "@/lib/format";
+import { NAMA_BULAN, ZONA_WIB, tanggalIsoWIB } from "@/lib/format";
 import { logout } from "@/app/(auth)/login/actions";
 import { IkonPasangAplikasi } from "@/components/pasang-aplikasi";
 
@@ -25,6 +26,15 @@ export default function HalamanPPL() {
   );
 }
 
+/** Sapaan sesuai jam WIB saat halaman dibuka. */
+function sapaanWIB(): string {
+  const jam = Number(new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: ZONA_WIB }).format(new Date()));
+  if (jam >= 4 && jam < 11) return "Selamat pagi";
+  if (jam >= 11 && jam < 15) return "Selamat siang";
+  if (jam >= 15 && jam < 18) return "Selamat sore";
+  return "Selamat malam";
+}
+
 async function Isi() {
   const p = await wajibRole("penyuluh", "admin_bpp");
   const s = await supabaseServer();
@@ -36,7 +46,13 @@ async function Isi() {
       <div className="rounded-b-[2rem] bg-green-600 px-5 pt-8 pb-6 shadow-md">
         {/* Baris atas: label + tombol (Mode BPP │ Keluar); nama di bawah dengan lebar penuh */}
         <div className="flex items-center justify-between gap-3">
-          <p className="text-xs font-semibold tracking-wider text-green-100">PPL KEMENTAN RI</p>
+          <div className="flex min-w-0 items-center gap-2.5">
+            <Image src="/logo.webp" alt="" width={40} height={40} priority className="h-10 w-10 shrink-0 object-contain drop-shadow" />
+            <div className="min-w-0">
+              <p className="text-lg leading-tight font-extrabold tracking-wider text-white">SMART LTT</p>
+              <p className="truncate text-[10px] font-semibold tracking-wide text-green-100">PPL Kementan RI · Way Kanan</p>
+            </div>
+          </div>
           <div className="flex shrink-0 items-center gap-2">
             {p.role === "admin_bpp" && (
               <>
@@ -60,8 +76,11 @@ async function Isi() {
             </form>
           </div>
         </div>
-        <h1 className="mt-3 text-xl font-bold text-white uppercase">{p.nama}</h1>
-        <p className="mt-1 mb-2 text-xs text-green-200">WKPP: {desa.length ? desa.map((d) => d.nama).join(", ") : "Belum ditentukan"}</p>
+        <div className="mt-5 rounded-2xl bg-white/15 px-4 py-3 ring-1 ring-white/25 backdrop-blur-sm">
+          <p className="text-xs text-green-100">{sapaanWIB()},</p>
+          <h1 className="text-xl leading-snug font-bold text-white uppercase">{p.nama}</h1>
+          <p className="mt-1 text-xs text-green-100">WKPP: {desa.length ? desa.map((d) => d.nama).join(", ") : "Belum ditentukan"}</p>
+        </div>
       </div>
 
       <div className="mt-6 px-5 pb-10">
