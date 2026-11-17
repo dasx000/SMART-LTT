@@ -13,7 +13,8 @@ import type { HasilAksi } from "@/app/ppl/target/actions";
  * - admin_bpp: hanya penyuluh/admin_bpp DI KECAMATANNYA; akun baru selalu role penyuluh;
  *   tidak bisa mengubah role/kecamatan; desa binaan harus di kecamatannya.
  * Memakai service role (auth admin + core.*) — karena itu SEMUA cakupan diperiksa di sini.
- * Hapus = nonaktifkan (soft delete). Password tidak pernah ditampilkan.
+ * Nonaktifkan = centang "Akun aktif". Hapus (hanya Admin Kab) = cabut dari SMART LTT, lihat hapusPenggunaAction.
+ * Password tidak pernah ditampilkan.
  */
 
 const ROLE: [Role, ...Role[]] = ["penyuluh", "admin_bpp", "admin_kab", "viewer"];
@@ -185,4 +186,39 @@ export async function resetPasswordAction(input: z.input<typeof skemaReset>): Pr
   await a.from("anggota").update({ wajib_ganti_password: true }).eq("user_id", cek.data.id);
   selesai();
   return { sukses: true, pesan: "Password direset. Berlaku juga di aplikasi lain (akun bersama CWS)." };
+}
+
+// ─── Hapus dari SMART LTT (hanya Admin Kab) ───────────────────────────────────
+/**
+ * Mencabut akun dari SMART LTT: desa binaan, data anggota, dan role LTT dihapus.
+ * Akun login (auth/core.profiles) TIDAK dihapus karena dipakai bersama aplikasi lain (CWS),
+ * dan laporan lama tetap utuh (pelapor_id masih menunjuk akun yang sama).
+ * NIP yang sama bisa didaftarkan ulang lewat "Tambah User".
+ */
+const skemaHapus = z.object({ id: z.uuid() });
+
+export async function hapusPenggunaAction(input: z.input<typeof skemaHapus>): Promise<HasilAksi> {
+  const p = await wajibRole("admin_kab");
+  const cek = skemaHapus.safeParse(input);
+  if (!cek.success) return { sukses: false, pesan: "Pengguna tidak valid." };
+  const id = cek.data.id;
+  if (id === p.id) return { sukses: false, pesan: "Tidak bisa menghapus akun sendiri." };
+  if (!(await dataTarget(id))) return { sukses: false, pesan: "Pengguna tidak ditemukan." };
+
+  const a = supabaseAdmin();
+  const { data: prof } = await a.schema("core").from("profiles").select("nama").eq("id", id).maybeSingle();
+  try {
+    const { error: e1 } = await a.from("anggota_desa").delete().eq("user_id", id);
+    if (e1) throw new Error(e1.message);
+    const { error: e2 } = await a.from("anggota").delete().eq("user_id", id);
+    if (e2) throw new Error(e2.message);
+    const { error: e3 } = await a.schema("core").from("memberships").delete().eq("user_id", id).eq("app_slug", "ltt");
+    if (e3) throw new Error(e3.message);
+  } catch (e) {
+    return { sukses: false, pesan: `Gagal menghapus: ${e instanceof Error ? e.message : "kesalahan"}` };
+  }
+  selesai();
+  revalidatePath("/kab", "layout");
+  revalidatePath("/bpp", "layout");
+  return { sukses: true, pesan: `${prof?.nama ?? "Pengguna"} dihapus dari SMART LTT. Laporan lamanya tetap tersimpan.` };
 }

@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { SelectOtomatis } from "@/components/select-otomatis";
+import Form from "next/form";
 import Link from "next/link";
 import { Check, ChevronLeft, ChevronRight, TriangleAlert } from "lucide-react";
 import { TombolMuatUlang } from "@/components/tombol-muat-ulang";
@@ -116,15 +118,14 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
           </table>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 p-3 text-xs text-gray-500">
-          <form method="get" className="flex items-center gap-2">
+          <Form action="/kab/logs" scroll={false} className="flex items-center gap-2">
             Baris
-            <select name="per" defaultValue={String(per)} className="rounded-lg border border-gray-200 px-2 py-1 font-bold">
+            <SelectOtomatis name="per" defaultValue={String(per)} className="rounded-lg border border-gray-200 px-2 py-1 font-bold">
               {[10, 25, 50].map((n) => (
                 <option key={n} value={n}>{n}</option>
               ))}
-            </select>
-            <button type="submit" className="rounded-lg bg-gray-100 px-2 py-1 font-bold">OK</button>
-          </form>
+            </SelectOtomatis>
+          </Form>
           <span>
             Menampilkan {baris.length ? (hal - 1) * per + 1 : 0} - {(hal - 1) * per + baris.length} dari {total} log
           </span>

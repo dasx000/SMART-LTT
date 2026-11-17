@@ -21,6 +21,7 @@ export function FormTarget({
   desa,
   jenis,
   target,
+  luasBakuLalu,
   tahun,
   bulan,
   kom,
@@ -29,6 +30,8 @@ export function FormTarget({
   jenis: JenisRef[];
   /** target untuk (tahun, bulan, kom) ini saja */
   target: TargetDesaData[];
+  /** Luas baku bulan sebelumnya per desa — HANYA placeholder, tidak ikut tersimpan. */
+  luasBakuLalu: Record<number, number>;
   tahun: number;
   bulan: number;
   kom: Komoditas;
@@ -36,7 +39,7 @@ export function FormTarget({
   return (
     <div className="space-y-3">
       {desa.map((d) => (
-        <KartuDesa key={`${d.id}-${tahun}-${bulan}-${kom}`} desa={d} tahun={tahun} bulan={bulan} kom={kom} jenis={jenis} awal={target.find((t) => t.desaId === d.id)} />
+        <KartuDesa key={`${d.id}-${tahun}-${bulan}-${kom}`} desa={d} tahun={tahun} bulan={bulan} kom={kom} jenis={jenis} awal={target.find((t) => t.desaId === d.id)} placeholderLuasBaku={tampil(luasBakuLalu[d.id]) || "0"} />
       ))}
     </div>
   );
@@ -49,6 +52,7 @@ function KartuDesa({
   kom,
   jenis,
   awal,
+  placeholderLuasBaku,
 }: {
   desa: DesaForm;
   tahun: number;
@@ -56,6 +60,7 @@ function KartuDesa({
   kom: Komoditas;
   jenis: JenisRef[];
   awal?: TargetDesaData;
+  placeholderLuasBaku: string;
 }) {
   const [nilai, setNilai] = useState<Record<string, string>>(() => {
     const v: Record<string, string> = {
@@ -146,7 +151,7 @@ function KartuDesa({
       <div className="mt-3 flex items-end gap-2">
         <label className="flex-1 text-[11px] font-semibold text-muted">
           Luas Baku {isPadi ? "Sawah" : "Lahan"} (Ha, opsional)
-          <input inputMode="decimal" placeholder="0" value={nilai.luasBaku} onChange={ubah("luasBaku")} className={kelasIn} />
+          <input inputMode="decimal" placeholder={placeholderLuasBaku} value={nilai.luasBaku} onChange={ubah("luasBaku")} className={kelasIn} />
         </label>
         <button
           type="submit"

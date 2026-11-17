@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
+import Form from "next/form";
 import Link from "next/link";
+import { SelectOtomatis } from "@/components/select-otomatis";
 
 /** Komponen tampilan kecil tanpa JS (Server Component) — dipakai halaman-halaman fitur. */
 
@@ -40,14 +42,11 @@ export const kelasTombolGaris =
   "inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-4 py-2 text-xs font-bold text-foreground transition hover:border-primary/60 active:scale-95 disabled:opacity-60";
 
 /** Form filter GET (tanpa JS): submit → URL baru → halaman dirender ulang di server. */
-export function FormFilter({ children }: { children: ReactNode }) {
+export function FormFilter({ dasar, children }: { dasar: string; children: ReactNode }) {
   return (
-    <form method="get" className="mb-4 flex flex-wrap items-end gap-2 rounded-2xl border border-border bg-surface p-3">
+    <Form action={dasar} scroll={false} className="mb-4 flex flex-wrap items-end gap-2 rounded-2xl border border-border bg-surface p-3">
       {children}
-      <button type="submit" className={kelasTombol}>
-        Tampilkan
-      </button>
-    </form>
+    </Form>
   );
 }
 
@@ -55,13 +54,13 @@ export function Pilihan({ label, name, nilai, opsi }: { label: string; name: str
   return (
     <label className="flex min-w-32 flex-col gap-1 text-[11px] font-semibold text-muted">
       {label}
-      <select name={name} defaultValue={String(nilai)} className={kelasInput}>
+      <SelectOtomatis name={name} defaultValue={String(nilai)} className={kelasInput}>
         {opsi.map((o) => (
           <option key={String(o.v)} value={String(o.v)}>
             {o.t}
           </option>
         ))}
-      </select>
+      </SelectOtomatis>
     </label>
   );
 }
@@ -127,26 +126,25 @@ export function PilihBulanKomoditas({
   const BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
   return (
     <div className="mb-3 space-y-2 rounded-2xl border border-gray-200 bg-white p-3">
-      <form method="get" action={dasar} className="flex items-end gap-2">
+      <Form action={dasar} scroll={false} className="flex items-end gap-2">
         <input type="hidden" name="komoditas" value={kom} />
         <label className="flex flex-col gap-1 text-[11px] font-semibold text-gray-500">
           Tahun
-          <select name="tahun" defaultValue={tahun} className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium">
+          <SelectOtomatis name="tahun" defaultValue={tahun} className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium">
             {pilihanTahun(tahun).map((t) => (
               <option key={t} value={t}>{t}</option>
             ))}
-          </select>
+          </SelectOtomatis>
         </label>
         <label className="flex flex-1 flex-col gap-1 text-[11px] font-semibold text-gray-500">
           Bulan
-          <select name="bulan" defaultValue={bulan} className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium">
+          <SelectOtomatis name="bulan" defaultValue={bulan} className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium">
             {BULAN.map((n, i) => (
               <option key={n} value={i + 1}>{n}</option>
             ))}
-          </select>
+          </SelectOtomatis>
         </label>
-        <button type="submit" className="rounded-xl bg-green-600 px-4 py-2 text-xs font-bold text-white">Pilih</button>
-      </form>
+      </Form>
       <div className="flex gap-1 rounded-xl bg-gray-100 p-1">
         {["Padi", "Jagung", "Ubi Kayu"].map((k) => (
           <Link

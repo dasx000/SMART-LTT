@@ -35,7 +35,7 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
         sub="Diisi PPL untuk desa binaannya (menu Isi Produktivitas)."
         aksi={<TombolUnduh href={`/api/unduh/produktivitas?tahunDari=${tahun}&tahunSampai=${tahun}`} />}
       />
-      <FormFilter>
+      <FormFilter dasar="/bpp/produktivitas">
         <Pilihan label="Tahun" name="tahun" nilai={tahun} opsi={daftarTahun.map((t) => ({ v: t, t: String(t) }))} />
         <Pilihan label="Komoditas" name="komoditas" nilai={kom} opsi={KOMODITAS.map((k) => ({ v: k, t: k }))} />
       </FormFilter>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Form from "next/form";
 import { wajibRole } from "@/lib/auth";
 import { KerangkaHalaman, KepalaPanel } from "@/components/kerangka-halaman";
 import { supabaseServer } from "@/lib/supabase/server";
@@ -69,10 +70,10 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
     return (
       <>
         <KepalaPanel judul="Sarana Desa" sub={subKec} warna="text-orange-600" />
-        <form method="get" className="mb-3">
+        <Form action="/ppl/produktivitas" scroll={false} className="mb-3">
           <input type="hidden" name="tab" value="sarana" />
           {pilihDesa("focus:border-orange-400")}
-        </form>
+        </Form>
         <KartuSarana
           key={desaPilih.id}
           desaId={desaPilih.id}
@@ -95,7 +96,7 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
   return (
     <>
       <KepalaPanel judul="Produktivitas" sub={subKec} />
-      <form method="get" className="mb-2 flex items-end gap-2">
+      <Form action="/ppl/produktivitas" scroll={false} className="mb-2 flex items-end gap-2">
         {pilihDesa("focus:border-green-500")}
         <label className="w-24 text-[10px] font-bold tracking-wider text-gray-400 uppercase">
           Tahun
@@ -107,7 +108,7 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
             ))}
           </SelectOtomatis>
         </label>
-      </form>
+      </Form>
       <TabelProd
         key={`${desaPilih.id}-${tahun}`}
         desaId={desaPilih.id}

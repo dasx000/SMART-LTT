@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Form from "next/form";
 import Link from "next/link";
 import { FileSpreadsheet } from "lucide-react";
 import { wajibRole } from "@/lib/auth";
@@ -95,14 +96,14 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
     return (
       <div className="px-5 pt-6 pb-20">
         {kepala}
-        <form method="get" action="/ppl/rekap" className="mb-4">
+        <Form action="/ppl/rekap" scroll={false} className="mb-4">
           <input type="hidden" name="mode" value="harian" />
           <label className="mb-1 block text-[10px] font-bold text-gray-400 uppercase">Pilih Tanggal</label>
           <div className="flex items-center gap-2">
             <TanggalOtomatis name="tanggal" defaultValue={tanggal} min={awalBulan} max={hariIni} className={kelasInput} />
             <TombolUnduh href={`/api/unduh/rekap-ppl?mode=harian&tanggal=${tanggal}`} label="Excel" ikon={<FileSpreadsheet size={14} />} className={kelasExcel} />
           </div>
-        </form>
+        </Form>
 
         <div className="overflow-hidden rounded-xl border border-green-700/30 shadow-sm">
           <div className="overflow-x-auto">
@@ -152,7 +153,7 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
   return (
     <div className="px-5 pt-6 pb-20">
       {kepala}
-      <form method="get" action="/ppl/rekap" className="mb-4">
+      <Form action="/ppl/rekap" scroll={false} className="mb-4">
         <input type="hidden" name="mode" value="bulanan" />
         <label className="mb-1 block text-[10px] font-bold text-gray-400 uppercase">Pilih Periode</label>
         <div className="flex items-center gap-2">
@@ -168,7 +169,7 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
             className={kelasExcel}
           />
         </div>
-      </form>
+      </Form>
 
       <div className="overflow-hidden rounded-xl border border-green-700/30 shadow-sm">
         <div className="overflow-x-auto">

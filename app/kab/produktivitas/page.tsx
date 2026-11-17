@@ -1,18 +1,21 @@
 import type { Metadata } from "next";
+import { SelectOtomatis } from "@/components/select-otomatis";
+import Form from "next/form";
 import { ChevronRight, FileSpreadsheet, Scale } from "lucide-react";
 import { wajibRole } from "@/lib/auth";
 import { KerangkaHalaman } from "@/components/kerangka-halaman";
 import { TombolUnduh } from "@/components/tombol-unduh";
 import { supabaseServer } from "@/lib/supabase/server";
 import { NAMA_BULAN, bulanTahunWIB, formatAngka } from "@/lib/format";
-import { KOMODITAS, ambilProduktivitas, daftarDesa, daftarKecamatan, rataPositif, tahunProduktivitas } from "@/lib/data";
+import { InfografisProduktivitas, type BarisProduktivitasKec } from "@/components/infografis-produktivitas";
+import { KOMODITAS, type Komoditas, ambilProduktivitas, daftarDesa, daftarKecamatan, rataPositif, tahunProduktivitas } from "@/lib/data";
 import { angkaParam, type CariParam } from "@/lib/param";
 
 export const metadata: Metadata = { title: "Produktivitas — SMART LTT" };
 
 export default function HalamanProduktivitasKab({ searchParams }: { searchParams: CariParam }) {
   return (
-    <KerangkaHalaman judul="Produktivitas" role={["admin_kab"]} gaya="kab">
+    <KerangkaHalaman judul="Produktivitas" role={["admin_kab", "viewer"]} gaya="kab">
       <Isi searchParams={searchParams} />
     </KerangkaHalaman>
   );
@@ -23,7 +26,7 @@ const kolom = "grid grid-cols-[1fr_6rem_6rem_6rem] items-center gap-2 sm:grid-co
 
 /** Produktivitas (aplikasi lama): baris kecamatan = rata-rata desa > 0, klik untuk melihat desa. Tanpa JS (<details>). */
 async function Isi({ searchParams }: { searchParams: CariParam }) {
-  await wajibRole("admin_kab");
+  await wajibRole("admin_kab", "viewer");
   const q = await searchParams;
   const now = bulanTahunWIB();
   const tahun = angkaParam(q, "tahun", 2000, 2100, now.tahun);
@@ -31,6 +34,18 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
   const s = await supabaseServer();
   const [kecs, desa, nilai, daftarTahun] = await Promise.all([daftarKecamatan(s), daftarDesa(s), ambilProduktivitas(s, tahun), tahunProduktivitas(s, now.tahun)]);
   const v = (desaId: number, k: string) => (nilai.get(`${desaId}|${k}`) ?? [])[bulan - 1] ?? 0;
+  const infografis: BarisProduktivitasKec[] = kecs.map((kec) => {
+    const dk = desa.filter((d) => d.kecamatan_id === kec.id);
+    const rata = {} as BarisProduktivitasKec["rata"];
+    const desaIsi = {} as BarisProduktivitasKec["desaIsi"];
+    for (const k of KOMODITAS) {
+      const isi = dk.map((d) => v(d.id, k)).filter((x) => x > 0);
+      rata[k] = rataPositif(isi);
+      desaIsi[k] = isi.length;
+    }
+    return { id: kec.id, nama: kec.nama, rata, desaIsi };
+  });
+  const rataKab = Object.fromEntries(KOMODITAS.map((k) => [k, rataPositif(desa.map((d) => v(d.id, k)))])) as Record<Komoditas, number>;
 
   return (
     <>
@@ -41,22 +56,24 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
           </h2>
           <p className="text-[11px] text-gray-500">Satuan ton/ha, diisi PPL per desa. Nilai kecamatan = rata-rata desa &gt; 0. Klik kecamatan untuk melihat desa.</p>
         </div>
-        <form method="get" className="flex items-center gap-2">
-          <select name="tahun" defaultValue={tahun} className={pilih}>
+        <Form action="/kab/produktivitas" scroll={false} className="flex items-center gap-2">
+          <SelectOtomatis name="tahun" defaultValue={tahun} className={pilih}>
             {daftarTahun.map((t) => (
               <option key={t} value={t}>{t}</option>
             ))}
-          </select>
-          <select name="bulan" defaultValue={bulan} className={pilih}>
+          </SelectOtomatis>
+          <SelectOtomatis name="bulan" defaultValue={bulan} className={pilih}>
             {NAMA_BULAN.map((n, i) => (
               <option key={n} value={i + 1}>{n}</option>
             ))}
-          </select>
-          <button type="submit" className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white">Tampilkan</button>
+          </SelectOtomatis>
           <TombolUnduh href={`/api/unduh/produktivitas?tahunDari=${tahun}&tahunSampai=${tahun}`} ikon={<FileSpreadsheet size={14} />} className="flex items-center gap-1.5 rounded-lg bg-green-700 px-3 py-1.5 text-xs font-bold text-white" />
-        </form>
+        </Form>
       </div>
 
+      <InfografisProduktivitas baris={infografis} rataKab={rataKab} komoditas={KOMODITAS} periode={`${NAMA_BULAN[bulan - 1]} ${tahun}`} />
+
+      <h3 className="mb-2 text-sm font-bold text-gray-800">Rincian per Kecamatan &amp; Desa</h3>
       <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
         <div className={`${kolom} bg-gray-50 px-3 py-3 text-[11px] font-bold text-gray-500 uppercase`}>
           <span>Kecamatan</span>

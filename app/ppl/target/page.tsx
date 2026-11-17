@@ -27,8 +27,16 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
   const kom = ((KOMODITAS as string[]).includes(teksParam(q, "komoditas") ?? "") ? teksParam(q, "komoditas") : "Padi") as Komoditas;
   const s = await supabaseServer();
   const desa = await desaBinaanSaya(s, p.id);
-  const [jenis, semua] = await Promise.all([jenisPadi(s), ambilTargetDesa(s, desa.map((d) => d.id), { tahun, bulan, komoditas: kom })]);
+  const lalu = bulan === 1 ? { tahun: tahun - 1, bulan: 12 } : { tahun, bulan: bulan - 1 };
+  const ids = desa.map((d) => d.id);
+  const [jenis, semua, targetLalu] = await Promise.all([
+    jenisPadi(s),
+    ambilTargetDesa(s, ids, { tahun, bulan, komoditas: kom }),
+    ambilTargetDesa(s, ids, { tahun: lalu.tahun, bulan: lalu.bulan, komoditas: kom }),
+  ]);
   const target = semua;
+  // Hanya untuk placeholder luas baku (tidak ikut tersimpan bila tidak diisi).
+  const luasBakuLalu = Object.fromEntries(targetLalu.map((t) => [t.desaId, t.luasBaku]));
 
   return (
     <>
@@ -37,7 +45,7 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
       ) : (
         <>
           <PilihBulanKomoditas dasar="/ppl/target" tahun={tahun} bulan={bulan} kom={kom} info={<>Terisi <b>{target.length}</b> / {desa.length} desa</>} />
-          <FormTarget desa={desa} jenis={jenis} target={target} tahun={tahun} bulan={bulan} kom={kom} />
+          <FormTarget desa={desa} jenis={jenis} target={target} luasBakuLalu={luasBakuLalu} tahun={tahun} bulan={bulan} kom={kom} />
         </>
       )}
     </>

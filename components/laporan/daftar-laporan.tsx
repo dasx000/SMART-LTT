@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { InputCariOtomatis } from "@/components/input-cari-otomatis";
+import { SelectOtomatis } from "@/components/select-otomatis";
+import Form from "next/form";
 import { Filter, FileSpreadsheet, FileUp, ListChecks, Pencil, Search, SearchCheck, Sprout, Wheat, X } from "lucide-react";
 import { TombolMuatUlang } from "@/components/tombol-muat-ulang";
 import { TombolUnduh } from "@/components/tombol-unduh";
@@ -150,23 +153,22 @@ export function DaftarLaporan({
       </div>
 
       {/* Cari + jumlah per halaman (GET, filter lain dipertahankan) */}
-      <form method="get" className="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <Form action={dasar} scroll={false} className="mb-3 flex flex-wrap items-center justify-between gap-2">
         {["dari", "sampai", "komoditas", "metode", "kecamatan", "desa"].map((k) => (ambil(k) ? <input key={k} type="hidden" name={k} value={ambil(k)} /> : null))}
         <div className="relative w-full max-w-sm">
           <Search className="absolute top-2.5 left-3 h-4 w-4 text-gray-400" />
-          <input name="q" defaultValue={ambil("q")} placeholder="Cari penyuluh, kecamatan, desa..." className="w-full rounded-xl border border-gray-200 bg-white py-2 pr-3 pl-9 text-sm outline-none focus:border-green-500" />
+          <InputCariOtomatis type="search" name="q" defaultValue={ambil("q")} placeholder="Cari penyuluh, kecamatan, desa..." className="w-full rounded-xl border border-gray-200 bg-white py-2 pr-3 pl-9 text-sm outline-none focus:border-green-500" />
         </div>
         <div className="flex items-center gap-2 text-xs text-gray-500">
           Tampilkan:
-          <select name="per" defaultValue={String(per)} className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm font-bold">
+          <SelectOtomatis name="per" defaultValue={String(per)} className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm font-bold">
             {PILIHAN_PER.map((n) => (
               <option key={n} value={n}>{n}</option>
             ))}
-          </select>
+          </SelectOtomatis>
           data per halaman
-          <button type="submit" className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white">Cari</button>
         </div>
-      </form>
+      </Form>
 
       <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
         <div className="overflow-x-auto">

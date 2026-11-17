@@ -25,7 +25,7 @@ const HAK: Record<string, Role[]> = {
   "ltt-provinsi": ["admin_kab", "viewer"],
   "realisasi-ppl": ["admin_kab", "viewer"],
   "rekap-ppl": ["penyuluh", "admin_bpp"],
-  "produktivitas": ["penyuluh", "admin_bpp", "admin_kab"],
+  "produktivitas": ["penyuluh", "admin_bpp", "admin_kab", "viewer"],
 };
 
 const teksErr = (pesan: string, status: number) =>

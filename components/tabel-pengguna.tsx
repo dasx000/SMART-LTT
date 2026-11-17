@@ -6,6 +6,7 @@ import { Pencil, Search, X } from "lucide-react";
 import { PER_HAL, Paginasi, useFilterDiUrl } from "@/components/paginasi";
 import type { Role } from "@/lib/auth";
 import { urlDengan } from "@/lib/param";
+import { TombolHapusPengguna } from "@/components/tombol-hapus-pengguna";
 
 export type BarisPengguna = {
   id: string;
@@ -35,9 +36,10 @@ const lbl = "mb-1 block text-[10px] font-bold tracking-wide text-gray-400 upperc
  * Nilai filter disalin ke URL (replaceState) agar tetap ada saat buka form ubah atau muat ulang.
  */
 export function TabelPengguna({
-  dasar, mode, baris, kecamatan, awal,
+  dasar, mode, baris, kecamatan, awal, idSaya,
 }: {
   dasar: string;
+  idSaya: string;
   mode: "bpp" | "kab";
   baris: BarisPengguna[];
   kecamatan: { id: number; nama: string }[];
@@ -161,9 +163,12 @@ export function TabelPengguna({
                     </span>
                   </td>
                   <td className="p-3 text-center">
-                    <Link href={urlDengan(dasar, {}, { ...param, edit: u.id })} scroll={false} title="Ubah" className="inline-flex rounded-lg bg-blue-50 p-1.5 text-blue-600 hover:bg-blue-100">
-                      <Pencil size={14} />
-                    </Link>
+                    <span className="inline-flex gap-1.5">
+                      <Link href={urlDengan(dasar, {}, { ...param, edit: u.id })} scroll={false} title="Ubah" className="inline-flex rounded-lg bg-blue-50 p-1.5 text-blue-600 hover:bg-blue-100">
+                        <Pencil size={14} />
+                      </Link>
+                      {mode === "kab" && u.id !== idSaya && <TombolHapusPengguna id={u.id} nama={u.nama} />}
+                    </span>
                   </td>
                 </tr>
               ))}

@@ -64,6 +64,7 @@ export function DaftarPengguna({
       <TabelPengguna
         dasar={dasar}
         mode={mode}
+        idSaya={idSaya}
         baris={baris}
         kecamatan={kecamatan}
         awal={{

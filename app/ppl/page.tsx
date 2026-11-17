@@ -76,7 +76,7 @@ async function Isi() {
 
         <h2 className="mt-8 mb-4 border-b border-gray-200 pb-2 text-sm font-bold text-gray-800">Menu Lainnya</h2>
         <div className="grid grid-cols-4 gap-3">
-          <Ikon href="/ppl/realisasi" label={<>Realisasi<br />Saya</>} warna="bg-green-100 text-green-700 border-green-200"><UserRoundCheck size={30} /></Ikon>
+          <Ikon href="/ppl/realisasi" label={<>Realisasi<br />LTT Padi</>} warna="bg-green-100 text-green-700 border-green-200"><UserRoundCheck size={30} /></Ikon>
           <Ikon href="/ppl/produktivitas" label={<>Produk-<br />tivitas</>} warna="bg-lime-100 text-lime-700 border-lime-200"><Scale size={30} /></Ikon>
           <Ikon href="/ppl/produktivitas?tab=sarana" label={<>Sarana<br />Desa</>} warna="bg-orange-100 text-orange-600 border-orange-200"><Warehouse size={30} /></Ikon>
           <Ikon href="/ppl/target" label={<>Target<br />Bulanan</>} warna="bg-cyan-100 text-cyan-600 border-cyan-200"><Goal size={30} /></Ikon>

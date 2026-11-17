@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { SelectOtomatis } from "@/components/select-otomatis";
+import Form from "next/form";
 import { Carrot, Sparkles, Sprout, Wheat } from "lucide-react";
 import { NAMA_BULAN, formatAngka } from "@/lib/format";
 import { kodePeriode } from "@/lib/data";
@@ -60,13 +62,13 @@ export function KartuCapaian({
 }
 
 /** Pilihan periode (GET → URL). */
-export function PilihPeriode({ nilai, pilihan, tersembunyi }: { nilai: { tahun: number; bulan: number }; pilihan: { tahun: number; bulan: number }[]; tersembunyi?: Record<string, string> }) {
+export function PilihPeriode({ dasar, nilai, pilihan, tersembunyi }: { dasar: string; nilai: { tahun: number; bulan: number }; pilihan: { tahun: number; bulan: number }[]; tersembunyi?: Record<string, string> }) {
   return (
-    <form method="get" className="flex items-center gap-2">
+    <Form action={dasar} scroll={false} className="flex items-center gap-2">
       {Object.entries(tersembunyi ?? {}).map(([k, v]) => (
         <input key={k} type="hidden" name={k} value={v} />
       ))}
-      <select
+      <SelectOtomatis
         name="periode"
         defaultValue={kodePeriode(nilai)}
         className="cursor-pointer rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 shadow-sm outline-none focus:border-green-500"
@@ -76,10 +78,7 @@ export function PilihPeriode({ nilai, pilihan, tersembunyi }: { nilai: { tahun: 
             {NAMA_BULAN[p.bulan - 1]} {p.tahun}
           </option>
         ))}
-      </select>
-      <button type="submit" className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-green-700">
-        Tampilkan
-      </button>
-    </form>
+      </SelectOtomatis>
+    </Form>
   );
 }

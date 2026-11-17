@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Sarana Desa — SMART LTT" };
 
 export default function HalamanSaranaKab() {
   return (
-    <KerangkaHalaman judul="Sarana Desa" role={["admin_kab"]} gaya="kab">
+    <KerangkaHalaman judul="Sarana Desa" role={["admin_kab", "viewer"]} gaya="kab">
       <Isi />
     </KerangkaHalaman>
   );
@@ -23,7 +23,7 @@ const kolom = "grid grid-cols-[1fr_repeat(5,4.5rem)] items-center gap-2 sm:grid-
 
 /** Sarana Desa (aplikasi lama): jumlah unit per kecamatan, klik untuk melihat desa. Tanpa JS (<details>). */
 async function Isi() {
-  await wajibRole("admin_kab");
+  await wajibRole("admin_kab", "viewer");
   const s = await supabaseServer();
   const [kecs, desa, sarana] = await Promise.all([daftarKecamatan(s), daftarDesa(s), ambilSarana(s)]);
   const tahun = bulanTahunWIB().tahun;

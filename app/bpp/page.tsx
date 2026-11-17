@@ -71,7 +71,7 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
       <JudulHalaman
         judul={`Menu Utama BPP · ${namaKec}`}
         sub={`Bulan ${NAMA_BULAN[per.bulan - 1]} ${per.tahun}`}
-        aksi={<PilihPeriode nilai={per} pilihan={per.pilihan.slice(0, 5)} />}
+        aksi={<PilihPeriode dasar="/bpp" nilai={per} pilihan={per.pilihan.slice(0, 5)} />}
       />
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">

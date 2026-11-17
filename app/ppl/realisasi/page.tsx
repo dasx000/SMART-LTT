@@ -11,11 +11,11 @@ import { rekapRealisasiPpl } from "@/lib/realisasi-ppl";
 import { AlertTargetPpl, LegendaRealisasi, RingkasanRealisasi, TabelDesaSaya, teksPeriodeRealisasi } from "@/components/realisasi-ppl";
 import { Kosong } from "@/components/ui";
 
-export const metadata: Metadata = { title: "Realisasi Saya — SMART LTT" };
+export const metadata: Metadata = { title: "Realisasi LTT Padi — SMART LTT" };
 
 export default function HalamanRealisasiSaya({ searchParams }: { searchParams: CariParam }) {
   return (
-    <KerangkaHalaman judul="Realisasi" role={["penyuluh", "admin_bpp"]} panel={{ judul: "Realisasi Saya", sub: "Capaian LTT padi desa binaan terhadap target", warna: "text-green-700" }}>
+    <KerangkaHalaman judul="Realisasi" role={["penyuluh", "admin_bpp"]} panel={{ judul: "Realisasi LTT Padi", sub: "Capaian LTT padi desa binaan terhadap target", warna: "text-green-700" }}>
       <Isi searchParams={searchParams} />
     </KerangkaHalaman>
   );
