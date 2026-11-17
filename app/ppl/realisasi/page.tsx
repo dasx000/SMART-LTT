@@ -53,8 +53,8 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
         <>
           <AlertTargetPpl p={saya} href={`/ppl/target?tahun=${per.tahun}&bulan=${per.bulan}&komoditas=Padi`} />
           <RingkasanRealisasi d={d} lingkup="Desa binaan Anda" saya={saya} />
-          <LegendaRealisasi />
           <TabelDesaSaya p={saya} />
+          <LegendaRealisasi />
         </>
       )}
     </div>

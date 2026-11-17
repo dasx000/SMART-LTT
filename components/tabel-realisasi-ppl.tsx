@@ -11,9 +11,11 @@ const tdAngka = `${td} text-right tabular-nums`;
 const Strip = () => <span className="text-gray-300">–</span>;
 
 /** Sel capaian berwarna (<60 merah, 60–84,99 kuning, ≥85 hijau); null → "–" abu. */
-export function SelCapaianPpl({ p, tebal = true }: { p: number | null; tebal?: boolean }) {
-  if (p == null) return <td className={`${td} w-28 bg-gray-100 text-center font-bold text-gray-400`}>–</td>;
-  return <td className={`${td} w-28 text-right tabular-nums ${tebal ? "font-extrabold" : "font-bold"} ${levelPersen(p).kelas}`}>{formatAngka(p)}%</td>;
+/** `rapat` = versi HP (tabel PPL): tanpa lebar tetap, padding kecil. */
+export function SelCapaianPpl({ p, tebal = true, rapat = false }: { p: number | null; tebal?: boolean; rapat?: boolean }) {
+  const dasar = rapat ? "border border-gray-100 px-1.5 py-2 sm:p-2.5 whitespace-nowrap" : `${td} w-28`;
+  if (p == null) return <td className={`${dasar} bg-gray-100 text-center font-bold text-gray-400`}>–</td>;
+  return <td className={`${dasar} text-right tabular-nums ${tebal ? "font-extrabold" : "font-bold"} ${levelPersen(p).kelas}`}>{formatAngka(p)}%</td>;
 }
 
 export function StatusTarget({ terisi, jumlah }: { terisi: number; jumlah: number }) {

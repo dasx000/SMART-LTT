@@ -98,13 +98,14 @@ export function AlertTargetPpl({ p, href }: { p: PplRealisasi; href: string }) {
 
 /** Tabel rincian desa milik satu PPL (tampilan akun penyuluh). */
 export function TabelDesaSaya({ p }: { p: PplRealisasi }) {
-  const td = "border border-gray-100 p-2.5";
-  const angka = `${td} text-right tabular-nums`;
+  // Muat di layar HP (±320px) tanpa geser samping: tanpa min-width, padding rapat
+  const td = "border border-gray-100 px-1.5 py-2 sm:p-2.5";
+  const angka = `${td} text-right tabular-nums whitespace-nowrap`;
   return (
     <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
-      <table className="w-full min-w-[420px] border-collapse text-xs">
+      <table className="w-full border-collapse text-xs">
         <thead>
-          <tr className="bg-gray-50 text-[10px] font-extrabold tracking-wide text-gray-500 uppercase">
+          <tr className="bg-gray-50 text-[9px] leading-tight font-extrabold text-gray-500 uppercase sm:text-[10px] sm:tracking-wide">
             <th className={`${td} text-left`}>Desa Binaan</th>
             <th className={`${td} text-right`}>Target (Ha)</th>
             <th className={`${td} text-right`}>Realisasi (Ha)</th>
@@ -120,16 +121,17 @@ export function TabelDesaSaya({ p }: { p: PplRealisasi }) {
               </td>
               <td className={angka}>{d.target == null ? <span className="text-gray-300">–</span> : formatAngka(d.target)}</td>
               <td className={angka}>{formatAngka(d.realisasi)}</td>
-              <SelCapaianPpl p={d.capaian} tebal={false} />
+              <SelCapaianPpl p={d.capaian} tebal={false} rapat />
             </tr>
           ))}
           <tr className="bg-yellow-100 font-extrabold">
             <td className={td}>
-              TOTAL <StatusTarget terisi={p.terisi} jumlah={p.desa.length} />
+              TOTAL
+              <div className="mt-0.5"><StatusTarget terisi={p.terisi} jumlah={p.desa.length} /></div>
             </td>
             <td className={angka}>{p.terisi ? formatAngka(p.target) : <span className="text-gray-300">–</span>}</td>
             <td className={angka}>{formatAngka(p.realisasi)}</td>
-            <SelCapaianPpl p={p.capaian} />
+            <SelCapaianPpl p={p.capaian} rapat />
           </tr>
         </tbody>
       </table>
