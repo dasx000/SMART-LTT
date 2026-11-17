@@ -67,6 +67,10 @@ export function FormLogin() {
         {sedangProses ? "Memeriksa..." : "Masuk Sekarang"}
         {sedangProses && <LoaderCircle size={16} className="animate-spin" />}
       </button>
+
+      <p className="mt-4 text-center text-xs leading-relaxed text-gray-500">
+        Lupa password? Silakan hubungi Koordinator BPP di wilayah Anda untuk mengatur ulang password.
+      </p>
     </form>
   );
 }
