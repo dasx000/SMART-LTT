@@ -104,6 +104,9 @@ export async function specRekapDinas(s: Supa, periode: PeriodeDinas): Promise<Sp
   const grup = KOLOM_DINAS.map((g) => g.label.toUpperCase());
   const nilai = (b: (typeof rows)[number]) => KOLOM_DINAS.flatMap(({ kunci }) => [b[kunci].tanam, b[kunci].panen]);
   const total = Array.from({ length: nG * 2 }, (_, c) => rows.reduce((a, b) => a + nilai(b)[c], 0));
+  /** Sel data bernilai 0 diberi latar merah muda (sama dengan rekap bot lama) supaya kecamatan yang belum ada realisasinya menonjol. */
+  const NOL_BG = "FFFF9E9E";
+  const sel = (x: number): Sel => (x ? x : { v: 0, bg: NOL_BG });
 
   return {
     namaFile: ["Rekap_LTT", harian ? periode.tanggal : `${NAMA_BULAN[periode.bulan - 1]}_${periode.tahun}`],
@@ -121,7 +124,7 @@ export async function specRekapDinas(s: Supa, periode: PeriodeDinas): Promise<Sp
           ],
           gabung: [[1, 1, 2, 1], [1, 2, 2, 2], ...grup.map((_, i) => [1, 3 + i * 2, 1, 4 + i * 2] as [number, number, number, number])],
         },
-        { t: "data", baris: rows.map((b, i) => [i + 1, b.kecamatan, ...nilai(b)]) },
+        { t: "data", baris: rows.map((b, i) => [i + 1, b.kecamatan, ...nilai(b).map(sel)]) },
         { t: "total", nilai: ["JUMLAH", "", ...total], gabung: 2 },
       ],
     }],
