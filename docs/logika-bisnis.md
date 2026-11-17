@@ -133,6 +133,7 @@ Parameter: tanggal tertentu **atau** bulan+tahun (default bulan berjalan).
 ## 10. Target per PPL (`ambilTargetPerPPL(bulan, komoditas, kecamatan)`)
 
 - Untuk tiap PPL/Admin_BPP aktif di kecamatan: target tanam & panen = **jumlah target desa-desa binaannya** (bulan & komoditas itu). Pencocokan nama desa: huruf kecil + trim.
+- **Realisasi per PPL (baru, 17 Nov 2026)** — menu "Realisasi per PPL" (`lib/realisasi-ppl.ts`): target = jumlah `target_desa` **padi** (semua jenis LTT) desa binaan; realisasi = luas tanam padi semua jenis di desa binaan, kumulatif 1 s.d. hari ini; capaian = realisasi ÷ target, warna <60 merah / 60–84,99 kuning / ≥85 hijau. Realisasi desa tanpa target tetap dihitung, dengan label "Target belum lengkap (x/y desa)"; belum isi sama sekali → "–" abu. Dikelompokkan per kecamatan, kecamatan & PPL urut dari capaian terendah (belum isi target paling atas). Target di sini **bukan** target provinsi, jadi persen kecamatan bisa beda dengan Dashboard. Hak lihat: Admin Kab & Viewer semua kecamatan + unduh Excel; Admin BPP kecamatannya; Penyuluh dirinya sendiri (alert + tombol Isi Target bila target kosong).
 
 ## 11. Parsing tanggal (`parseTanggalEPusluh_`)
 

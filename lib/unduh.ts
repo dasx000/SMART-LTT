@@ -1,6 +1,7 @@
 import "server-only";
 import { NAMA_BULAN, formatTanggalJam, tanggalIsoWIB } from "@/lib/format";
 import { headerKolom, type Blok, type Kolom, type Lembar, type Sel, type SpesifikasiExcel } from "@/lib/excel-spec";
+import { rekapRealisasiPpl } from "@/lib/realisasi-ppl";
 import { KOLOM_DINAS, KOLOM_PROV, ambilLaporan, daftarDesa, daftarKecamatan, laporanBulan, rekapDinas, rekapProvinsiPadi, type Komoditas, type Supa } from "@/lib/data";
 
 /**
@@ -246,6 +247,75 @@ export async function specLttProvinsi(s: Supa, { tahun, bulan }: { tahun: number
         { t: "catatan", teks: "• Hanya jenis yang tampil di tabel yang dihitung; Oplah 2024/2025 (non PM-AAS), CSR, dan Rehab Bencana tidak dihitung." },
         { t: "catatan", teks: "• Angka 0 ditulis samar agar data yang berisi lebih mudah terlihat." },
       ],
+    }],
+  };
+}
+
+// ─── Realisasi LTT Padi per PPL (Admin Kab & Viewer) ──────────────────────────
+/** kecamatanId null = semua kecamatan (ada baris JUMLAH KABUPATEN). Urutan sama dengan halaman. */
+export async function specRealisasiPpl(s: Supa, f: { tahun: number; bulan: number; kecamatanId: number | null }): Promise<SpesifikasiExcel> {
+  const d = await rekapRealisasiPpl(s, f);
+  const kolom: Kolom[] = [
+    { judul: "NO", lebar: 6, rata: "center" },
+    { judul: "KECAMATAN / NAMA PPL / DESA", lebar: 34 },
+    { judul: "JABATAN", lebar: 12 },
+    { judul: "STATUS TARGET", lebar: 28 },
+    { judul: "TARGET (JUMLAH TARGET DESA, HA)", lebar: 18, jenis: "angka" },
+    { judul: "REALISASI TANAM (HA)", lebar: 16, jenis: "angka" },
+    { judul: "SELISIH (HA)", lebar: 13, jenis: "angka" },
+    { judul: "CAPAIAN", lebar: 12, jenis: "persen2" },
+  ];
+  const cap = (p: number | null, tebal = true): Sel =>
+    p == null ? { v: "–", bg: "FFF3F4F6", fc: "FF9CA3AF" } : { v: p / 100, ...WARNA_PERSEN(p), tebal };
+  const status = (terisi: number, jumlah: number): Sel =>
+    terisi === 0 ? { v: "Belum isi target", fc: "FFB91C1C", tebal: true }
+    : terisi < jumlah ? { v: `Target belum lengkap (${terisi}/${jumlah} desa)`, fc: "FFC2410C" }
+    : `Lengkap (${terisi}/${jumlah} desa)`;
+  const KEC = { bg: "FFF0FDF4", fc: "FF166534", tebal: true };
+  const k$ = (v: string | number): Sel => ({ v, ...KEC });
+
+  const blok: Blok[] = [headerKolom(kolom, "FF166534")];
+  if (!f.kecamatanId) {
+    blok.push({ t: "total", gabung: 4, nilai: ["JUMLAH KABUPATEN", "", "", "", d.target, d.realisasi, d.realisasi - d.target, cap(d.capaian)] });
+  }
+  d.kec.forEach((k, ki) => {
+    const baris: Sel[][] = [[
+      k$(ki + 1), k$(`KECAMATAN ${k.nama.toUpperCase()} (${k.ppl.length} PPL, ${k.sudahIsi} sudah isi target)`), k$(""), k$(""),
+      k$(k.target), k$(k.realisasi), k$(k.realisasi - k.target), cap(k.capaian),
+    ]];
+    k.ppl.forEach((p, pi) => {
+      baris.push([
+        `${ki + 1}.${pi + 1}`, { v: p.nama, tebal: true }, p.role === "admin_bpp" ? "Admin BPP" : "Penyuluh", status(p.terisi, p.desa.length),
+        p.terisi ? p.target : null, p.realisasi, p.terisi ? p.realisasi - p.target : null, cap(p.capaian),
+      ]);
+      for (const ds of p.desa) {
+        baris.push([
+          "", `      Desa ${ds.nama}`, "", ds.target == null ? { v: "Target kosong", fc: "FFB91C1C" } : "",
+          ds.target, ds.realisasi, ds.target == null ? null : ds.realisasi - ds.target, cap(ds.capaian, false),
+        ]);
+      }
+    });
+    blok.push({ t: "data", baris });
+  });
+  blok.push(
+    { t: "kosong" },
+    { t: "catatan", teks: "Capaian: < 60% merah (rendah) · 60–84,99% kuning (sedang) · ≥ 85% hijau (baik) · – = belum isi target." },
+    { t: "catatan", teks: "Target = jumlah target desa padi yang diisi PPL (semua jenis LTT). Realisasi = luas tanam padi semua jenis LTT; realisasi desa yang belum ada target tetap dihitung." },
+  );
+
+  const namaKec = f.kecamatanId ? d.kec[0]?.nama : null;
+  const sampai = `${Number(d.sampai.slice(8, 10))} ${NAMA_BULAN[d.bulan - 1]} ${d.tahun}`;
+  return {
+    namaFile: ["Realisasi_per_PPL", namaKec ?? "Kabupaten", `${NAMA_BULAN[d.bulan - 1]}_${d.tahun}`],
+    judulFile: `Realisasi LTT Padi per PPL - ${namaKec ? `Kec. ${namaKec}` : "Kabupaten"} - ${NAMA_BULAN[d.bulan - 1]} ${d.tahun}`,
+    lembar: [{
+      nama: "Realisasi per PPL",
+      judul: "REALISASI LUAS TAMBAH TANAM (LTT) PADI PER PPL",
+      info: [`${namaKec ? `Kecamatan ${namaKec}` : "Kabupaten"} · Kumulatif 1 s.d. ${sampai} · Urut dari capaian terendah`],
+      kolom,
+      beku: { y: 5 },
+      tanpaZebra: true,
+      blok,
     }],
   };
 }

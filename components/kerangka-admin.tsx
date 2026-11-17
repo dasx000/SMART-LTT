@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ArrowLeft, DatabaseBackup, Goal, ChartLine, ChartPie, FileText, History, House, KeyRound, Leaf, LockKeyhole, Map as Peta, Menu, PanelLeftClose, PanelLeftOpen, Power,
-  Scale, Shuffle, Sprout, Tags, UserCog, Users, Warehouse, X, Shield, Target,
+  Scale, Shuffle, Sprout, Tags, UserCog, UserRoundCheck, Users, Warehouse, X, Shield, Target,
 } from "lucide-react";
 import { logout } from "@/app/(auth)/login/actions";
 import type { Role } from "@/lib/auth";
@@ -20,19 +20,22 @@ type Item = {
   awalan?: string;
   /** judul kelompok yang ditampilkan di atas item ini */
   grup?: string;
+  /** tanggal rilis fitur (YYYY-MM-DD): label "Baru" tampil selama LAMA_LABEL_BARU_HARI sejak tanggal ini */
+  baru?: string;
 };
 
 /** Menu sidebar — urutan & label mengikuti aplikasi lama. Verifikasi & Pemeliharaan dihapus (keputusan §25). */
 const MENU_KAB: Item[] = [
   { href: "/kab", label: "Smart Dashboard", ikon: <ChartPie size={18} />, awalan: "/kab/rekap" },
   { href: "/kab/pm-aas", label: "LTT PM AAS", ikon: <Sprout size={18} /> },
+  { href: "/kab/realisasi-ppl", label: "Realisasi per PPL", ikon: <UserRoundCheck size={18} />, baru: "2026-11-17" },
   { href: "/kab/laporan", label: "Laporan LTT", ikon: <FileText size={18} />, role: ["admin_kab"] },
-  { href: "/kab/produktivitas", label: "Produktivitas", ikon: <Scale size={18} />, role: ["admin_kab"] },
-  { href: "/kab/sarana", label: "Sarana Desa", ikon: <Warehouse size={18} />, role: ["admin_kab"] },
+  { href: "/kab/produktivitas", label: "Produktivitas", ikon: <Scale size={18} />, role: ["admin_kab"], baru: "2026-11-17" },
+  { href: "/kab/sarana", label: "Sarana Desa", ikon: <Warehouse size={18} />, role: ["admin_kab"], baru: "2026-11-17" },
   { href: "/kab/pengguna", label: "Manajemen Penyuluh", ikon: <UserCog size={18} />, role: ["admin_kab"] },
   { href: "/kab/target", label: "Target Komoditas", ikon: <Goal size={18} />, role: ["admin_kab"] },
   { href: "/kab/logs", label: "Log Sinkronisasi", ikon: <History size={18} />, role: ["admin_kab"] },
-  { href: "/kab/backup", label: "Backup Data", ikon: <DatabaseBackup size={18} />, role: ["admin_kab"] },
+  { href: "/kab/backup", label: "Backup Data", ikon: <DatabaseBackup size={18} />, role: ["admin_kab"], baru: "2026-11-17" },
   { href: "/kab/master/kecamatan", label: "Kecamatan", ikon: <Peta size={18} />, role: ["admin_kab"], grup: "Master Data" },
   { href: "/kab/master/desa", label: "Desa", ikon: <House size={18} />, role: ["admin_kab"] },
   { href: "/kab/master/jenis-ltt", label: "Jenis LTT", ikon: <Tags size={18} />, role: ["admin_kab"] },
@@ -42,12 +45,18 @@ const MENU_KAB: Item[] = [
 
 const MENU_BPP: Item[] = [
   { href: "/bpp", label: "Dashboard", ikon: <ChartLine size={18} /> },
+  { href: "/bpp/realisasi-ppl", label: "Realisasi per PPL", ikon: <UserRoundCheck size={18} />, baru: "2026-11-17" },
   { href: "/bpp/laporan", label: "Laporan LTT", ikon: <FileText size={18} /> },
   { href: "/bpp/target-kecamatan", label: "Target Kecamatan", ikon: <Goal size={18} /> },
   { href: "/bpp/target", label: "Target Desa PPL", ikon: <Target size={18} /> },
-  { href: "/bpp/produktivitas", label: "Produktivitas & Sarana", ikon: <Warehouse size={18} /> },
+  { href: "/bpp/produktivitas", label: "Produktivitas & Sarana", ikon: <Warehouse size={18} />, baru: "2026-11-17" },
   { href: "/bpp/pengguna", label: "Manajemen Akun PPL", ikon: <Users size={18} /> },
 ];
+
+/** Lama label "Baru" tampil di menu sejak tanggal rilisnya (hari). */
+const LAMA_LABEL_BARU_HARI = 60;
+const masihBaru = (rilis?: string) =>
+  Boolean(rilis) && Date.now() < Date.parse(`${rilis}T00:00:00+07:00`) + LAMA_LABEL_BARU_HARI * 86_400_000;
 
 const KUNCI_CIUT = "ltt-sidebar-kab-ciut";
 
@@ -143,6 +152,7 @@ export function KerangkaAdmin({
                 }
               >
                 <span className="w-5 shrink-0">{m.ikon}</span> {m.label}
+                {masihBaru(m.baru) && <span className="ml-auto shrink-0 rounded-full bg-yellow-400 px-1.5 py-0.5 text-[9px] font-extrabold tracking-wide text-yellow-950 uppercase">Baru</span>}
               </Link>
               </div>
             );

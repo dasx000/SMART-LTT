@@ -4,13 +4,8 @@ import { TombolUnduh } from "@/components/tombol-unduh";
 
 type Data = Awaited<ReturnType<typeof rekapProvinsiPadi>>;
 
-/** Warna kolom persentase — ambang sama dengan tabel capaian lain (<60 merah, 60–84 kuning, ≥85 hijau). */
-export const LEGENDA = [
-  { kelas: "bg-red-500 text-white", label: "< 60%", arti: "Rendah" },
-  { kelas: "bg-yellow-300 text-yellow-900", label: "60% – 84,99%", arti: "Sedang" },
-  { kelas: "bg-green-600 text-white", label: "≥ 85%", arti: "Baik / tercapai" },
-];
-export const levelPersen = (p: number) => (p >= 85 ? LEGENDA[2] : p >= 60 ? LEGENDA[1] : LEGENDA[0]);
+export { LEGENDA, levelPersen } from "@/lib/warna-persen";
+import { LEGENDA, levelPersen } from "@/lib/warna-persen";
 
 /** Kotak warna legenda persentase (dipakai juga di halaman LTT PM AAS). */
 export function KotakLegendaPersen() {

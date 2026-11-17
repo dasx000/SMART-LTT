@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Carrot, ChevronRight, Goal, Leaf, LogOut, TriangleAlert, Scale, Shuffle, TableProperties, UserCog, Warehouse, Wheat } from "lucide-react";
+import { Carrot, ChevronRight, Goal, Leaf, LogOut, TriangleAlert, Scale, Shuffle, TableProperties, UserCog, UserRoundCheck, Warehouse, Wheat } from "lucide-react";
 import { wajibRole } from "@/lib/auth";
 import { KerangkaHalaman } from "@/components/kerangka-halaman";
 import { supabaseServer } from "@/lib/supabase/server";
@@ -80,6 +80,7 @@ async function Isi() {
           <Ikon href="/ppl/produktivitas?tab=sarana" label={<>Sarana<br />Desa</>} warna="bg-orange-100 text-orange-600 border-orange-200"><Warehouse size={30} /></Ikon>
           <Ikon href="/ppl/target" label={<>Target<br />Bulanan</>} warna="bg-cyan-100 text-cyan-600 border-cyan-200"><Goal size={30} /></Ikon>
           <Ikon href="/ppl/rekap" label={<>Rekap<br />Saya</>} warna="bg-purple-100 text-purple-600 border-purple-200"><TableProperties size={30} /></Ikon>
+          <Ikon href="/ppl/realisasi" label={<>Realisasi<br />Saya</>} warna="bg-green-100 text-green-700 border-green-200"><UserRoundCheck size={30} /></Ikon>
           <Ikon href="/profil" label={<>Ubah<br />Profil</>} warna="bg-amber-100 text-amber-600 border-amber-200"><UserCog size={30} /></Ikon>
           <IkonPasangAplikasi />
         </div>
@@ -128,17 +129,17 @@ function PeringatanTargetPadi({ tahun, bulan, belum, total }: KurangTarget) {
   return (
     <Link
       href={`/ppl/target?tahun=${tahun}&bulan=${bulan}&komoditas=Padi`}
-      className="mb-6 flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 transition hover:bg-amber-100 active:scale-[0.99]"
+      className="mb-6 flex items-start gap-3 rounded-2xl border border-red-300 bg-red-50 p-4 transition hover:bg-red-100 active:scale-[0.99]"
     >
-      <TriangleAlert size={20} className="mt-0.5 shrink-0 text-amber-600" />
+      <TriangleAlert size={20} className="mt-0.5 shrink-0 text-red-600" />
       <div className="min-w-0 flex-1 text-sm">
-        <p className="font-bold text-amber-900">Target Padi {NAMA_BULAN[bulan - 1]} {tahun} belum diisi</p>
-        <p className="mt-0.5 text-amber-800">
+        <p className="font-bold text-red-900">Target Padi {NAMA_BULAN[bulan - 1]} {tahun} belum diisi</p>
+        <p className="mt-0.5 text-red-800">
           {belum.length} dari {total} desa binaan: {belum.join(", ")}.
         </p>
-        <p className="mt-1.5 text-xs font-semibold text-amber-700">Ketuk untuk mengisi target</p>
+        <p className="mt-1.5 text-xs font-semibold text-red-700">Ketuk untuk mengisi target</p>
       </div>
-      <ChevronRight size={18} className="mt-0.5 shrink-0 text-amber-500" />
+      <ChevronRight size={18} className="mt-0.5 shrink-0 text-red-500" />
     </Link>
   );
 }

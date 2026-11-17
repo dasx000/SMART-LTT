@@ -10,7 +10,7 @@ import {
   rekapPerKecamatan,
   type Komoditas, type Supa,
 } from "@/lib/data";
-import { lembarTabel, rentangTanggal, specLaporan, specLttProvinsi, specRekapDinas } from "@/lib/unduh";
+import { lembarTabel, rentangTanggal, specLaporan, specLttProvinsi, specRealisasiPpl, specRekapDinas } from "@/lib/unduh";
 
 /**
  * GET /api/unduh/<jenis>?... — data untuk semua tombol unduh Excel.
@@ -23,6 +23,7 @@ const HAK: Record<string, Role[]> = {
   "rekap-kecamatan": ["admin_kab", "viewer"],
   "rekap-dinas": ["admin_kab", "viewer"],
   "ltt-provinsi": ["admin_kab", "viewer"],
+  "realisasi-ppl": ["admin_kab", "viewer"],
   "rekap-ppl": ["penyuluh", "admin_bpp"],
   "produktivitas": ["penyuluh", "admin_bpp", "admin_kab"],
 };
@@ -55,6 +56,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ jenis: stri
       case "rekap-kecamatan": return await unduhRekapKecamatan(s, q);
       case "rekap-dinas": return await unduhRekapDinas(s, q);
       case "ltt-provinsi": return await unduhLttProvinsi(s, q);
+      case "realisasi-ppl": return kirim(await specRealisasiPpl(s, { ...bulanDariQuery(q), kecamatanId: angka(q.get("kecamatan"), 1, 1_000_000, 0) || null }));
       case "rekap-ppl": return await unduhRekapPpl(s, p, q);
       case "produktivitas": return await unduhProduktivitas(s, p, q);
     }
