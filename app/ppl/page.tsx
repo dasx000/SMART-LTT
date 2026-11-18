@@ -156,7 +156,8 @@ function PeringatanTargetPadi({ tahun, bulan, belum, total }: KurangTarget) {
         <p className="mt-0.5 text-red-800">
           {belum.length} dari {total} desa binaan: {belum.join(", ")}.
         </p>
-        <p className="mt-1.5 text-xs font-semibold text-red-700">Ketuk untuk mengisi target</p>
+        <p className="mt-1.5 text-xs text-red-800"><b>Wajib diisi</b> karena capaian LTT jadi salah satu dasar penilaian <b>SKP</b>.</p>
+        <p className="mt-1 text-xs font-semibold text-red-700">Ketuk untuk mengisi target</p>
       </div>
       <ChevronRight size={18} className="mt-0.5 shrink-0 text-red-500" />
     </Link>
