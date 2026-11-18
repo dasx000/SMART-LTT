@@ -43,7 +43,7 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
           <h2 className="flex items-center gap-2 text-lg font-bold text-gray-800">
             <UserRoundCheck className="text-green-600" size={20} /> Realisasi LTT Padi per PPL
           </h2>
-          <p className="text-xs text-gray-500">Kecamatan {namaKec} · Padi semua jenis LTT · Kumulatif {teksPeriodeRealisasi(d)} · Urut dari capaian terendah</p>
+          <p className="text-xs text-gray-500">Kecamatan {namaKec} · Padi semua jenis LTT · Kumulatif {teksPeriodeRealisasi(d)} · Urut dari pengisian target terendah, lalu capaian terendah</p>
         </div>
         <Form action="/bpp/realisasi-ppl" scroll={false} className="flex items-center gap-2">
           <CalendarDays size={16} className="text-green-600" />

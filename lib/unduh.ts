@@ -312,7 +312,7 @@ export async function specRealisasiPpl(s: Supa, f: { tahun: number; bulan: numbe
     lembar: [{
       nama: "Realisasi per PPL",
       judul: "REALISASI LUAS TAMBAH TANAM (LTT) PADI PER PPL",
-      info: [`${namaKec ? `Kecamatan ${namaKec}` : "Kabupaten"} · Kumulatif 1 s.d. ${sampai} · Urut dari capaian terendah`],
+      info: [`${namaKec ? `Kecamatan ${namaKec}` : "Kabupaten"} · Kumulatif 1 s.d. ${sampai} · Urut dari pengisian target terendah, lalu capaian terendah`],
       kolom,
       beku: { y: 5 },
       tanpaZebra: true,

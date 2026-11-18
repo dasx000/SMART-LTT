@@ -13,7 +13,9 @@ import type { Role } from "@/lib/auth";
  * - "Terisi"     = desa punya baris target padi (nilai 0 tetap dihitung terisi, sama dengan menu Target).
  * Realisasi desa yang belum ada target tetap dihitung (keputusan user 17 Nov 2026).
  * Hanya Penyuluh & Admin BPP aktif yang punya desa binaan. Satu desa hanya dipegang satu PPL.
- * Kecamatan & PPL diurutkan dari capaian terendah; yang belum isi target (capaian null) paling atas.
+ * Urutan kecamatan & PPL (keputusan user 18 Nov 2026 — target dikejar dulu, capaian dari target belum lengkap bias):
+ *   1) % desa terisi target terendah, 2) capaian terendah (null paling atas), 3) nama A–Z.
+ * Desa: capaian terendah (belum ada target paling atas), lalu nama.
  *
  * PEMANGGIL WAJIB memeriksa role & cakupan (BPP = kecamatannya, penyuluh = dirinya).
  */
@@ -57,6 +59,8 @@ export type RekapRealisasiPpl = {
 const capaian = (realisasi: number, target: number) => (target > 0 ? (realisasi / target) * 100 : null);
 /** null (belum ada target) dianggap paling rendah. */
 const urutCapaian = (a: number | null, b: number | null) => (a ?? -1) - (b ?? -1);
+/** Rasio desa terisi target (0–1); tanpa desa dianggap 0. */
+const rasioIsi = (terisi: number, jumlah: number) => (jumlah > 0 ? terisi / jumlah : 0);
 
 export async function rekapRealisasiPpl(
   s: Supa,
@@ -116,12 +120,22 @@ export async function rekapRealisasiPpl(
   const kec: KecRealisasi[] = kecs
     .filter((k) => perKec.has(k.id))
     .map((k) => {
-      const daftar = perKec.get(k.id)!.sort((a, b) => urutCapaian(a.capaian, b.capaian) || a.nama.localeCompare(b.nama, "id"));
+      const daftar = perKec
+        .get(k.id)!
+        .sort(
+          (a, b) =>
+            rasioIsi(a.terisi, a.desa.length) - rasioIsi(b.terisi, b.desa.length) ||
+            urutCapaian(a.capaian, b.capaian) ||
+            a.nama.localeCompare(b.nama, "id"),
+        );
       const tg = daftar.reduce((a, p) => a + p.target, 0);
       const rl = daftar.reduce((a, p) => a + p.realisasi, 0);
       return { id: k.id, nama: k.nama, ppl: daftar, target: tg, realisasi: rl, capaian: capaian(rl, tg), sudahIsi: daftar.filter((p) => p.terisi > 0).length };
-    })
-    .sort((a, b) => urutCapaian(a.capaian, b.capaian) || a.nama.localeCompare(b.nama, "id"));
+    });
+  const isiKec = new Map(
+    kec.map((k) => [k.id, rasioIsi(k.ppl.reduce((a, p) => a + p.terisi, 0), k.ppl.reduce((a, p) => a + p.desa.length, 0))]),
+  );
+  kec.sort((a, b) => isiKec.get(a.id)! - isiKec.get(b.id)! || urutCapaian(a.capaian, b.capaian) || a.nama.localeCompare(b.nama, "id"));
 
   const semua = kec.flatMap((k) => k.ppl);
   const tg = kec.reduce((a, k) => a + k.target, 0);
