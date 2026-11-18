@@ -96,10 +96,10 @@ async function Isi() {
         <h2 className="mt-8 mb-4 border-b border-gray-200 pb-2 text-sm font-bold text-gray-800">Menu Lainnya</h2>
         <div className="grid grid-cols-4 gap-3">
           <Ikon href="/ppl/realisasi" label={<>Realisasi<br />LTT</>} warna="bg-green-100 text-green-700 border-green-200"><UserRoundCheck size={30} /></Ikon>
+          <Ikon href="/ppl/rekap" label={<>Rekap<br />Saya</>} warna="bg-purple-100 text-purple-600 border-purple-200"><TableProperties size={30} /></Ikon>
+          <Ikon href="/ppl/target" label={<>Target<br />Bulanan</>} warna="bg-cyan-100 text-cyan-600 border-cyan-200"><Goal size={30} /></Ikon>
           <Ikon href="/ppl/produktivitas" label={<>Produk-<br />tivitas</>} warna="bg-lime-100 text-lime-700 border-lime-200"><Scale size={30} /></Ikon>
           <Ikon href="/ppl/produktivitas?tab=sarana" label={<>Sarana<br />Desa</>} warna="bg-orange-100 text-orange-600 border-orange-200"><Warehouse size={30} /></Ikon>
-          <Ikon href="/ppl/target" label={<>Target<br />Bulanan</>} warna="bg-cyan-100 text-cyan-600 border-cyan-200"><Goal size={30} /></Ikon>
-          <Ikon href="/ppl/rekap" label={<>Rekap<br />Saya</>} warna="bg-purple-100 text-purple-600 border-purple-200"><TableProperties size={30} /></Ikon>
           <Ikon href="/profil" label={<>Ubah<br />Profil</>} warna="bg-amber-100 text-amber-600 border-amber-200"><UserCog size={30} /></Ikon>
           <IkonPasangAplikasi />
         </div>
@@ -117,14 +117,14 @@ function Ikon({ href, label, warna, children }: { href: string; label: ReactNode
   );
 }
 
-/** Peringatan target Padi tampil tanggal 5–20 (WIB) bulan berjalan. */
-const TANGGAL_PERINGATAN = { dari: 5, sampai: 20 };
+/** Peringatan target Padi tampil tanggal 1–20 (WIB) bulan berjalan. */
+const TANGGAL_PERINGATAN = { dari: 1, sampai: 20 };
 
 type KurangTarget = { tahun: number; bulan: number; belum: string[]; total: number };
 
 /**
  * Desa binaan yang belum punya baris target PADI untuk bulan berjalan (WIB).
- * Hanya diperiksa tanggal 5–20; di luar itu / semua terisi / tidak ada desa → null.
+ * Hanya diperiksa tanggal 1–20; di luar itu / semua terisi / tidak ada desa → null.
  * "Terisi" = baris target_desa ada (sama dengan hitungan "Terisi x / y desa" di menu Target).
  */
 async function targetPadiBelumDiisi(s: Awaited<ReturnType<typeof supabaseServer>>, desa: DesaRef[]): Promise<KurangTarget | null> {
