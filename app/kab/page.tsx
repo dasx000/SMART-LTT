@@ -17,7 +17,6 @@ import { KartuRincianJenis } from "@/components/kartu-rincian-jenis";
 import { TabelLttProvinsi } from "@/components/tabel-ltt-provinsi";
 import { Donut, Gauge } from "@/components/grafik";
 import { TabDashboardKab } from "@/components/tab-dashboard-kab";
-import { PengingatBackup } from "@/components/pengingat-backup";
 import { teksParam, urlDengan, type CariParam } from "@/lib/param";
 
 export const metadata: Metadata = { title: "Smart Dashboard — SMART LTT" };
@@ -46,7 +45,7 @@ const WARNA_DINAS: Record<(typeof KOLOM_DINAS)[number]["kunci"], string> = {
  * Pilihan (periode, komoditas capaian) ada di URL.
  */
 async function Isi({ searchParams }: { searchParams: CariParam }) {
-  const pengguna = await wajibRole("admin_kab", "viewer");
+  await wajibRole("admin_kab", "viewer");
   const q = await searchParams;
   const per = periodeDariParam(teksParam(q, "periode"), bulanTahunWIB());
   const capaian = (PILIH_CAPAIAN as readonly string[]).includes(teksParam(q, "capaian") ?? "") ? (teksParam(q, "capaian") as (typeof PILIH_CAPAIAN)[number]) : "Padi";
@@ -82,7 +81,6 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
 
   return (
     <>
-      {pengguna.role === "admin_kab" && <PengingatBackup />}
       <TabDashboardKab
         aktif="/kab"
         kanan={
