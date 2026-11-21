@@ -17,6 +17,7 @@ export const IZIN = {
   "laporan:tulis": "Kirim laporan LTT Jagung & Ubi Kayu atas nama PPL",
   "epusluh:tulis": "Kirim data padi hasil tarikan e-Pusluh (bot sinkron)",
   "unduh:baca": "Unduh spesifikasi Excel (Rekap Dinas, LTT Provinsi, Laporan LTT), format sama dengan tombol unduh aplikasi",
+  "backup:baca": "Unduh backup data SMART LTT (.json.gz) untuk keperluan cronjob / bot VPS",
 } as const;
 export type Izin = keyof typeof IZIN;
 export const DAFTAR_IZIN = Object.keys(IZIN) as Izin[];

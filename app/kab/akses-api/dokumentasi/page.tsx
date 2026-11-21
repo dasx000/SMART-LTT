@@ -90,6 +90,7 @@ const DAFTAR_ISI = [
   ["laporan-kirim", "POST /laporan"],
   ["epusluh", "POST /epusluh/padi"],
   ["unduh", "GET /unduh/…"],
+  ["backup", "GET /backup"],
   ["contoh", "Contoh Kode"],
   ["catatan", "Catatan Perilaku"],
 ] as const;
@@ -452,6 +453,22 @@ Content-Type: application/json
               Nama file yang dipakai aplikasi: <K>SMART-LTT_</K> + isi <K>namaFile</K> digabung garis bawah + <K>.xlsx</K>. Beberapa spesifikasi boleh digabung
               menjadi satu file dengan menggabungkan array <K>lembar</K>.
             </p>
+          </Bagian>
+
+          <Bagian id="backup" judul="Unduh Backup Data (Cronjob / Bot VPS)">
+            <Endpoint metode="GET" jalur="/api/v1/backup" izin="backup:baca" />
+            <p>
+              Mengunduh salinan seluruh data SMART LTT sebagai file <K>.json.gz</K>, isinya sama dengan tombol <b>Unduh Backup</b> di menu Backup Data.
+              Cocok untuk cronjob harian di VPS. Tanpa parameter. Kunci yang diberi izin ini bisa membaca <b>semua data</b>, jadi simpan dengan hati-hati.
+            </p>
+            <Kode judul="Permintaan (curl)">{`curl -fL -H "Authorization: Bearer $SMART_LTT_API_KEY" \\
+  -o SMART-LTT-backup-$(date +%F).json.gz ${BASE}/api/v1/backup`}</Kode>
+            <ul className="list-disc space-y-1.5 pl-5">
+              <li>Balasan berupa <b>berkas biner</b> (<K>application/gzip</K>), bukan JSON. Galat (401/403/500) tetap berupa JSON seperti endpoint lain.</li>
+              <li>Dikirim bertahap (stream), bisa memakan waktu puluhan detik. Beri <K>timeout</K> klien minimal 120 detik. Kalau koneksi putus, berkas tidak utuh: ulangi.</li>
+              <li>Dicatat di riwayat backup sebagai <K>Bot: &lt;nama kunci&gt;</K>, sehingga pengingat backup di dashboard ikut diperbarui.</li>
+              <li>Password tidak ikut (ada di Supabase Auth). Daftar tabel sama dengan backup manual.</li>
+            </ul>
           </Bagian>
 
           <Bagian id="contoh" judul="Contoh Kode">
