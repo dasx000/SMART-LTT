@@ -2,7 +2,7 @@ import "server-only";
 import { NAMA_BULAN, formatTanggalJam, tanggalIsoWIB } from "@/lib/format";
 import { headerKolom, type Blok, type Kolom, type Lembar, type Sel, type SpesifikasiExcel } from "@/lib/excel-spec";
 import { rekapRealisasiPpl } from "@/lib/realisasi-ppl";
-import { KOLOM_DINAS, KOLOM_PROV, ambilLaporan, daftarDesa, daftarKecamatan, laporanBulan, rekapDinas, rekapProvinsiPadi, type Komoditas, type Supa } from "@/lib/data";
+import { KOLOM_DINAS, KOLOM_PROV, ambilLaporan, daftarDesa, daftarKecamatan, laporanBulan, semuaJenisPadi, semuaLaporanTersaring, rekapDinas, rekapProvinsiPadi, type Komoditas, type Supa } from "@/lib/data";
 
 /**
  * Spesifikasi Excel yang dipakai bersama oleh tombol unduh (/api/unduh, sesi login) dan
@@ -35,17 +35,47 @@ export function lembarTabel(
 
 // ─── Laporan LTT (data mentah) ────────────────────────────────────────────────
 
-/** kecId = id kecamatan di database (null = semua kecamatan). */
+/**
+ * kecId = id kecamatan di database (null = semua kecamatan).
+ * Filter opsional (metode, jenisId, desaId, cari) sama dengan tabel di halaman Laporan LTT,
+ * sehingga isi Excel = isi tabel yang sedang disaring.
+ */
 export async function specLaporan(
   s: Supa,
-  f: { dari: string; sampai: string; komoditas: Komoditas | null; kecId: number | null },
+  f: {
+    dari: string; sampai: string; komoditas: Komoditas | null; kecId: number | null;
+    metode?: string | null; jenisId?: number | null; desaId?: number | null; cari?: string | null;
+  },
 ): Promise<SpesifikasiExcel> {
   const { dari, sampai, komoditas, kecId } = f;
-  const kecs = await daftarKecamatan(s);
-  const desaIds = kecId ? (await daftarDesa(s, kecId)).map((d) => d.id) : null;
+  const [kecs, semuaDesa, daftarJenis] = await Promise.all([daftarKecamatan(s), daftarDesa(s), semuaJenisPadi(s)]);
+  const desaKec = kecId ? semuaDesa.filter((d) => d.kecamatan_id === kecId) : semuaDesa;
+  const desaPilih = f.desaId ? desaKec.find((d) => d.id === f.desaId) ?? null : null;
+  const desaIds = desaPilih ? [desaPilih.id] : kecId ? desaKec.map((d) => d.id) : null;
+  const metode = f.metode && ["Regular", "PM AAS"].includes(f.metode) ? f.metode : null;
+  // Jenis LTT hanya berlaku untuk Padi
+  const jenisPilih = komoditas === "Padi" && f.jenisId ? daftarJenis.find((j) => j.id === f.jenisId) ?? null : null;
+  const cari = f.cari?.trim() || null;
 
-  const data = await ambilLaporan(s, { ...rentangTanggal(dari, sampai), komoditas, desaIds }, kecs);
+  const data = await semuaLaporanTersaring(
+    s,
+    {
+      ...rentangTanggal(dari, sampai), komoditas, metode, desaIds, cari,
+      jenis: jenisPilih ? { id: jenisPilih.id, termasukTanpaJenis: /^ltt reguler$/i.test(jenisPilih.nama.trim()) } : null,
+    },
+    kecs,
+    semuaDesa,
+  );
   const namaKec = kecId ? (kecs.find((k) => k.id === kecId)?.nama ?? "") : "Semua Kecamatan";
+  const info = [
+    `Periode: ${dari} s/d ${sampai}`,
+    [
+      desaPilih && `Desa: ${desaPilih.nama}`,
+      jenisPilih && `Jenis LTT: ${jenisPilih.nama}`,
+      metode && `Metode: ${metode}`,
+      cari && `Pencarian: "${cari}"`,
+    ].filter(Boolean).join(" | "),
+  ].filter(Boolean);
 
   const kolom: Kolom[] = [
     { judul: "No", lebar: 5, jenis: "bulat" },
@@ -65,12 +95,12 @@ export async function specLaporan(
   ];
   const sum = (fn: (l: (typeof data)[number]) => number) => data.reduce((a, l) => a + fn(l), 0);
   return {
-    namaFile: ["Laporan", namaKec, komoditas ?? "", `${dari}_sd_${sampai}`],
+    namaFile: ["Laporan", namaKec, desaPilih?.nama ?? "", komoditas ?? "", jenisPilih?.nama ?? "", metode ?? "", `${dari}_sd_${sampai}`],
     lembar: [
       lembarTabel(
         "Laporan LTT",
         `LAPORAN LTT ${komoditas?.toUpperCase() ?? "SEMUA KOMODITAS"} — ${namaKec.toUpperCase()}`,
-        [`Periode: ${dari} s/d ${sampai}`],
+        info,
         kolom,
         data.map((l, i) => [
           i + 1, formatTanggalJam(l.waktu), l.pelapor, l.kecamatan, l.desa, l.komoditas, l.jenis ?? "-",

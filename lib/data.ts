@@ -602,20 +602,11 @@ export type FilterLaporan = {
   cari?: string | null;
 };
 
-/**
- * Daftar laporan berhalaman + ringkasan (jumlah, total tanam/panen) untuk filter yang sama.
- * Semua penyaringan di database; browser hanya menerima satu halaman.
- */
-export async function cariLaporan(
-  s: Supa,
-  f: FilterLaporan & { hal: number; per?: number },
-  kecs: Kec[],
-  semuaDesa: DesaRef[],
-): Promise<{ baris: BarisLaporan[]; total: number; ringkas: { jumlah: number; tanam: number; panen: number } }> {
-  const per = f.per ?? PER_HALAMAN;
-  const kosong = { baris: [], total: 0, ringkas: { jumlah: 0, tanam: 0, panen: 0 } };
-  if (f.desaIds && f.desaIds.length === 0) return kosong;
+const KOLOM_LAPORAN =
+  "id, tanggal_lapor, nama_pelapor, desa_id, komoditas, luas_bera, realisasi_olah, realisasi_tanam, realisasi_panen, metode_penanaman, keterangan, status_epusluh, sumber, desa:desa_id(nama, kecamatan_id), jenis:jenis_ltt_id(nama)";
 
+/** Bangun penyaring query laporan_ltt dari FilterLaporan (dipakai tabel Laporan LTT & unduhan Excel-nya). */
+async function penyaringLaporan(s: Supa, f: FilterLaporan, kecs: Kec[], semuaDesa: DesaRef[]) {
   // Kata cari → nama pelapor, desa/kecamatan, jenis LTT, metode, status e-Pusluh, atau keterangan yang cocok
   let orCari: string | null = null;
   if (f.cari) {
@@ -640,8 +631,7 @@ export async function cariLaporan(
     gte(k: string, v: string): Saring; lt(k: string, v: string): Saring; is(k: string, v: null): Saring;
     eq(k: string, v: string): Saring; in(k: string, v: number[]): Saring; or(v: string): Saring;
   };
-  /** Filter yang sama untuk query halaman & query ringkasan */
-  const terapkan = <T,>(q: T): T => {
+  return <T,>(q: T): T => {
     let x = q as unknown as Saring;
     x = x.gte("tanggal_lapor", f.dari).lt("tanggal_lapor", f.sampai).is("dihapus_pada", null);
     if (f.komoditas) x = x.eq("komoditas", f.komoditas);
@@ -658,15 +648,51 @@ export async function cariLaporan(
     else if (orJenis || orCari) x = x.or((orJenis ?? orCari) as string);
     return x as unknown as T;
   };
+}
+
+function keBarisLaporan(r: Record<string, unknown>, namaKec: Map<number, string>): BarisLaporan {
+  const d = r.desa as { nama: string; kecamatan_id: number } | null;
+  const j = r.jenis as { nama: string } | null;
+  return {
+    id: r.id as number,
+    waktu: r.tanggal_lapor as string,
+    pelapor: (r.nama_pelapor as string | null) ?? (r.sumber === "epusluh" ? "e-Pusluh" : "-"),
+    kecamatanId: d?.kecamatan_id ?? 0,
+    kecamatan: namaKec.get(d?.kecamatan_id ?? 0) ?? "-",
+    desaId: r.desa_id as number,
+    desa: d?.nama ?? "-",
+    komoditas: r.komoditas as Komoditas,
+    jenis: r.komoditas === "Padi" ? (j?.nama ?? "LTT Reguler") : null,
+    bera: Number(r.luas_bera) || 0,
+    olah: Number(r.realisasi_olah) || 0,
+    tanam: Number(r.realisasi_tanam) || 0,
+    panen: Number(r.realisasi_panen) || 0,
+    metode: r.metode_penanaman as string | null,
+    keterangan: r.keterangan as string | null,
+    status: r.komoditas === "Padi" ? (r.status_epusluh as string | null) : null,
+    sumber: r.sumber as string,
+  };
+}
+
+/**
+ * Daftar laporan berhalaman + ringkasan (jumlah, total tanam/panen) untuk filter yang sama.
+ * Semua penyaringan di database; browser hanya menerima satu halaman.
+ */
+export async function cariLaporan(
+  s: Supa,
+  f: FilterLaporan & { hal: number; per?: number },
+  kecs: Kec[],
+  semuaDesa: DesaRef[],
+): Promise<{ baris: BarisLaporan[]; total: number; ringkas: { jumlah: number; tanam: number; panen: number } }> {
+  const per = f.per ?? PER_HALAMAN;
+  const kosong = { baris: [], total: 0, ringkas: { jumlah: 0, tanam: 0, panen: 0 } };
+  if (f.desaIds && f.desaIds.length === 0) return kosong;
+  /** Filter yang sama untuk query halaman & query ringkasan */
+  const terapkan = await penyaringLaporan(s, f, kecs, semuaDesa);
 
   const dari = (f.hal - 1) * per;
   const [{ data, error, count }, nilai] = await Promise.all([
-    terapkan(
-      s.from("laporan_ltt").select(
-        "id, tanggal_lapor, nama_pelapor, desa_id, komoditas, luas_bera, realisasi_olah, realisasi_tanam, realisasi_panen, metode_penanaman, keterangan, status_epusluh, sumber, desa:desa_id(nama, kecamatan_id), jenis:jenis_ltt_id(nama)",
-        { count: "exact" },
-      ),
-    )
+    terapkan(s.from("laporan_ltt").select(KOLOM_LAPORAN, { count: "exact" }))
       .order("tanggal_lapor", { ascending: false })
       .order("id")
       .range(dari, dari + per - 1),
@@ -688,30 +714,22 @@ export async function cariLaporan(
   if (error) throw new Error(error.message);
 
   const namaKec = new Map(kecs.map((k) => [k.id, k.nama]));
-  const baris = (data ?? []).map((r) => {
-    const d = r.desa as unknown as { nama: string; kecamatan_id: number } | null;
-    const j = r.jenis as unknown as { nama: string } | null;
-    return {
-      id: r.id as number,
-      waktu: r.tanggal_lapor as string,
-      pelapor: (r.nama_pelapor as string | null) ?? (r.sumber === "epusluh" ? "e-Pusluh" : "-"),
-      kecamatanId: d?.kecamatan_id ?? 0,
-      kecamatan: namaKec.get(d?.kecamatan_id ?? 0) ?? "-",
-      desaId: r.desa_id as number,
-      desa: d?.nama ?? "-",
-      komoditas: r.komoditas as Komoditas,
-      jenis: r.komoditas === "Padi" ? (j?.nama ?? "LTT Reguler") : null,
-      bera: Number(r.luas_bera) || 0,
-      olah: Number(r.realisasi_olah) || 0,
-      tanam: Number(r.realisasi_tanam) || 0,
-      panen: Number(r.realisasi_panen) || 0,
-      metode: r.metode_penanaman as string | null,
-      keterangan: r.keterangan as string | null,
-      status: r.komoditas === "Padi" ? (r.status_epusluh as string | null) : null,
-      sumber: r.sumber as string,
-    };
-  });
+  const baris = (data ?? []).map((r) => keBarisLaporan(r as unknown as Record<string, unknown>, namaKec));
   return { baris, total: count ?? ringkas.jumlah, ringkas };
+}
+
+/** Semua laporan (tanpa halaman) untuk filter yang sama dengan cariLaporan — dipakai unduhan Excel. */
+export async function semuaLaporanTersaring(s: Supa, f: FilterLaporan, kecs: Kec[], semuaDesa: DesaRef[]): Promise<BarisLaporan[]> {
+  if (f.desaIds && f.desaIds.length === 0) return [];
+  const terapkan = await penyaringLaporan(s, f, kecs, semuaDesa);
+  const rows = await ambilSemua<Record<string, unknown>>((a, b) =>
+    terapkan(s.from("laporan_ltt").select(KOLOM_LAPORAN))
+      .order("tanggal_lapor", { ascending: false })
+      .order("id")
+      .range(a, b) as unknown as PromiseLike<{ data: Record<string, unknown>[] | null; error: { message: string } | null }>,
+  );
+  const namaKec = new Map(kecs.map((k) => [k.id, k.nama]));
+  return rows.map((r) => keBarisLaporan(r, namaKec));
 }
 
 /** Satu laporan (untuk form edit lewat ?edit=ID). RLS menentukan boleh terlihat atau tidak. */

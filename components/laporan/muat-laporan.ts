@@ -68,7 +68,12 @@ export async function muatHalamanLaporan(
       desaPilihan: desaKec,
       jenisPilihan: daftarJenis.map(({ id, nama, aktif }) => ({ id, nama, aktif })),
       kecamatanTerkunci: kecamatanKunci !== null,
-      unduh: urlDengan("/api/unduh/laporan", {}, { dari, sampai, komoditas, kecamatan: kecId }),
+      unduh: urlDengan("/api/unduh/laporan", {}, {
+        dari, sampai, komoditas, metode, kecamatan: kecId,
+        jenis: jenisDipilih?.id ?? null,
+        desa: desaIds?.length === 1 && desaId ? desaId : null,
+        q: teksParam(q, "q"),
+      }),
     },
     edit: edit
       ? {

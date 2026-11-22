@@ -86,7 +86,15 @@ async function unduhLaporan(s: Supa, p: Pengguna, q: URLSearchParams) {
   // BPP dikunci ke kecamatannya sendiri
   const kecId = p.role === "admin_bpp" ? p.kecamatanId : angka(q.get("kecamatan"), 1, 100000, 0) || null;
   if (p.role === "admin_bpp" && !kecId) return teksErr("Akun belum terikat ke kecamatan.", 400);
-  return kirim(await specLaporan(s, { dari, sampai, komoditas: komValid(q.get("komoditas")), kecId }));
+  return kirim(
+    await specLaporan(s, {
+      dari, sampai, komoditas: komValid(q.get("komoditas")), kecId,
+      metode: q.get("metode"),
+      jenisId: angka(q.get("jenis"), 1, 1_000_000, 0) || null,
+      desaId: angka(q.get("desa"), 1, 1_000_000, 0) || null,
+      cari: q.get("q"),
+    }),
+  );
 }
 
 // ─── Rekap per kecamatan, rentang tanggal ─────────────────────────────────────
