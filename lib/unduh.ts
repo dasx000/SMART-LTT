@@ -274,6 +274,9 @@ export async function specRealisasiPpl(s: Supa, f: { tahun: number; bulan: numbe
     : `Lengkap (${terisi}/${jumlah} desa)`;
   const KEC = { bg: "FFF0FDF4", fc: "FF166534", tebal: true };
   const k$ = (v: string | number): Sel => ({ v, ...KEC });
+  /** Angka 0 dibuat pudar (abu muda) supaya yang berisi lebih menonjol (baris PPL & desa saja, bukan baris total). */
+  const PUDAR = "FF9CA3AF";
+  const nol = (v: number | null): Sel => (v != null && Math.abs(v) < 0.005 ? { v: 0, fc: PUDAR } : v);
 
   const blok: Blok[] = [headerKolom(kolom, "FF166534")];
   if (!f.kecamatanId) {
@@ -287,12 +290,12 @@ export async function specRealisasiPpl(s: Supa, f: { tahun: number; bulan: numbe
     k.ppl.forEach((p, pi) => {
       baris.push([
         `${ki + 1}.${pi + 1}`, { v: p.nama, tebal: true }, p.role === "admin_bpp" ? "Admin BPP" : "Penyuluh", status(p.terisi, p.desa.length),
-        p.terisi ? p.target : null, p.realisasi, p.terisi ? p.realisasi - p.target : null, cap(p.capaian),
+        nol(p.terisi ? p.target : null), nol(p.realisasi), nol(p.terisi ? p.realisasi - p.target : null), cap(p.capaian),
       ]);
       for (const ds of p.desa) {
         baris.push([
           "", `      Desa ${ds.nama}`, "", ds.target == null ? { v: "Target kosong", fc: "FFB91C1C" } : "",
-          ds.target, ds.realisasi, ds.target == null ? null : ds.realisasi - ds.target, cap(ds.capaian, false),
+          nol(ds.target), nol(ds.realisasi), nol(ds.target == null ? null : ds.realisasi - ds.target), cap(ds.capaian, false),
         ]);
       }
     });

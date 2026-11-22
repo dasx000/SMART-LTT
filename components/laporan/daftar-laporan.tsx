@@ -9,6 +9,7 @@ import { formatAngka, formatTanggal } from "@/lib/format";
 import { KOMODITAS, type BarisLaporan, type DesaRef, type Kec } from "@/lib/data";
 import { urlDengan } from "@/lib/param";
 import { TombolHapus } from "./tombol-hapus";
+import { PilihKomoditasJenis } from "./pilih-komoditas-jenis";
 
 const kelasIn = "w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:border-green-500";
 const lbl = "mb-1 block text-[10px] font-bold tracking-wide text-gray-400 uppercase";
@@ -25,8 +26,10 @@ export const PILIHAN_PER = [10, 25, 50, 100];
  * Filter/cari/halaman/edit semuanya di URL dan diproses di server (hanya satu halaman dikirim).
  */
 export function DaftarLaporan({
-  dasar, q, baris, total, ringkas, hal, per, dari, sampai, hariIni, kecs, desaPilihan, kecamatanTerkunci, unduh, impor, aksiHapus,
+  dasar, q, baris, total, ringkas, hal, per, dari, sampai, hariIni, kecs, desaPilihan, jenisPilihan, kecamatanTerkunci, unduh, impor, aksiHapus,
 }: {
+  /** Jenis LTT padi (aktif dulu, lalu nonaktif) */
+  jenisPilihan: { id: number; nama: string; aktif: boolean }[];
   dasar: string;
   q: Record<string, string | string[] | undefined>;
   baris: BarisLaporan[];
@@ -77,10 +80,10 @@ export function DaftarLaporan({
       {/* Kartu filter (GET → URL). `key` = nilai filter → form dipasang ulang saat URL berubah
           (mis. tombol Reset), karena `defaultValue` hanya dibaca saat pertama dipasang. */}
       <form
-        key={[dari, sampai, ...["komoditas", "metode", "kecamatan", "desa"].map((k) => ambil(k))].join("|")}
+        key={[dari, sampai, ...["komoditas", "jenis", "metode", "kecamatan", "desa"].map((k) => ambil(k))].join("|")}
         method="get"
         className="mb-5 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
           <label>
             <span className={lbl}>Dari Tanggal</span>
             <input type="date" name="dari" defaultValue={dari} max={hariIni} className={kelasIn} />
@@ -89,15 +92,14 @@ export function DaftarLaporan({
             <span className={lbl}>Sampai Tanggal</span>
             <input type="date" name="sampai" defaultValue={sampai} max={hariIni} className={kelasIn} />
           </label>
-          <label>
-            <span className={lbl}>Komoditas</span>
-            <select name="komoditas" defaultValue={ambil("komoditas")} className={kelasIn}>
-              <option value="">Semua Komoditas</option>
-              {KOMODITAS.map((k) => (
-                <option key={k} value={k}>{k}</option>
-              ))}
-            </select>
-          </label>
+          <PilihKomoditasJenis
+            daftarKomoditas={KOMODITAS}
+            komoditas={ambil("komoditas")}
+            jenis={ambil("komoditas") === "Padi" ? ambil("jenis") : ""}
+            jenisPilihan={jenisPilihan}
+            kelasIn={kelasIn}
+            lbl={lbl}
+          />
           <label>
             <span className={lbl}>Metode Penanaman</span>
             <select name="metode" defaultValue={ambil("metode")} className={kelasIn}>
@@ -158,7 +160,7 @@ export function DaftarLaporan({
 
       {/* Cari + jumlah per halaman (GET, filter lain dipertahankan) */}
       <Form action={dasar} scroll={false} className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        {["dari", "sampai", "komoditas", "metode", "kecamatan", "desa"].map((k) => (ambil(k) ? <input key={k} type="hidden" name={k} value={ambil(k)} /> : null))}
+        {["dari", "sampai", "komoditas", "jenis", "metode", "kecamatan", "desa"].map((k) => (ambil(k) ? <input key={k} type="hidden" name={k} value={ambil(k)} /> : null))}
         <div className="relative w-full max-w-sm">
           <Search className="absolute top-2.5 left-3 h-4 w-4 text-gray-400" />
           <InputCariOtomatis type="search" name="q" defaultValue={ambil("q")} placeholder="Cari penyuluh, wilayah, jenis LTT, status..." className="w-full rounded-xl border border-gray-200 bg-white py-2 pr-3 pl-9 text-sm outline-none focus:border-green-500" />

@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import Form from "next/form";
-import { ArrowLeft, Building2, Carrot, ChevronLeft, ChevronRight, Home, Landmark, Leaf, MapPinned, Trophy, Wheat } from "lucide-react";
+import { ArrowLeft, Building2, Carrot, ChevronLeft, ChevronRight, FileSpreadsheet, Home, Landmark, Leaf, MapPinned, Trophy, Wheat } from "lucide-react";
 import { wajibRole } from "@/lib/auth";
 import { KerangkaHalaman } from "@/components/kerangka-halaman";
 import { supabaseServer } from "@/lib/supabase/server";
 import { NAMA_BULAN, bulanTahunWIB, formatAngka } from "@/lib/format";
 import { KOMODITAS, ambilTargetDesa, daftarDesa, daftarKecamatan, jenisPadi, type Komoditas } from "@/lib/data";
 import { SelectOtomatis } from "@/components/select-otomatis";
+import { TombolUnduh } from "@/components/tombol-unduh";
 import { DaftarTargetDesa } from "@/components/target-desa/daftar-target-desa";
 import { barisTargetDesa } from "@/components/target-desa/data";
 import { angkaParam, teksParam, urlDengan, type CariParam } from "@/lib/param";
@@ -192,6 +193,7 @@ async function Isi({ params, searchParams }: Props) {
               <h3 className="text-sm font-bold text-gray-800">Target {kom} per Desa/Kelurahan</h3>
               <p className="text-[11px] text-gray-500">Admin Kab dapat membuat, mengubah, dan menghapus target desa. PPL tetap bisa mengisi dari menunya.</p>
             </div>
+            <div className="flex w-full flex-wrap items-end gap-2 sm:w-auto">
             <Form action={dasar} scroll={false} className="w-full sm:w-auto">
               <input type="hidden" name="tahun" value={tahun} />
               {kom !== "Padi" && <input type="hidden" name="komoditas" value={kom} />}
@@ -208,6 +210,12 @@ async function Isi({ params, searchParams }: Props) {
                 </SelectOtomatis>
               </label>
             </Form>
+            <TombolUnduh
+              href={urlDengan("/api/unduh/target-desa", {}, { tahun, bulan, komoditas: kom, kecamatan: kecTerpilih?.id ?? null })}
+              ikon={<FileSpreadsheet size={14} />}
+              className="flex items-center gap-1.5 rounded-lg bg-green-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-green-700"
+            />
+            </div>
           </div>
           <DaftarTargetDesa
             baris={barisDesa}

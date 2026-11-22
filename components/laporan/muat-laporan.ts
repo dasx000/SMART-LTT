@@ -1,7 +1,7 @@
 import "server-only";
 import { supabaseServer } from "@/lib/supabase/server";
 import { tanggalIsoWIB } from "@/lib/format";
-import { KOMODITAS, cariLaporan, daftarDesa, daftarKecamatan, jenisPadi, satuLaporan, type Komoditas } from "@/lib/data";
+import { KOMODITAS, cariLaporan, daftarDesa, daftarKecamatan, jenisPadi, satuLaporan, semuaJenisPadi, type Komoditas } from "@/lib/data";
 import { angkaParam, teksParam, urlDengan } from "@/lib/param";
 import { PILIHAN_PER } from "./daftar-laporan";
 
@@ -30,7 +30,11 @@ export async function muatHalamanLaporan(
   const hal = angkaParam(q, "hal", 1, 100000, 1);
   const editId = angkaParam(q, "edit", 1, Number.MAX_SAFE_INTEGER, 0);
 
-  const [kecs, semuaDesa] = await Promise.all([daftarKecamatan(s), daftarDesa(s)]);
+  const [kecs, semuaDesa, daftarJenis] = await Promise.all([daftarKecamatan(s), daftarDesa(s), semuaJenisPadi(s)]);
+  // Jenis LTT hanya berlaku untuk Padi
+  const jenisIdParam = angkaParam(q, "jenis", 1, 1_000_000, 0);
+  const jenisDipilih = komoditas === "Padi" ? daftarJenis.find((j) => j.id === jenisIdParam) ?? null : null;
+  const filterJenis = jenisDipilih ? { id: jenisDipilih.id, termasukTanpaJenis: /^ltt reguler$/i.test(jenisDipilih.nama.trim()) } : null;
   const desaKec = kecId ? semuaDesa.filter((d) => d.kecamatan_id === kecId) : [];
   const desaIds = desaId && (!kecId || desaKec.some((d) => d.id === desaId)) ? [desaId] : kecId ? desaKec.map((d) => d.id) : null;
 
@@ -39,7 +43,7 @@ export async function muatHalamanLaporan(
   const [hasil, edit] = await Promise.all([
     cariLaporan(
       s,
-      { dari: `${dari}T00:00:00+07:00`, sampai: `${tanggalIsoWIB(akhir)}T00:00:00+07:00`, komoditas, metode, desaIds, cari: teksParam(q, "q"), hal, per },
+      { dari: `${dari}T00:00:00+07:00`, sampai: `${tanggalIsoWIB(akhir)}T00:00:00+07:00`, komoditas, metode, jenis: filterJenis, desaIds, cari: teksParam(q, "q"), hal, per },
       kecs,
       semuaDesa,
     ),
@@ -62,6 +66,7 @@ export async function muatHalamanLaporan(
       total: hasil.total,
       ringkas: hasil.ringkas,
       desaPilihan: desaKec,
+      jenisPilihan: daftarJenis.map(({ id, nama, aktif }) => ({ id, nama, aktif })),
       kecamatanTerkunci: kecamatanKunci !== null,
       unduh: urlDengan("/api/unduh/laporan", {}, { dari, sampai, komoditas, kecamatan: kecId }),
     },

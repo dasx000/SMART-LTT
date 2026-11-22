@@ -55,6 +55,19 @@ export async function jenisPadi(s: Supa): Promise<JenisRef[]> {
   return data ?? [];
 }
 
+/** Semua jenis LTT padi (aktif dulu, lalu nonaktif) — untuk filter daftar laporan. */
+export async function semuaJenisPadi(s: Supa): Promise<(JenisRef & { aktif: boolean })[]> {
+  const { data, error } = await s
+    .from("jenis_ltt")
+    .select("id, nama, urutan, aktif")
+    .eq("komoditas", "Padi")
+    .order("aktif", { ascending: false })
+    .order("urutan")
+    .order("nama");
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
 // ─── Laporan ───────────────────────────────────────────────────────────────────
 
 export type BarisLaporan = {
@@ -581,6 +594,8 @@ export type FilterLaporan = {
   sampai: string;
   komoditas?: Komoditas | null;
   metode?: string | null;
+  /** jenis LTT padi; `termasukTanpaJenis` = padi tanpa jenis (tampil sebagai "LTT Reguler") ikut */
+  jenis?: { id: number; termasukTanpaJenis: boolean } | null;
   /** batas wilayah (kecamatan/desa) — null = semua */
   desaIds?: number[] | null;
   /** kata cari: nama penyuluh, desa, atau kecamatan */
@@ -631,8 +646,16 @@ export async function cariLaporan(
     x = x.gte("tanggal_lapor", f.dari).lt("tanggal_lapor", f.sampai).is("dihapus_pada", null);
     if (f.komoditas) x = x.eq("komoditas", f.komoditas);
     if (f.metode) x = x.eq("metode_penanaman", f.metode);
+    // Padi tanpa jenis = "LTT Reguler" → ikut bila jenis yang dipilih LTT Reguler
+    const orJenis = f.jenis?.termasukTanpaJenis ? `jenis_ltt_id.eq.${f.jenis.id},jenis_ltt_id.is.null` : null;
+    if (f.jenis) {
+      x = x.eq("komoditas", "Padi");
+      if (!orJenis) x = x.eq("jenis_ltt_id", String(f.jenis.id));
+    }
     if (f.desaIds) x = x.in("desa_id", f.desaIds);
-    if (orCari) x = x.or(orCari);
+    // Satu parameter `or` saja: gabungkan bila keduanya ada
+    if (orJenis && orCari) x = x.or(`and(or(${orJenis}),or(${orCari}))`);
+    else if (orJenis || orCari) x = x.or((orJenis ?? orCari) as string);
     return x as unknown as T;
   };
 

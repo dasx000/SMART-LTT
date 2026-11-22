@@ -10,6 +10,7 @@ import {
   rekapPerKecamatan,
   type Komoditas, type Supa,
 } from "@/lib/data";
+import { specTargetDesa } from "@/components/target-desa/unduh";
 import { lembarTabel, rentangTanggal, specLaporan, specLttProvinsi, specRealisasiPpl, specRekapDinas } from "@/lib/unduh";
 
 /**
@@ -20,6 +21,7 @@ import { lembarTabel, rentangTanggal, specLaporan, specLttProvinsi, specRealisas
 
 const HAK: Record<string, Role[]> = {
   "laporan": ["admin_bpp", "admin_kab"],
+  "target-desa": ["admin_kab"],
   "rekap-kecamatan": ["admin_kab", "viewer"],
   "rekap-dinas": ["admin_kab", "viewer"],
   "ltt-provinsi": ["admin_kab", "viewer"],
@@ -53,6 +55,15 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ jenis: stri
   try {
     switch (jenis) {
       case "laporan": return await unduhLaporan(s, p, q);
+      case "target-desa": {
+        const { tahun, bulan } = bulanTahunWIB();
+        return kirim(await specTargetDesa(s, {
+          tahun: angka(q.get("tahun"), 2000, 2100, tahun),
+          bulan: angka(q.get("bulan"), 1, 12, bulan),
+          kom: komValid(q.get("komoditas")) ?? "Padi",
+          kecamatanId: angka(q.get("kecamatan"), 1, 1_000_000, 0) || null,
+        }));
+      }
       case "rekap-kecamatan": return await unduhRekapKecamatan(s, q);
       case "rekap-dinas": return await unduhRekapDinas(s, q);
       case "ltt-provinsi": return await unduhLttProvinsi(s, q);

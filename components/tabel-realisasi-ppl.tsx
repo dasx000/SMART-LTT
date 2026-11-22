@@ -9,6 +9,8 @@ import type { KecRealisasi, PplRealisasi } from "@/lib/realisasi-ppl";
 const td = "border border-gray-100 p-2.5";
 const tdAngka = `${td} text-right tabular-nums`;
 const Strip = () => <span className="text-gray-300">–</span>;
+/** Angka; nilai 0 dibuat agak transparan supaya yang berisi lebih menonjol (baris PPL & desa saja, bukan baris total). */
+const Angka = ({ n }: { n: number }) => (Math.abs(n) < 0.005 ? <span className="opacity-55">{formatAngka(0)}</span> : <>{formatAngka(n)}</>);
 
 /** Sel capaian berwarna (<60 merah, 60–84,99 kuning, ≥85 hijau); null → "–" abu. */
 /** `rapat` = versi HP (tabel PPL): tanpa lebar tetap, padding kecil. */
@@ -126,9 +128,9 @@ function BarisPpl({ p, no, terbuka, alih }: { p: PplRealisasi; no: string; terbu
           </div>
         </td>
         <td className={td}><StatusTarget terisi={p.terisi} jumlah={p.desa.length} /></td>
-        <td className={tdAngka}>{p.terisi ? formatAngka(p.target) : <Strip />}</td>
-        <td className={tdAngka}>{formatAngka(p.realisasi)}</td>
-        <td className={tdAngka}>{p.terisi ? formatAngka(p.realisasi - p.target) : <Strip />}</td>
+        <td className={tdAngka}>{p.terisi ? <Angka n={p.target} /> : <Strip />}</td>
+        <td className={tdAngka}><Angka n={p.realisasi} /></td>
+        <td className={tdAngka}>{p.terisi ? <Angka n={p.realisasi - p.target} /> : <Strip />}</td>
         <SelCapaianPpl p={p.capaian} />
       </tr>
       {terbuka &&
@@ -137,9 +139,9 @@ function BarisPpl({ p, no, terbuka, alih }: { p: PplRealisasi; no: string; terbu
             <td className={td}></td>
             <td className={`${td} pl-9`}>Desa {d.nama}</td>
             <td className={td}>{d.target == null && <span className="inline-block rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-extrabold text-red-700">Target kosong</span>}</td>
-            <td className={tdAngka}>{d.target == null ? <Strip /> : formatAngka(d.target)}</td>
-            <td className={tdAngka}>{formatAngka(d.realisasi)}</td>
-            <td className={tdAngka}>{d.target == null ? <Strip /> : formatAngka(d.realisasi - d.target)}</td>
+            <td className={tdAngka}>{d.target == null ? <Strip /> : <Angka n={d.target} />}</td>
+            <td className={tdAngka}><Angka n={d.realisasi} /></td>
+            <td className={tdAngka}>{d.target == null ? <Strip /> : <Angka n={d.realisasi - d.target} />}</td>
             <SelCapaianPpl p={d.capaian} tebal={false} />
           </tr>
         ))}
