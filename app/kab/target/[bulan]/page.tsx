@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Carrot, ChevronLeft, ChevronRight, Landmark, Leaf, Trophy, Wheat } from "lucide-react";
+import Form from "next/form";
+import { ArrowLeft, Building2, Carrot, ChevronLeft, ChevronRight, Home, Landmark, Leaf, MapPinned, Trophy, Wheat } from "lucide-react";
 import { wajibRole } from "@/lib/auth";
 import { KerangkaHalaman } from "@/components/kerangka-halaman";
 import { supabaseServer } from "@/lib/supabase/server";
 import { NAMA_BULAN, bulanTahunWIB, formatAngka } from "@/lib/format";
-import { KOMODITAS, ambilTargetDesa, daftarDesa, daftarKecamatan, type Komoditas } from "@/lib/data";
+import { KOMODITAS, ambilTargetDesa, daftarDesa, daftarKecamatan, jenisPadi, type Komoditas } from "@/lib/data";
+import { SelectOtomatis } from "@/components/select-otomatis";
+import { DaftarTargetDesa } from "@/components/target-desa/daftar-target-desa";
+import { barisTargetDesa } from "@/components/target-desa/data";
 import { angkaParam, teksParam, urlDengan, type CariParam } from "@/lib/param";
 import { FormTargetProvinsi } from "../form-provinsi";
 
@@ -24,18 +28,31 @@ export default function HalamanDetailTargetBulan(props: Props) {
   );
 }
 
+type Tab = "kab" | "kec" | "desa";
+const TAB: { k: Tab; t: string; ikon: React.ReactNode }[] = [
+  { k: "kab", t: "Kabupaten", ikon: <Building2 size={14} /> },
+  { k: "kec", t: "Kecamatan", ikon: <MapPinned size={14} /> },
+  { k: "desa", t: "Desa/Kelurahan", ikon: <Home size={14} /> },
+];
+
 /**
- * Detail target satu bulan per kecamatan: Target Provinsi vs jumlah Target Desa (PPL).
- * URL: /kab/target/<bulan>?tahun=&komoditas=   ·   ?set=1 → form Set Target Provinsi.
+ * Detail target satu bulan, 3 tab (?tab=):
+ *  - kab  : ringkasan + peringkat pengisian per kecamatan
+ *  - kec  : Target Provinsi vs Σ Target Desa per kecamatan · ?set=1 → form Set Target Provinsi
+ *  - desa : daftar semua desa (filter ?kec=), Buat/Ubah/Hapus target desa oleh Admin Kab (migrasi 0019)
+ * URL: /kab/target/<bulan>?tahun=&komoditas=&tab=&kec=
  */
 async function Isi({ params, searchParams }: Props) {
-  await wajibRole("admin_kab");
+  const pengguna = await wajibRole("admin_kab");
   const bulan = Number((await params).bulan);
   if (!Number.isInteger(bulan) || bulan < 1 || bulan > 12) notFound();
   const q = await searchParams;
   const tahun = angkaParam(q, "tahun", 2000, 2100, bulanTahunWIB().tahun);
   const kom = ((KOMODITAS as string[]).includes(teksParam(q, "komoditas") ?? "") ? teksParam(q, "komoditas") : "Padi") as Komoditas;
   const bukaSet = teksParam(q, "set") === "1";
+  const tabQ = teksParam(q, "tab");
+  const tab: Tab = tabQ === "kec" || tabQ === "desa" || tabQ === "kab" ? tabQ : bukaSet ? "kec" : "kab";
+  const kecPilih = angkaParam(q, "kec", 1, 1_000_000, 0);
   const dasar = `/kab/target/${bulan}`;
 
   const s = await supabaseServer();
@@ -84,6 +101,17 @@ async function Isi({ params, searchParams }: Props) {
   };
   const judulPeriode = `${NAMA_BULAN[bulan - 1]} ${tahun}`;
 
+  // Tab Desa: data per desa hanya dimuat saat tab dibuka
+  const kecTerpilih = kecs.find((k) => k.id === kecPilih) ?? null;
+  const [jenis, barisDesa] =
+    tab === "desa"
+      ? await Promise.all([
+          jenisPadi(s),
+          barisTargetDesa(s, { tahun, bulan, kom, kecs, desa: kecTerpilih ? desa.filter((d) => d.kecamatan_id === kecTerpilih.id) : desa }),
+        ])
+      : [[], []];
+  const kuota = Object.fromEntries([...prov].map(([id, v]) => [id, v.tanam]));
+
   return (
     <>
       <Link href={urlDengan("/kab/target", q, { set: null })} className="mb-3 inline-flex items-center gap-1 text-xs font-bold text-gray-500 hover:text-green-700">
@@ -118,6 +146,16 @@ async function Isi({ params, searchParams }: Props) {
           <p className="text-[10px] font-bold text-gray-500 uppercase">Target Provinsi</p>
           <p className="text-xl font-bold text-blue-700">{formatAngka(totProv)} <span className="text-xs font-normal text-gray-500">Ha tanam</span></p>
           <p className="text-[11px] text-gray-400">{prov.size} / {kecs.length} kecamatan · panen {formatAngka(totProvPanen)} Ha</p>
+          {!bukaSet && (
+            <Link
+              href={urlDengan(dasar, q, { tab: "kec", set: "1" })}
+              scroll={false}
+              className="mt-2 flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700"
+            >
+              <Landmark size={14} /> {prov.size > 0 ? "Ubah Target Provinsi" : "Set Target Provinsi"}
+            </Link>
+          )}
+          {prov.size === 0 && <p className="mt-1 text-center text-[10px] font-semibold text-red-500">Belum diset bulan ini</p>}
         </div>
         <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
           <p className="text-[10px] font-bold text-gray-500 uppercase">Target Desa (Σ PPL)</p>
@@ -133,7 +171,59 @@ async function Isi({ params, searchParams }: Props) {
         </div>
       </div>
 
-      {!bukaSet && peringkat.length > 0 && (
+      <nav className="mb-5 flex gap-1 overflow-x-auto rounded-xl border border-gray-100 bg-white p-1 shadow-sm">
+        {TAB.map((t) => (
+          <Link
+            key={t.k}
+            href={urlDengan(dasar, q, { tab: t.k === "kab" ? null : t.k, set: null })}
+            scroll={false}
+            aria-current={tab === t.k ? "page" : undefined}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold whitespace-nowrap ${tab === t.k ? "bg-green-600 text-white shadow" : "text-gray-500 hover:bg-gray-50 hover:text-green-700"}`}
+          >
+            {t.ikon} {t.t}
+          </Link>
+        ))}
+      </nav>
+
+      {tab === "desa" && (
+        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:p-5">
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-bold text-gray-800">Target {kom} per Desa/Kelurahan</h3>
+              <p className="text-[11px] text-gray-500">Admin Kab dapat membuat, mengubah, dan menghapus target desa. PPL tetap bisa mengisi dari menunya.</p>
+            </div>
+            <Form action={dasar} scroll={false} className="w-full sm:w-auto">
+              <input type="hidden" name="tahun" value={tahun} />
+              {kom !== "Padi" && <input type="hidden" name="komoditas" value={kom} />}
+              <input type="hidden" name="tab" value="desa" />
+              <label className="flex flex-col gap-1 text-[11px] font-semibold text-gray-500">
+                Kecamatan
+                <SelectOtomatis name="kec" defaultValue={kecTerpilih?.id ?? ""} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium sm:w-56">
+                  <option value="">Semua kecamatan</option>
+                  {baris.map((k) => (
+                    <option key={k.id} value={k.id}>
+                      {k.nama} ({k.desaTerisi}/{k.desaTotal})
+                    </option>
+                  ))}
+                </SelectOtomatis>
+              </label>
+            </Form>
+          </div>
+          <DaftarTargetDesa
+            baris={barisDesa}
+            jenis={jenis}
+            tahun={tahun}
+            bulan={bulan}
+            kom={kom}
+            kuota={kuota}
+            namaCakupan={kecTerpilih ? `Kec. ${kecTerpilih.nama}` : "Kabupaten"}
+            tampilKecamatan={!kecTerpilih}
+            penggunaId={pengguna.id}
+          />
+        </div>
+      )}
+
+      {tab === "kab" && peringkat.length > 0 && (
         <div className="mb-5 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
           <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
             <div>
@@ -174,16 +264,17 @@ async function Isi({ params, searchParams }: Props) {
         </div>
       )}
 
+      {tab === "kec" && (
       <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-bold text-gray-800">{bukaSet ? "Set Target Provinsi per Kecamatan" : "Rincian per Kecamatan"}</h3>
           {!bukaSet && (
             <Link
-              href={urlDengan(dasar, q, { set: "1" })}
+              href={urlDengan(dasar, q, { tab: "kec", set: "1" })}
               scroll={false}
-              className="flex items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-600 hover:bg-blue-100"
+              className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-md ring-2 ring-blue-200 hover:bg-blue-700"
             >
-              <Landmark size={12} /> Set Target Provinsi
+              <Landmark size={14} /> {prov.size > 0 ? "Ubah Target Provinsi" : "Set Target Provinsi"}
             </Link>
           )}
         </div>
@@ -196,7 +287,7 @@ async function Isi({ params, searchParams }: Props) {
             komoditas={kom}
             judul={`${kom} · ${judulPeriode}`}
             baris={baris.map((b) => ({ id: b.id, nama: b.nama, tanam: b.prov?.tanam ?? 0, panen: b.prov?.panen ?? 0 }))}
-            kembali={urlDengan(dasar, q, { set: null })}
+            kembali={urlDengan(dasar, q, { tab: "kec", set: null })}
           />
         ) : (
           <div className="overflow-x-auto">
@@ -249,6 +340,7 @@ async function Isi({ params, searchParams }: Props) {
           </div>
         )}
       </div>
+      )}
     </>
   );
 }
