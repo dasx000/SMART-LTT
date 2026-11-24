@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Goal, TriangleAlert } from "lucide-react";
 import { NAMA_BULAN, formatAngka } from "@/lib/format";
 import type { ReactNode } from "react";
-import { LEGENDA, levelPersen } from "@/lib/warna-persen";
+import { LEGENDA, levelPersen, warnaSelisih } from "@/lib/warna-persen";
 import { SelCapaianPpl, StatusTarget } from "@/components/tabel-realisasi-ppl";
 import type { PplRealisasi, RekapRealisasiPpl } from "@/lib/realisasi-ppl";
 
@@ -26,8 +26,13 @@ function Kotak({ label, nilai, satuan, ket, kelas = "border-gray-100 bg-white", 
   );
 }
 
-/** Kartu ringkasan: Target (jumlah target desa), Realisasi, Capaian (berwarna), Status isi target. */
+/**
+ * Kartu ringkasan.
+ * - Akun PPL (`saya`): Target isian, Realisasi, Capaian, Status target sendiri.
+ * - Kab/BPP: Target Provinsi, Realisasi, Capaian vs provinsi, Isian PPL vs Provinsi.
+ */
 export function RingkasanRealisasi({ d, lingkup, saya, komoditas = "Padi" }: { d: RekapRealisasiPpl; lingkup: string; saya?: PplRealisasi | null; komoditas?: string }) {
+  if (!saya) return <RingkasanProvinsi d={d} lingkup={lingkup} komoditas={komoditas} />;
   const kom = komoditas.toLowerCase();
   const cap = d.capaian;
   const lv = cap == null ? null : levelPersen(cap);
@@ -43,20 +48,50 @@ export function RingkasanRealisasi({ d, lingkup, saya, komoditas = "Padi" }: { d
         warnaLabel="opacity-85"
         warnaKet="font-bold opacity-85"
       />
-      {saya ? (
-        <Kotak label="Status Target Anda" nilai={`${saya.terisi}/${saya.desa.length}`} satuan="desa" ket="Desa binaan yang sudah ada targetnya" />
-      ) : (
-        <Kotak label="Sudah Isi Target" nilai={`${d.sudahIsi}/${d.jumlahPpl}`} satuan="PPL" ket={`${d.lengkap} PPL lengkap semua desa`}>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-100">
-            <div className="h-full bg-orange-600" style={{ width: `${d.jumlahPpl ? (d.sudahIsi / d.jumlahPpl) * 100 : 0}%` }} />
-          </div>
-        </Kotak>
-      )}
+      <Kotak label="Status Target Anda" nilai={`${saya.terisi}/${saya.desa.length}`} satuan="desa" ket="Desa binaan yang sudah ada targetnya" />
     </div>
   );
 }
 
-export function LegendaRealisasi() {
+function RingkasanProvinsi({ d, lingkup, komoditas }: { d: RekapRealisasiPpl; lingkup: string; komoditas: string }) {
+  const cap = d.capaianProv;
+  const lv = cap == null ? null : levelPersen(cap);
+  const sel = d.targetProv == null ? null : d.target - d.targetProv;
+  const w = sel == null ? null : warnaSelisih(sel);
+  const persenIsi = d.targetProv ? Math.min(100, (d.target / d.targetProv) * 100) : 0;
+  return (
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <Kotak
+        label={`Target Provinsi · ${lingkup}`}
+        nilai={d.targetProv == null ? "–" : formatAngka(d.targetProv)}
+        satuan={d.targetProv == null ? undefined : "Ha"}
+        ket={d.targetProv == null ? "Belum diisi Admin Kab" : `Target tanam ${komoditas.toLowerCase()} dari provinsi`}
+      />
+      <Kotak label="Realisasi Tanam" nilai={formatAngka(d.realisasi)} satuan="Ha" ket={`${komoditas} semua jenis LTT`} />
+      <Kotak
+        label="Capaian vs Provinsi"
+        nilai={cap == null ? "–" : `${formatAngka(cap)}%`}
+        ket={cap == null ? "Target provinsi belum diisi" : lv!.arti}
+        kelas={cap == null ? "border-transparent bg-gray-100 text-gray-500" : `border-transparent ${lv!.kelas}`}
+        warnaLabel="opacity-85"
+        warnaKet="font-bold opacity-85"
+      />
+      <Kotak label="Isian PPL vs Provinsi" nilai={formatAngka(d.target)} satuan="Ha" ket={`${d.sudahIsi}/${d.jumlahPpl} PPL sudah isi target · ${d.lengkap} lengkap`}>
+        {w && (
+          <p className={`text-[11px] font-extrabold ${w.kelas}`}>
+            {Math.abs(sel!) < 0.005 ? "Sesuai target provinsi" : `${sel! < 0 ? "Kurang" : "Lebih"} ${formatAngka(Math.abs(sel!))} Ha dari provinsi`}
+          </p>
+        )}
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-100">
+          <div className="h-full bg-orange-600" style={{ width: `${persenIsi}%` }} />
+        </div>
+      </Kotak>
+    </div>
+  );
+}
+
+/** `selisih` = tampilkan juga arti warna selisih isian PPL vs provinsi (Kab/BPP). */
+export function LegendaRealisasi({ selisih = false }: { selisih?: boolean }) {
   return (
     <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[11.5px] text-gray-700">
       {LEGENDA.map((l) => (
@@ -69,6 +104,11 @@ export function LegendaRealisasi() {
         <span className="inline-block h-4 w-8 rounded border border-gray-200 bg-gray-100" />
         <b>–</b> Belum isi target
       </span>
+      {selisih && (
+        <span>
+          Selisih isian PPL vs provinsi: <b className="text-red-600">kurang</b> · <b className="text-green-700">sesuai</b> · <b className="text-blue-600">lebih</b>
+        </span>
+      )}
     </div>
   );
 }
@@ -128,7 +168,7 @@ export function TabelDesaSaya({ p }: { p: PplRealisasi }) {
           <tr className="bg-yellow-100 font-extrabold">
             <td className={td}>
               TOTAL
-              <div className="mt-0.5"><StatusTarget terisi={p.terisi} jumlah={p.desa.length} /></div>
+              <div className="mt-0.5"><StatusTarget terisi={p.terisi} jumlah={p.desa.length} nol={p.terisi > 0 && Math.abs(p.target) < 0.005} /></div>
             </td>
             <td className={angka}>{p.terisi ? formatAngka(p.target) : <span className="text-gray-300">–</span>}</td>
             <td className={angka}>{formatAngka(p.realisasi)}</td>

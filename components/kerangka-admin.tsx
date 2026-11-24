@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ArrowLeft, DatabaseBackup, Goal, ChartLine, ChartPie, FileText, History, House, KeyRound, Leaf, LockKeyhole, Map as Peta, Menu, PanelLeftClose, PanelLeftOpen, Power,
-  Scale, Shuffle, Sprout, Tags, UserCog, UserRoundCheck, Users, Warehouse, X, Shield, Target,
+  Scale, Shuffle, Sprout, Tags, UserCog, UserRoundCheck, Users, Warehouse, X, Shield,
 } from "lucide-react";
 import { logout } from "@/app/(auth)/login/actions";
 import type { Role } from "@/lib/auth";
@@ -47,8 +47,7 @@ const MENU_BPP: Item[] = [
   { href: "/bpp", label: "Dashboard", ikon: <ChartLine size={18} /> },
   { href: "/bpp/realisasi-ppl", label: "Realisasi per PPL", ikon: <UserRoundCheck size={18} />, baru: "2026-11-17" },
   { href: "/bpp/laporan", label: "Laporan LTT", ikon: <FileText size={18} /> },
-  { href: "/bpp/target-kecamatan", label: "Target Kecamatan", ikon: <Goal size={18} /> },
-  { href: "/bpp/target", label: "Target Desa PPL", ikon: <Target size={18} /> },
+  { href: "/bpp/target", label: "Target Komoditas", ikon: <Goal size={18} /> },
   { href: "/bpp/produktivitas", label: "Produktivitas & Sarana", ikon: <Warehouse size={18} />, baru: "2026-11-17" },
   { href: "/bpp/pengguna", label: "Manajemen Akun PPL", ikon: <Users size={18} /> },
 ];

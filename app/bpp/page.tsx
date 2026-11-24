@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, ClipboardList, Goal, MapPinned, Target, Users, Warehouse } from "lucide-react";
+import { ArrowRight, CheckCircle2, ClipboardList, Goal, MapPinned, Users, Warehouse } from "lucide-react";
 import { wajibRole } from "@/lib/auth";
 import { KerangkaHalaman } from "@/components/kerangka-halaman";
 import { supabaseServer } from "@/lib/supabase/server";
 import { NAMA_BULAN, bulanTahunWIB, formatAngka } from "@/lib/format";
-import { KOMODITAS, daftarDesa, daftarKecamatan, periodeDariParam, ringkasanWilayah } from "@/lib/data";
+import { KOMODITAS, daftarDesa, daftarKecamatan, periodeDariParam, ringkasanWilayah, type Komoditas, type RincianKom } from "@/lib/data";
 import { daftarAnggota } from "@/lib/pengguna";
 import { KartuCapaian, PilihPeriode } from "@/components/dashboard";
 import { JudulHalaman, Kosong } from "@/components/ui";
-import { teksParam, type CariParam } from "@/lib/param";
+import { TombolUnduh } from "@/components/tombol-unduh";
+import { teksParam, urlDengan, type CariParam } from "@/lib/param";
 
 export const metadata: Metadata = { title: "Dashboard BPP — SMART LTT" };
 
@@ -22,8 +23,7 @@ export default function HalamanBPP({ searchParams }: { searchParams: CariParam }
 }
 
 const MENU = [
-  { href: "/bpp/target-kecamatan", label: <>Target<br />Kecamatan</>, ikon: <Goal />, warna: "bg-blue-50 text-blue-600 group-hover:bg-blue-100" },
-  { href: "/bpp/target", label: <>Target<br />Desa PPL</>, ikon: <Target />, warna: "bg-cyan-50 text-cyan-600 group-hover:bg-cyan-100" },
+  { href: "/bpp/target", label: <>Target<br />Komoditas</>, ikon: <Goal />, warna: "bg-blue-50 text-blue-600 group-hover:bg-blue-100" },
   { href: "/bpp/pengguna", label: <>Manajemen<br />Akun PPL</>, ikon: <Users />, warna: "bg-purple-50 text-purple-600 group-hover:bg-purple-100" },
   { href: "/bpp/produktivitas", label: <>Produktivitas<br />& Sarana</>, ikon: <Warehouse />, warna: "bg-lime-50 text-lime-700 group-hover:bg-lime-100" },
 ];
@@ -32,7 +32,10 @@ const MENU = [
 async function Isi({ searchParams }: { searchParams: CariParam }) {
   const p = await wajibRole("admin_bpp");
   if (!p.kecamatanId) return <Kosong teks="Akun Anda belum terikat ke kecamatan. Hubungi Admin Kabupaten." />;
-  const per = periodeDariParam(teksParam(await searchParams, "periode"), bulanTahunWIB());
+  const q = await searchParams;
+  const per = periodeDariParam(teksParam(q, "periode"), bulanTahunWIB());
+  // Filter komoditas tabel Rekapitulasi Desa (bawaan Padi) — tiap komoditas ditampilkan terpisah
+  const kom = ((KOMODITAS as string[]).includes(teksParam(q, "komoditas") ?? "") ? teksParam(q, "komoditas") : "Padi") as Komoditas;
   const s = await supabaseServer();
 
   const [kecs, desa, ppl, r] = await Promise.all([
@@ -66,12 +69,22 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
   if (tanpaPpl.length) perPpl.push({ nama: "Belum ada PPL", kampung: tanpaPpl });
   const pctTarget = desa.length ? ((desa.length - belumTarget.length) / desa.length) * 100 : 0;
 
+  // Rekapitulasi Desa: satu komoditas, urut nama A–Z. Padi: + lahan bera & olah lahan.
+  const isPadi = kom === "Padi";
+  const kolomRekap: { k: keyof RincianKom; label: string }[] = [
+    ...(isPadi ? [{ k: "bera" as const, label: "Lahan Bera" }, { k: "olah" as const, label: "Olah Lahan" }] : []),
+    { k: "tanam", label: `Tanam ${kom}` },
+    { k: "panen", label: `Panen ${kom}` },
+  ];
+  const barisRekap = [...r.baris].sort((a, b) => a.nama.localeCompare(b.nama, "id"));
+  const jumlahRekap = (k: keyof RincianKom) => barisRekap.reduce((a, b) => a + b.kom[kom][k], 0);
+
   return (
     <div className="space-y-6">
       <JudulHalaman
         judul={`Menu Utama BPP · ${namaKec}`}
         sub={`Bulan ${NAMA_BULAN[per.bulan - 1]} ${per.tahun}`}
-        aksi={<PilihPeriode dasar="/bpp" nilai={per} pilihan={per.pilihan.slice(0, 5)} />}
+        aksi={<PilihPeriode dasar="/bpp" nilai={per} pilihan={per.pilihan.slice(0, 5)} tersembunyi={kom === "Padi" ? undefined : { komoditas: kom }} />}
       />
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -100,7 +113,7 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
               </p>
             </div>
           </div>
-          <Link href={`/bpp/target?tahun=${tahunKini}&bulan=${bulanKini}&komoditas=Padi`} className="flex items-center gap-1 rounded-lg bg-cyan-50 px-3 py-1.5 text-[11px] font-bold text-cyan-700 hover:bg-cyan-100">
+          <Link href={`/bpp/target/${bulanKini}?tahun=${tahunKini}&tab=desa`} className="flex items-center gap-1 rounded-lg bg-cyan-50 px-3 py-1.5 text-[11px] font-bold text-cyan-700 hover:bg-cyan-100">
             Isi Target <ArrowRight size={12} />
           </Link>
         </div>
@@ -143,34 +156,59 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
         <div className="mb-4 flex items-center justify-between">
           <div>
             <h3 className="flex items-center gap-2 font-bold text-gray-800"><ClipboardList size={16} /> Rekapitulasi Desa</h3>
-            <p className="text-xs text-gray-500">Capaian tanam & panen per desa bulan terpilih</p>
+            <p className="text-xs text-gray-500">Realisasi {kom.toLowerCase()} per desa bulan terpilih</p>
           </div>
-          <span className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-bold text-gray-500">{r.baris.length} Desa</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex gap-1 rounded-lg bg-gray-100 p-1" role="group" aria-label="Komoditas">
+              {KOMODITAS.map((k) => (
+                <Link
+                  key={k}
+                  href={urlDengan("/bpp", q, { komoditas: k === "Padi" ? null : k })}
+                  scroll={false}
+                  aria-current={kom === k ? "true" : undefined}
+                  className={`rounded-md px-3 py-1.5 text-xs font-bold ${kom === k ? "bg-green-600 text-white shadow" : "text-gray-500 hover:text-green-600"}`}
+                >
+                  {k}
+                </Link>
+              ))}
+            </div>
+            <span className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-bold text-gray-500">{r.baris.length} Desa</span>
+            <TombolUnduh href={urlDengan("/api/unduh/rekap-desa", {}, { tahun: per.tahun, bulan: per.bulan, komoditas: kom })} />
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50 text-[10px] font-bold text-gray-500 uppercase">
                 <th className="p-3">Nama Desa</th>
-                <th className="p-3 text-right">Tanam Padi</th>
-                <th className="p-3 text-right">Tanam Jagung</th>
-                <th className="p-3 text-right">Tanam Ubi Kayu</th>
-                <th className="p-3 text-right">Total Tanam</th>
-                <th className="p-3 text-right">Total Panen</th>
+                {kolomRekap.map((c) => (
+                  <th key={c.k} className="p-3 text-right">{c.label}</th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {r.baris.map((b) => (
+              {barisRekap.map((b) => (
                 <tr key={b.id} className="hover:bg-gray-50">
                   <td className="p-3 font-semibold text-gray-800">{b.nama}</td>
-                  {KOMODITAS.map((k) => (
-                    <td key={k} className="p-3 text-right">{formatAngka(b.tanam[k])} Ha</td>
+                  {kolomRekap.map((c) => (
+                    <td
+                      key={c.k}
+                      className={`p-3 text-right tabular-nums ${c.k === "tanam" ? "font-bold text-green-700" : c.k === "panen" ? "font-bold text-amber-700" : ""}`}
+                    >
+                      {formatAngka(b.kom[kom][c.k])} Ha
+                    </td>
                   ))}
-                  <td className="p-3 text-right font-bold text-green-700">{formatAngka(KOMODITAS.reduce((a, k) => a + b.tanam[k], 0))} Ha</td>
-                  <td className="p-3 text-right font-bold text-amber-700">{formatAngka(b.panen)} Ha</td>
                 </tr>
               ))}
             </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-gray-200 bg-yellow-50 font-bold text-yellow-800">
+                <td className="p-3">JUMLAH</td>
+                {kolomRekap.map((c) => (
+                  <td key={c.k} className="p-3 text-right tabular-nums">{formatAngka(jumlahRekap(c.k))} Ha</td>
+                ))}
+              </tr>
+            </tfoot>
           </table>
         </div>
       </div>

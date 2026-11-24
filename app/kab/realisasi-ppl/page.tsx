@@ -45,7 +45,7 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
           <h2 className="flex items-center gap-2 text-lg font-bold text-gray-800">
             <UserRoundCheck className="text-green-600" size={20} /> Realisasi LTT Padi per PPL
           </h2>
-          <p className="text-xs text-gray-500">Padi semua jenis LTT · Kumulatif {teksPeriodeRealisasi(d)} · Urut dari pengisian target terendah, lalu capaian terendah</p>
+          <p className="text-xs text-gray-500">Padi semua jenis LTT · Kumulatif {teksPeriodeRealisasi(d)} · Kecamatan: isian PPL kurang terbesar dulu, lalu capaian terendah · PPL urut dari pengisian target terendah, lalu capaian terendah</p>
         </div>
         <Form action="/kab/realisasi-ppl" scroll={false} className="flex flex-wrap items-center gap-2">
           <CalendarDays size={16} className="text-green-600" />
@@ -65,17 +65,17 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
       </div>
 
       <RingkasanRealisasi d={d} lingkup={kecPilih ? `Kec. ${kecPilih.nama}` : "Kabupaten"} />
-      <LegendaRealisasi />
+      <LegendaRealisasi selisih />
 
       <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
         {d.kec.length === 0 ? (
           <Kosong teks="Belum ada PPL aktif dengan desa binaan." />
         ) : (
-          <TabelRealisasiPpl kec={d.kec} total={kecPilih ? null : { target: d.target, realisasi: d.realisasi, capaian: d.capaian }} peringkat={!kecPilih} />
+          <TabelRealisasiPpl kec={d.kec} total={kecPilih ? null : { target: d.target, targetProv: d.targetProv, realisasi: d.realisasi, capaianProv: d.capaianProv, sudahIsi: d.sudahIsi, jumlahPpl: d.jumlahPpl }} peringkat={!kecPilih} />
         )}
         <p className="border-t border-gray-100 px-4 py-3 text-[11px] leading-relaxed text-gray-500">
-          Target = jumlah target desa padi yang diisi PPL (bukan target provinsi), jadi persen kecamatan bisa berbeda dengan Dashboard.
-          Realisasi desa yang belum ada target tetap dihitung. Klik nama PPL untuk melihat rincian per desa.
+          Baris kabupaten & kecamatan: <b>Provinsi</b> = target dari provinsi (dasar capaian), <b>Isian PPL</b> = jumlah target desa yang diisi PPL beserta selisihnya terhadap provinsi.
+          Baris PPL & desa: capaian dihitung terhadap target isian PPL sendiri. Realisasi desa yang belum ada target tetap dihitung. Klik nama PPL untuk melihat rincian per desa.
         </p>
       </div>
     </div>

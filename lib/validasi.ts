@@ -14,3 +14,21 @@ export const angkaHa = (label: string, maks = 100_000) =>
       .min(0, `${label} tidak boleh negatif.`)
       .max(maks, `${label} terlalu besar.`),
   );
+
+/** Pesan wajib isi Luas Baku Sawah (LBS) Padi — dipakai form & server supaya sama. */
+export const PESAN_LBS_WAJIB = "Luas Baku Sawah (LBS) wajib diisi untuk target Padi. Ketik 0 bila desa tidak punya sawah.";
+/** Isian kosong (belum diketik)? */
+export const isianKosong = (v: unknown) => v == null || (typeof v === "string" && v.trim() === "");
+/**
+ * LBS wajib DIKETIK — HANYA untuk komoditas Padi (keputusan user 24 Nov 2026): kolom kosong ditolak,
+ * angka 0 boleh (tidak semua desa punya sawah). Jagung / Ubi Kayu tetap opsional (pakai `angkaHa`).
+ * Kosong dicek sebelum `angkaHa` yang mengubah kosong jadi 0.
+ */
+export const luasBakuWajib = () =>
+  z
+    .unknown()
+    .refine((v) => !isianKosong(v), PESAN_LBS_WAJIB)
+    .pipe(angkaHa("Luas baku"));
+
+/** Luas baku sesuai komoditas: Padi wajib diketik, lainnya opsional (kosong = 0). */
+export const luasBakuSesuaiKomoditas = (komoditas: string) => (komoditas === "Padi" ? luasBakuWajib() : angkaHa("Luas baku"));

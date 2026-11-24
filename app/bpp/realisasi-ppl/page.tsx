@@ -62,7 +62,7 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
       </div>
 
       <RingkasanRealisasi d={d} lingkup={`Kec. ${namaKec}`} />
-      <LegendaRealisasi />
+      <LegendaRealisasi selisih />
 
       <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
         {d.kec.length === 0 ? (
@@ -71,7 +71,8 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
           <TabelRealisasiPpl kec={d.kec} total={null} peringkat={false} />
         )}
         <p className="border-t border-gray-100 px-4 py-3 text-[11px] leading-relaxed text-gray-500">
-          Target = jumlah target desa padi yang diisi PPL. PPL yang belum isi target ditaruh paling atas. Klik nama PPL untuk melihat rincian per desa.
+          Baris kecamatan: <b>Provinsi</b> = target dari provinsi (dasar capaian), <b>Isian PPL</b> = jumlah target desa yang diisi PPL beserta selisihnya terhadap provinsi.
+          Baris PPL & desa: capaian dihitung terhadap target isian PPL sendiri. PPL yang belum isi target ditaruh paling atas. Klik nama PPL untuk melihat rincian per desa.
         </p>
       </div>
     </div>

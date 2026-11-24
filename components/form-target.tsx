@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { angkaIsian, formatAngka, parseDesimal } from "@/lib/format";
 import { gagal, sukses } from "@/lib/swal";
+import { PESAN_LBS_WAJIB, isianKosong } from "@/lib/validasi";
 import { simpanTargetDesaAction } from "@/app/ppl/target/actions";
 import type { TargetDesaData, JenisRef, Komoditas } from "@/lib/data";
 
@@ -42,15 +43,22 @@ export function FormTarget({
         <p className="font-bold">Petunjuk pengisian</p>
         <ul className="mt-1 list-disc space-y-0.5 pl-4">
           <li>Isi target <b>setiap desa</b>, lalu tekan <b>Simpan</b> di kartu desa tersebut.</li>
-          <li>Kalau desa <b>tidak punya target</b> bulan ini, <b>tidak perlu mengetik apa pun, langsung klik Simpan</b>. Kolom kosong otomatis tersimpan 0.</li>
+          {kom === "Padi" ? (
+            <>
+              <li><b>Luas Baku Sawah (LBS) wajib diketik</b> (bertanda <span className="text-red-600">*</span>). Desa yang tidak punya sawah: ketik <b>0</b>.</li>
+              <li>Kalau desa <b>tidak punya target</b> bulan ini, cukup isi LBS lalu klik <b>Simpan</b>. Kolom target yang kosong otomatis tersimpan 0.</li>
+            </>
+          ) : (
+            <li>Kalau desa <b>tidak punya target</b> bulan ini, <b>langsung klik Simpan</b>. Kolom kosong otomatis tersimpan 0.</li>
+          )}
           <li>Desa baru dihitung sudah mengisi setelah disimpan (label berubah jadi &ldquo;Sudah diisi&rdquo;).</li>
         </ul>
       </div>
       {desa.map((d) => {
         const awal = target.find((t) => t.desaId === d.id);
-        // Data bulan ini sudah ada → rujuk bulan ini; belum ada → rujuk bulan lalu; tidak ada keduanya → 0.
-        const ph = tampil(awal ? awal.luasBaku : luasBakuLalu[d.id]) || "0";
-        return <KartuDesa key={`${d.id}-${tahun}-${bulan}-${kom}`} desa={d} tahun={tahun} bulan={bulan} kom={kom} jenis={jenis} awal={awal} placeholderLuasBaku={ph} />;
+        // LBS bulan lalu hanya sebagai petunjuk (tidak ikut tersimpan); kolom tetap kosong supaya PPL mengetik sendiri.
+        const lalu = awal ? "" : tampil(luasBakuLalu[d.id]);
+        return <KartuDesa key={`${d.id}-${tahun}-${bulan}-${kom}`} desa={d} tahun={tahun} bulan={bulan} kom={kom} jenis={jenis} awal={awal} lbsLalu={lalu} />;
       })}
     </div>
   );
@@ -63,7 +71,7 @@ function KartuDesa({
   kom,
   jenis,
   awal,
-  placeholderLuasBaku,
+  lbsLalu,
 }: {
   desa: DesaForm;
   tahun: number;
@@ -71,7 +79,8 @@ function KartuDesa({
   kom: Komoditas;
   jenis: JenisRef[];
   awal?: TargetDesaData;
-  placeholderLuasBaku: string;
+  /** LBS bulan lalu (teks petunjuk, "" = tidak ditampilkan) */
+  lbsLalu: string;
 }) {
   const [nilai, setNilai] = useState<Record<string, string>>(() => {
     const v: Record<string, string> = {
@@ -87,7 +96,11 @@ function KartuDesa({
     return v;
   });
   const [proses, mulai] = useTransition();
-  const ubah = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setNilai((v) => ({ ...v, [k]: e.target.value }));
+  const [salahLbs, setSalahLbs] = useState(false);
+  const ubah = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (k === "luasBaku") setSalahLbs(false);
+    setNilai((v) => ({ ...v, [k]: e.target.value }));
+  };
   const n = (k: string) => {
     const x = parseDesimal(nilai[k] ?? "");
     return Number.isFinite(x) ? x : 0;
@@ -98,6 +111,11 @@ function KartuDesa({
 
   function simpan(e: React.FormEvent) {
     e.preventDefault();
+    if (isPadi && isianKosong(nilai.luasBaku)) {
+      setSalahLbs(true);
+      gagal("LBS belum diisi", PESAN_LBS_WAJIB);
+      return;
+    }
     mulai(async () => {
       const h = await simpanTargetDesaAction({
         tahun,
@@ -161,8 +179,22 @@ function KartuDesa({
 
       <div className="mt-3 flex items-end gap-2">
         <label className="flex-1 text-[11px] font-semibold text-muted">
-          Luas Baku {isPadi ? "Sawah" : "Lahan"} (Ha, opsional)
-          <input inputMode="decimal" placeholder={placeholderLuasBaku} value={nilai.luasBaku} onChange={ubah("luasBaku")} className={kelasIn} />
+          Luas Baku {isPadi ? "Sawah" : "Lahan"} (Ha{isPadi ? "" : ", opsional"}) {isPadi && <span className="text-red-600">*</span>}
+          <input
+            inputMode="decimal"
+            required={isPadi}
+            aria-required={isPadi}
+            aria-invalid={salahLbs}
+            placeholder={isPadi ? "Wajib diisi" : "0"}
+            value={nilai.luasBaku}
+            onChange={ubah("luasBaku")}
+            className={`${kelasIn} ${salahLbs ? "border-red-500 bg-red-50" : ""}`}
+          />
+          {salahLbs ? (
+            <span className="mt-0.5 block text-[10px] font-bold text-red-600">Wajib diisi. Ketik 0 bila tidak ada sawah.</span>
+          ) : (
+            lbsLalu && <span className="mt-0.5 block text-[10px] font-normal">Bulan lalu: {lbsLalu} Ha</span>
+          )}
         </label>
         <button
           type="submit"

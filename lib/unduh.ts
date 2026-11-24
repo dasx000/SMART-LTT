@@ -1,8 +1,9 @@
 import "server-only";
 import { NAMA_BULAN, formatTanggalJam, tanggalIsoWIB } from "@/lib/format";
+import { warnaSelisih } from "@/lib/warna-persen";
 import { headerKolom, type Blok, type Kolom, type Lembar, type Sel, type SpesifikasiExcel } from "@/lib/excel-spec";
 import { rekapRealisasiPpl } from "@/lib/realisasi-ppl";
-import { KOLOM_DINAS, KOLOM_PROV, ambilLaporan, daftarDesa, daftarKecamatan, laporanBulan, semuaJenisPadi, semuaLaporanTersaring, rekapDinas, rekapProvinsiPadi, type Komoditas, type Supa } from "@/lib/data";
+import { KOLOM_DINAS, KOLOM_PROV, ambilLaporan, daftarDesa, daftarKecamatan, laporanBulan, ringkasanWilayah, semuaJenisPadi, semuaLaporanTersaring, rekapDinas, rekapProvinsiPadi, type Komoditas, type RincianKom, type Supa } from "@/lib/data";
 
 /**
  * Spesifikasi Excel yang dipakai bersama oleh tombol unduh (/api/unduh, sesi login) dan
@@ -289,17 +290,18 @@ export async function specRealisasiPpl(s: Supa, f: { tahun: number; bulan: numbe
   const kolom: Kolom[] = [
     { judul: "NO", lebar: 6, rata: "center" },
     { judul: "KECAMATAN / NAMA PPL / DESA", lebar: 34 },
-    { judul: "JABATAN", lebar: 12 },
     { judul: "STATUS TARGET", lebar: 28 },
-    { judul: "TARGET (JUMLAH TARGET DESA, HA)", lebar: 18, jenis: "angka" },
+    { judul: "TARGET PROVINSI (HA)", lebar: 14, jenis: "angka" },
+    { judul: "TARGET ISIAN PPL (HA)", lebar: 14, jenis: "angka" },
+    { judul: "SELISIH ISIAN PPL VS PROVINSI (HA)", lebar: 16, jenis: "angka" },
     { judul: "REALISASI TANAM (HA)", lebar: 16, jenis: "angka" },
-    { judul: "SELISIH (HA)", lebar: 13, jenis: "angka" },
     { judul: "CAPAIAN", lebar: 12, jenis: "persen2" },
   ];
   const cap = (p: number | null, tebal = true): Sel =>
     p == null ? { v: "–", bg: "FFF3F4F6", fc: "FF9CA3AF" } : { v: p / 100, ...WARNA_PERSEN(p), tebal };
-  const status = (terisi: number, jumlah: number): Sel =>
+  const status = (terisi: number, jumlah: number, target: number): Sel =>
     terisi === 0 ? { v: "Belum isi target", fc: "FFB91C1C", tebal: true }
+    : Math.abs(target) < 0.005 ? { v: `Diisi 0 (${terisi}/${jumlah} desa)`, fc: "FF4B5563", tebal: true }
     : terisi < jumlah ? { v: `Target belum lengkap (${terisi}/${jumlah} desa)`, fc: "FFC2410C" }
     : `Lengkap (${terisi}/${jumlah} desa)`;
   const KEC = { bg: "FFF0FDF4", fc: "FF166534", tebal: true };
@@ -307,25 +309,33 @@ export async function specRealisasiPpl(s: Supa, f: { tahun: number; bulan: numbe
   /** Angka 0 dibuat pudar (abu muda) supaya yang berisi lebih menonjol (baris PPL & desa saja, bukan baris total). */
   const PUDAR = "FF9CA3AF";
   const nol = (v: number | null): Sel => (v != null && Math.abs(v) < 0.005 ? { v: 0, fc: PUDAR } : v);
+  /** Target provinsi & selisih isian (baris kabupaten/kecamatan). Selisih: merah kurang, hijau sama, biru lebih. */
+  const prov = (tp: number | null, gaya: Partial<Exclude<Sel, string | number | null>> = {}): Sel =>
+    tp == null ? { v: "Belum diisi", ...gaya, fc: "FF9CA3AF" } : { v: tp, ...gaya };
+  const selisih = (isian: number, tp: number | null, gaya: Partial<Exclude<Sel, string | number | null>> = {}): Sel =>
+    tp == null ? { v: "–", ...gaya, fc: "FF9CA3AF" } : { v: isian - tp, ...gaya, fc: warnaSelisih(isian - tp).fc, tebal: true };
 
   const blok: Blok[] = [headerKolom(kolom, "FF166534")];
   if (!f.kecamatanId) {
-    blok.push({ t: "total", gabung: 4, nilai: ["JUMLAH KABUPATEN", "", "", "", d.target, d.realisasi, d.realisasi - d.target, cap(d.capaian)] });
+    blok.push({
+      t: "total", gabung: 2,
+      nilai: ["JUMLAH KABUPATEN", "", `${d.sudahIsi}/${d.jumlahPpl} PPL isi target`, prov(d.targetProv), d.target, selisih(d.target, d.targetProv), d.realisasi, cap(d.capaianProv)],
+    });
   }
   d.kec.forEach((k, ki) => {
     const baris: Sel[][] = [[
-      k$(ki + 1), k$(`KECAMATAN ${k.nama.toUpperCase()} (${k.ppl.length} PPL, ${k.sudahIsi} sudah isi target)`), k$(""), k$(""),
-      k$(k.target), k$(k.realisasi), k$(k.realisasi - k.target), cap(k.capaian),
+      k$(ki + 1), k$(`KECAMATAN ${k.nama.toUpperCase()} (${k.ppl.length} PPL)`), k$(`${k.sudahIsi}/${k.ppl.length} PPL isi target`),
+      prov(k.targetProv, KEC), k$(k.target), selisih(k.target, k.targetProv, KEC), k$(k.realisasi), cap(k.capaianProv),
     ]];
     k.ppl.forEach((p, pi) => {
       baris.push([
-        `${ki + 1}.${pi + 1}`, { v: p.nama, tebal: true }, p.role === "admin_bpp" ? "Admin BPP" : "Penyuluh", status(p.terisi, p.desa.length),
-        nol(p.terisi ? p.target : null), nol(p.realisasi), nol(p.terisi ? p.realisasi - p.target : null), cap(p.capaian),
+        `${ki + 1}.${pi + 1}`, { v: p.nama, tebal: true }, status(p.terisi, p.desa.length, p.target),
+        "", nol(p.terisi ? p.target : null), "", nol(p.realisasi), cap(p.capaian),
       ]);
       for (const ds of p.desa) {
         baris.push([
-          "", `      Desa ${ds.nama}`, "", ds.target == null ? { v: "Target kosong", fc: "FFB91C1C" } : "",
-          nol(ds.target), nol(ds.realisasi), nol(ds.target == null ? null : ds.realisasi - ds.target), cap(ds.capaian, false),
+          "", `      Desa ${ds.nama}`, ds.target == null ? { v: "Target kosong", fc: "FFB91C1C" } : Math.abs(ds.target) < 0.005 ? { v: "Diisi 0", fc: "FF4B5563" } : "",
+          "", nol(ds.target), "", nol(ds.realisasi), cap(ds.capaian, false),
         ]);
       }
     });
@@ -334,7 +344,8 @@ export async function specRealisasiPpl(s: Supa, f: { tahun: number; bulan: numbe
   blok.push(
     { t: "kosong" },
     { t: "catatan", teks: "Capaian: < 60% merah (rendah) · 60–84,99% kuning (sedang) · ≥ 85% hijau (baik) · – = belum isi target." },
-    { t: "catatan", teks: "Target = jumlah target desa padi yang diisi PPL (semua jenis LTT). Realisasi = luas tanam padi semua jenis LTT; realisasi desa yang belum ada target tetap dihitung." },
+    { t: "catatan", teks: "Kabupaten & kecamatan: capaian = realisasi ÷ Target Provinsi. PPL & desa: capaian = realisasi ÷ Target Isian PPL (jumlah target desa yang diisi PPL)." },
+    { t: "catatan", teks: "Selisih isian PPL vs provinsi: merah = isian PPL kurang, hijau = sesuai, biru = lebih. Realisasi = luas tanam padi semua jenis LTT; realisasi desa yang belum ada target tetap dihitung." },
   );
 
   const namaKec = f.kecamatanId ? d.kec[0]?.nama : null;
@@ -345,11 +356,51 @@ export async function specRealisasiPpl(s: Supa, f: { tahun: number; bulan: numbe
     lembar: [{
       nama: "Realisasi per PPL",
       judul: "REALISASI LUAS TAMBAH TANAM (LTT) PADI PER PPL",
-      info: [`${namaKec ? `Kecamatan ${namaKec}` : "Kabupaten"} · Kumulatif 1 s.d. ${sampai} · Urut dari pengisian target terendah, lalu capaian terendah`],
+      info: [`${namaKec ? `Kecamatan ${namaKec}` : "Kabupaten"} · Kumulatif 1 s.d. ${sampai} · Kecamatan: isian PPL kurang terbesar dulu, lalu capaian terendah · PPL urut dari pengisian target terendah, lalu capaian terendah`],
       kolom,
       beku: { y: 5 },
       tanpaZebra: true,
       blok,
     }],
+  };
+}
+
+// ─── Rekapitulasi Desa per komoditas (dashboard Admin BPP) ────────────────────
+/**
+ * Sama dengan tabel "Rekapitulasi Desa" di dashboard BPP: satu komoditas, desa A–Z, baris JUMLAH.
+ * Padi: Lahan Bera, Olah Lahan, Tanam, Panen. Jagung / Ubi Kayu: Tanam, Panen.
+ * PEMANGGIL WAJIB mengisi kecamatanId dengan kecamatan milik Admin BPP.
+ */
+export async function specRekapDesa(s: Supa, f: { tahun: number; bulan: number; kom: Komoditas; kecamatanId: number }): Promise<SpesifikasiExcel> {
+  const r = await ringkasanWilayah(s, f.tahun, f.bulan, f.kecamatanId);
+  const namaKec = r.kecs.find((k) => k.id === f.kecamatanId)?.nama ?? "";
+  const isPadi = f.kom === "Padi";
+  const isi: { k: keyof RincianKom; judul: string }[] = [
+    ...(isPadi ? [{ k: "bera" as const, judul: "LAHAN BERA (HA)" }, { k: "olah" as const, judul: "OLAH LAHAN (HA)" }] : []),
+    { k: "tanam", judul: `TANAM ${f.kom.toUpperCase()} (HA)` },
+    { k: "panen", judul: `PANEN ${f.kom.toUpperCase()} (HA)` },
+  ];
+  const kolom: Kolom[] = [
+    { judul: "NO", lebar: 5, jenis: "bulat" },
+    { judul: "NAMA DESA", lebar: 26 },
+    ...isi.map((c): Kolom => ({ judul: c.judul, lebar: 15, jenis: "angka" })),
+  ];
+  const baris = [...r.baris].sort((a, b) => a.nama.localeCompare(b.nama, "id"));
+  const jumlah = (k: keyof RincianKom) => Math.round(baris.reduce((a, b) => a + b.kom[f.kom][k], 0) * 100) / 100;
+  const periode = `${NAMA_BULAN[f.bulan - 1]} ${f.tahun}`;
+  return {
+    namaFile: ["Rekap_Desa", f.kom, namaKec, `${NAMA_BULAN[f.bulan - 1]}_${f.tahun}`],
+    judulFile: `Rekapitulasi Desa ${f.kom} - Kec. ${namaKec} - ${periode}`,
+    lembar: [
+      lembarTabel(
+        "Rekapitulasi Desa",
+        `REKAPITULASI DESA — ${f.kom.toUpperCase()} — KEC. ${namaKec.toUpperCase()}`,
+        [`Realisasi ${f.kom.toLowerCase()} per desa · ${periode}`],
+        kolom,
+        baris.map((b, i) => [i + 1, b.nama, ...isi.map((c) => b.kom[f.kom][c.k])]),
+        { nilai: ["JUMLAH", "", ...isi.map((c) => jumlah(c.k))], gabung: 2 },
+        { beku: { y: 5 } },
+      ),
+    ],
   };
 }

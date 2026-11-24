@@ -761,12 +761,14 @@ export async function cekJenisPadi(s: Supa, laporanId: number, jenisId: number):
 // ─── Ringkasan dashboard (Kab & BPP) — dihitung di server, browser hanya menerima angka ───
 
 export type TanamPanen = { tanam: number; panen: number };
+/** Rincian satu komoditas per baris (bera & olah lahan hanya bermakna untuk Padi). */
+export type RincianKom = { bera: number; olah: number; tanam: number; panen: number };
 export type RingkasanWilayah = {
   total: Record<Komoditas, TanamPanen>;
   pmAas: TanamPanen;
   target: Record<Komoditas, TanamPanen>;
   /** per kecamatan (Kab) atau per desa (BPP) */
-  baris: { id: number; nama: string; tanam: Record<Komoditas, number>; panen: number; target: number; pmAas: TanamPanen }[];
+  baris: { id: number; nama: string; tanam: Record<Komoditas, number>; panen: number; target: number; pmAas: TanamPanen; kom: Record<Komoditas, RincianKom> }[];
   /** baris laporan mentah (server saja — jangan dikirim ke browser) */
   laporan: BarisLaporan[];
   kecs: Kec[];
@@ -795,7 +797,10 @@ export async function ringkasanWilayah(s: Supa, tahun: number, bulan: number, ke
   const target = perKom(kosongTP);
   const pmAas = kosongTP();
   const unit = desa ? desa.map((d) => ({ id: d.id, nama: d.nama })) : kecs;
-  const baris = unit.map((u) => ({ id: u.id, nama: u.nama, tanam: perKom(() => 0), panen: 0, target: 0, pmAas: kosongTP() }));
+  const baris = unit.map((u) => ({
+    id: u.id, nama: u.nama, tanam: perKom(() => 0), panen: 0, target: 0, pmAas: kosongTP(),
+    kom: perKom((): RincianKom => ({ bera: 0, olah: 0, tanam: 0, panen: 0 })),
+  }));
   const idx = new Map(baris.map((b) => [b.id, b]));
 
   for (const t of tgt ?? []) {
@@ -817,6 +822,11 @@ export async function ringkasanWilayah(s: Supa, tahun: number, bulan: number, ke
     if (!b) continue;
     b.tanam[l.komoditas] += l.tanam;
     b.panen += l.panen;
+    const rk = b.kom[l.komoditas];
+    rk.bera += l.bera;
+    rk.olah += l.olah;
+    rk.tanam += l.tanam;
+    rk.panen += l.panen;
     if (pm) {
       b.pmAas.tanam += l.tanam;
       b.pmAas.panen += l.panen;

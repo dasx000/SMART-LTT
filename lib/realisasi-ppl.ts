@@ -13,8 +13,17 @@ import type { Role } from "@/lib/auth";
  * - "Terisi"     = desa punya baris target padi (nilai 0 tetap dihitung terisi, sama dengan menu Target).
  * Realisasi desa yang belum ada target tetap dihitung (keputusan user 17 Nov 2026).
  * Hanya Penyuluh & Admin BPP aktif yang punya desa binaan. Satu desa hanya dipegang satu PPL.
- * Urutan kecamatan & PPL (keputusan user 18 Nov 2026 — target dikejar dulu, capaian dari target belum lengkap bias):
- *   1) % desa terisi target terendah, 2) capaian terendah (null paling atas), 3) nama A–Z.
+ * Target Provinsi (keputusan user 24 Nov 2026): hanya ada di tingkat kecamatan (`target_provinsi`, diisi Admin Kab).
+ *   - Capaian KECAMATAN & KABUPATEN = realisasi ÷ target provinsi (`capaianProv`).
+ *   - Capaian PPL & DESA tetap = realisasi ÷ target isian PPL sendiri.
+ *   - Selisih isian = jumlah isian PPL − target provinsi (negatif = isian PPL kurang).
+ *   (Semua desa pasti punya PPL, jadi realisasi desa binaan = realisasi kecamatan.)
+ * Urutan kecamatan (keputusan user 24 Nov 2026), per kelompok:
+ *   1) isian PPL KURANG dari provinsi → kekurangan terbesar dulu;
+ *   2) isian PPL SESUAI / LEBIH → capaian provinsi terendah dulu;
+ *   3) target provinsi belum diisi → paling bawah.
+ *   Seri → capaian provinsi terendah, lalu nama A–Z.
+ * Urutan PPL (keputusan user 18 Nov 2026): 1) % desa terisi target terendah, 2) capaian terendah (null paling atas), 3) nama.
  * Desa: capaian terendah (belum ada target paling atas), lalu nama.
  *
  * PEMANGGIL WAJIB memeriksa role & cakupan (BPP = kecamatannya, penyuluh = dirinya).
@@ -36,9 +45,15 @@ export type KecRealisasi = {
   id: number;
   nama: string;
   ppl: PplRealisasi[];
+  /** jumlah target isian PPL */
   target: number;
+  /** target provinsi kecamatan (null = belum diisi Admin Kab) */
+  targetProv: number | null;
   realisasi: number;
+  /** realisasi ÷ target isian PPL */
   capaian: number | null;
+  /** realisasi ÷ target provinsi */
+  capaianProv: number | null;
   /** PPL yang sudah mengisi target minimal satu desa */
   sudahIsi: number;
 };
@@ -48,9 +63,13 @@ export type RekapRealisasiPpl = {
   /** tanggal akhir data (YYYY-MM-DD): hari ini untuk bulan berjalan, akhir bulan untuk bulan lalu */
   sampai: string;
   kec: KecRealisasi[];
+  /** jumlah target isian PPL */
   target: number;
+  /** jumlah target provinsi kecamatan yang tampil (null = belum ada satu pun) */
+  targetProv: number | null;
   realisasi: number;
   capaian: number | null;
+  capaianProv: number | null;
   jumlahPpl: number;
   sudahIsi: number;
   lengkap: number;
@@ -61,6 +80,16 @@ const capaian = (realisasi: number, target: number) => (target > 0 ? (realisasi 
 const urutCapaian = (a: number | null, b: number | null) => (a ?? -1) - (b ?? -1);
 /** Rasio desa terisi target (0–1); tanpa desa dianggap 0. */
 const rasioIsi = (terisi: number, jumlah: number) => (jumlah > 0 ? terisi / jumlah : 0);
+/** Selisih isian PPL − target provinsi; provinsi belum diisi → null. */
+export const selisihIsian = (isian: number, prov: number | null) => (prov == null ? null : isian - prov);
+/** null (provinsi belum diisi) paling bawah, kurang terbesar paling atas. */
+const urutSelisih = (a: number | null, b: number | null) => {
+  const kel = (x: number | null) => (x == null ? 2 : x < -0.005 ? 0 : 1);
+  const ka = kel(a);
+  const kb = kel(b);
+  if (ka !== kb) return ka - kb;
+  return ka === 0 ? a! - b! : 0; // kelompok 1 & 3 diurutkan oleh capaian (pembanding berikutnya)
+};
 
 export async function rekapRealisasiPpl(
   s: Supa,
@@ -81,9 +110,10 @@ export async function rekapRealisasiPpl(
   const desaPeta = new Map(desaRef.map((d) => [d.id, d]));
   const ids = [...new Set(ppl.flatMap((u) => u.desaIds))].filter((id) => desaPeta.has(id));
 
-  const [target, lap] = await Promise.all([
+  const [target, lap, prov] = await Promise.all([
     ambilTargetDesa(s, ids, { tahun: f.tahun, bulan: f.bulan, komoditas }),
     ids.length ? ambilLaporan(s, { dari, sampai, komoditas, desaIds: ids }, kecs) : Promise.resolve([]),
+    f.userId ? Promise.resolve(null) : ambilTargetProvinsi(s, { tahun: f.tahun, bulan: f.bulan, komoditas }),
   ]);
   const tgtDesa = new Map<number, number>();
   for (const t of target) tgtDesa.set(t.desaId, (tgtDesa.get(t.desaId) ?? 0) + t.tanam);
@@ -130,26 +160,51 @@ export async function rekapRealisasiPpl(
         );
       const tg = daftar.reduce((a, p) => a + p.target, 0);
       const rl = daftar.reduce((a, p) => a + p.realisasi, 0);
-      return { id: k.id, nama: k.nama, ppl: daftar, target: tg, realisasi: rl, capaian: capaian(rl, tg), sudahIsi: daftar.filter((p) => p.terisi > 0).length };
+      const tp = prov?.get(k.id) ?? null;
+      return {
+        id: k.id, nama: k.nama, ppl: daftar, target: tg, targetProv: tp, realisasi: rl,
+        capaian: capaian(rl, tg), capaianProv: tp == null ? null : capaian(rl, tp),
+        sudahIsi: daftar.filter((p) => p.terisi > 0).length,
+      };
     });
-  const isiKec = new Map(
-    kec.map((k) => [k.id, rasioIsi(k.ppl.reduce((a, p) => a + p.terisi, 0), k.ppl.reduce((a, p) => a + p.desa.length, 0))]),
+  kec.sort(
+    (a, b) =>
+      urutSelisih(selisihIsian(a.target, a.targetProv), selisihIsian(b.target, b.targetProv)) ||
+      urutCapaian(a.capaianProv, b.capaianProv) ||
+      a.nama.localeCompare(b.nama, "id"),
   );
-  kec.sort((a, b) => isiKec.get(a.id)! - isiKec.get(b.id)! || urutCapaian(a.capaian, b.capaian) || a.nama.localeCompare(b.nama, "id"));
 
   const semua = kec.flatMap((k) => k.ppl);
   const tg = kec.reduce((a, k) => a + k.target, 0);
   const rl = kec.reduce((a, k) => a + k.realisasi, 0);
+  const adaProv = kec.filter((k) => k.targetProv != null);
+  const tp = adaProv.length ? adaProv.reduce((a, k) => a + k.targetProv!, 0) : null;
   return {
     tahun: f.tahun,
     bulan: f.bulan,
     sampai: sampaiTgl,
     kec,
     target: tg,
+    targetProv: tp,
     realisasi: rl,
     capaian: capaian(rl, tg),
+    capaianProv: tp == null ? null : capaian(rl, tp),
     jumlahPpl: semua.length,
     sudahIsi: semua.filter((p) => p.terisi > 0).length,
     lengkap: semua.filter((p) => p.terisi === p.desa.length).length,
   };
+}
+
+/** Target Provinsi (tanam) per kecamatan satu bulan & komoditas → Map kecamatan_id → Ha. */
+async function ambilTargetProvinsi(s: Supa, f: { tahun: number; bulan: number; komoditas: Komoditas }) {
+  const { data, error } = await s
+    .from("target_provinsi")
+    .select("kecamatan_id, target_tanam")
+    .eq("tahun", f.tahun)
+    .eq("bulan", f.bulan)
+    .eq("komoditas", f.komoditas);
+  if (error) throw new Error(error.message);
+  const peta = new Map<number, number>();
+  for (const t of data ?? []) peta.set(t.kecamatan_id, (peta.get(t.kecamatan_id) ?? 0) + (Number(t.target_tanam) || 0));
+  return peta;
 }

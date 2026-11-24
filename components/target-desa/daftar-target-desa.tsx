@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { angkaIsian, formatAngka, parseDesimal } from "@/lib/format";
 import { gagal, konfirmasi, sukses } from "@/lib/swal";
+import { PESAN_LBS_WAJIB, isianKosong } from "@/lib/validasi";
 import type { JenisRef, Komoditas } from "@/lib/data";
 import { hapusTargetDesaAdminAction, simpanTargetDesaAdminAction } from "./actions";
 import type { BarisTargetDesa } from "./jenis";
@@ -353,6 +354,7 @@ function ModalTarget({
     };
   }, [onTutup, proses]);
 
+  const [salahLbs, setSalahLbs] = useState(false);
   const ubah = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setNilai((v) => ({ ...v, [k]: e.target.value }));
   const n = (k: string) => {
     const x = parseDesimal(nilai[k] ?? "");
@@ -365,6 +367,11 @@ function ModalTarget({
   const milikOrangLain = Boolean(awal && desa.pembuat && desa.pembuat.id !== penggunaId);
 
   function simpan(lanjut: boolean) {
+    if (isPadi && isianKosong(nilai.luasBaku)) {
+      setSalahLbs(true);
+      gagal("LBS belum diisi", PESAN_LBS_WAJIB);
+      return;
+    }
     mulai(async () => {
       if (milikOrangLain) {
         const ok = await konfirmasi(
@@ -468,10 +475,27 @@ function ModalTarget({
           )}
 
           <label className="block text-[11px] font-semibold text-gray-500">
-            Luas Baku {isPadi ? "Sawah" : "Lahan"} (Ha, opsional)
-            <input inputMode="decimal" placeholder="0" value={nilai.luasBaku} onChange={ubah("luasBaku")} className={kelasIn} />
+            Luas Baku {isPadi ? "Sawah" : "Lahan"} (Ha{isPadi ? "" : ", opsional"}) {isPadi && <span className="text-red-600">*</span>}
+            <input
+              inputMode="decimal"
+              required={isPadi}
+              aria-required={isPadi}
+              aria-invalid={salahLbs}
+              placeholder={isPadi ? "Wajib diisi" : "0"}
+              value={nilai.luasBaku}
+              onChange={(e) => {
+                setSalahLbs(false);
+                ubah("luasBaku")(e);
+              }}
+              className={`${kelasIn} ${salahLbs ? "border-red-500 bg-red-50" : ""}`}
+            />
+            {salahLbs && <span className="mt-0.5 block text-[10px] font-bold text-red-600">Wajib diisi. Ketik 0 bila tidak ada sawah.</span>}
           </label>
-          <p className="text-[10px] text-gray-400">Desa tanpa target bulan ini: biarkan 0 lalu Simpan (tetap terhitung sudah isi).</p>
+          <p className="text-[10px] text-gray-400">
+            {isPadi
+              ? "LBS wajib diketik (0 bila tidak ada sawah). Desa tanpa target bulan ini: biarkan target kosong, isi LBS, lalu Simpan."
+              : "Desa tanpa target bulan ini: biarkan 0 lalu Simpan (tetap terhitung sudah isi)."}
+          </p>
         </div>
 
         <div className="flex gap-2 border-t border-gray-100 px-4 py-3">

@@ -26,7 +26,9 @@ const nilaiSel = (s: Sel) => (s !== null && typeof s === "object" ? s.v : s) ?? 
 function formatSel(c: ExcelJS.Cell, k: Kolom | undefined) {
   c.border = garis;
   if (k?.jenis === "angka") {
-    c.numFmt = "#,##0.00";
+    // Angka bulat tanpa desimal (200), pecahan maks. 2 desimal (87,7 · 9,38) — sama dengan tampilan web.
+    const v = c.value;
+    c.numFmt = typeof v === "number" && !Number.isInteger(Math.round(v * 100) / 100) ? "#,##0.##" : "#,##0";
     c.alignment = { horizontal: "right", vertical: "middle" };
   } else if (k?.jenis === "bulat") {
     c.numFmt = "#,##0";

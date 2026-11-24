@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { wajibRole, type Pengguna } from "@/lib/auth";
 import { supabaseServer } from "@/lib/supabase/server";
-import { angkaHa } from "@/lib/validasi";
+import { angkaHa, luasBakuSesuaiKomoditas } from "@/lib/validasi";
 
 export type HasilAksi = { sukses: boolean; pesan: string };
 
@@ -18,7 +18,8 @@ const skemaPeriode = z.object({
 const skema = skemaPeriode.extend({
   targetTanam: angkaHa("Target tanam"),
   targetPanen: angkaHa("Target panen"),
-  luasBaku: angkaHa("Luas baku"),
+  /** divalidasi setelah komoditas diketahui (wajib hanya Padi) */
+  luasBaku: z.unknown(),
   rincian: z
     .array(z.object({ jenisId: z.number().int().positive(), tanam: angkaHa("Target tanam"), panen: angkaHa("Target panen") }))
     .max(20)
@@ -52,6 +53,8 @@ export async function simpanTargetDesaAdminAction(input: InputTargetDesaAdmin): 
   const cek = skema.safeParse(input);
   if (!cek.success) return { sukses: false, pesan: cek.error.issues[0]?.message ?? "Isian tidak valid." };
   const d = cek.data;
+  const lbs = luasBakuSesuaiKomoditas(d.komoditas).safeParse(d.luasBaku);
+  if (!lbs.success) return { sukses: false, pesan: lbs.error.issues[0]?.message ?? "Luas baku tidak valid." };
 
   const s = await supabaseServer();
   const hak = await cekHakDesa(s, p, d.desaId);
@@ -71,7 +74,7 @@ export async function simpanTargetDesaAdminAction(input: InputTargetDesaAdmin): 
         komoditas: d.komoditas,
         target_tanam: tanam,
         target_panen: panen,
-        luas_baku: d.luasBaku,
+        luas_baku: lbs.data,
         ip_eksisting: 0,
         pembuat_id: p.id,
       },

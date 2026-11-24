@@ -11,7 +11,7 @@ import {
   type Komoditas, type Supa,
 } from "@/lib/data";
 import { specTargetDesa } from "@/components/target-desa/unduh";
-import { lembarTabel, rentangTanggal, specLaporan, specLttProvinsi, specRealisasiPpl, specRekapDinas } from "@/lib/unduh";
+import { lembarTabel, rentangTanggal, specLaporan, specLttProvinsi, specRealisasiPpl, specRekapDesa, specRekapDinas } from "@/lib/unduh";
 
 /**
  * GET /api/unduh/<jenis>?... — data untuk semua tombol unduh Excel.
@@ -21,12 +21,13 @@ import { lembarTabel, rentangTanggal, specLaporan, specLttProvinsi, specRealisas
 
 const HAK: Record<string, Role[]> = {
   "laporan": ["admin_bpp", "admin_kab"],
-  "target-desa": ["admin_kab"],
+  "target-desa": ["admin_kab", "admin_bpp"],
   "rekap-kecamatan": ["admin_kab", "viewer"],
   "rekap-dinas": ["admin_kab", "viewer"],
   "ltt-provinsi": ["admin_kab", "viewer"],
   "realisasi-ppl": ["admin_kab", "viewer"],
   "rekap-ppl": ["penyuluh", "admin_bpp"],
+  "rekap-desa": ["admin_bpp"],
   "produktivitas": ["penyuluh", "admin_bpp", "admin_kab", "viewer"],
 };
 
@@ -56,12 +57,14 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ jenis: stri
     switch (jenis) {
       case "laporan": return await unduhLaporan(s, p, q);
       case "target-desa": {
+        if (p.role === "admin_bpp" && !p.kecamatanId) return teksErr("Akun Anda belum terikat ke kecamatan.", 403);
         const { tahun, bulan } = bulanTahunWIB();
         return kirim(await specTargetDesa(s, {
           tahun: angka(q.get("tahun"), 2000, 2100, tahun),
           bulan: angka(q.get("bulan"), 1, 12, bulan),
           kom: komValid(q.get("komoditas")) ?? "Padi",
-          kecamatanId: angka(q.get("kecamatan"), 1, 1_000_000, 0) || null,
+          // Admin BPP: selalu kecamatannya sendiri (parameter ?kecamatan= diabaikan)
+          kecamatanId: p.role === "admin_bpp" ? p.kecamatanId : angka(q.get("kecamatan"), 1, 1_000_000, 0) || null,
         }));
       }
       case "rekap-kecamatan": return await unduhRekapKecamatan(s, q);
@@ -69,6 +72,11 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ jenis: stri
       case "ltt-provinsi": return await unduhLttProvinsi(s, q);
       case "realisasi-ppl": return kirim(await specRealisasiPpl(s, { ...bulanDariQuery(q), kecamatanId: angka(q.get("kecamatan"), 1, 1_000_000, 0) || null }));
       case "rekap-ppl": return await unduhRekapPpl(s, p, q);
+      case "rekap-desa": {
+        // Admin BPP: selalu kecamatannya sendiri
+        if (!p.kecamatanId) return teksErr("Akun Anda belum terikat ke kecamatan.", 403);
+        return kirim(await specRekapDesa(s, { ...bulanDariQuery(q), kom: komValid(q.get("komoditas")) ?? "Padi", kecamatanId: p.kecamatanId }));
+      }
       case "produktivitas": return await unduhProduktivitas(s, p, q);
     }
   } catch (e) {
