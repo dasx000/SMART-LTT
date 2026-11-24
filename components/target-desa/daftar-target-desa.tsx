@@ -489,11 +489,15 @@ function ModalTarget({
               }}
               className={`${kelasIn} ${salahLbs ? "border-red-500 bg-red-50" : ""}`}
             />
-            {salahLbs && <span className="mt-0.5 block text-[10px] font-bold text-red-600">Wajib diisi. Ketik 0 bila tidak ada sawah.</span>}
+            {salahLbs && (
+              <span className="mt-0.5 block text-[10px] font-bold text-red-600">
+                Wajib diisi. Ketik 0 bila tidak ada sawah.
+              </span>
+            )}
           </label>
           <p className="text-[10px] text-gray-400">
             {isPadi
-              ? "LBS wajib diketik (0 bila tidak ada sawah). Desa tanpa target bulan ini: biarkan target kosong, isi LBS, lalu Simpan."
+              ? "LBS wajib diisi (ketik 0 bila tidak ada sawah). Desa tanpa target bulan ini: biarkan target kosong, isi LBS, lalu Simpan."
               : "Desa tanpa target bulan ini: biarkan 0 lalu Simpan (tetap terhitung sudah isi)."}
           </p>
         </div>

@@ -45,7 +45,7 @@ export function FormTarget({
           <li>Isi target <b>setiap desa</b>, lalu tekan <b>Simpan</b> di kartu desa tersebut.</li>
           {kom === "Padi" ? (
             <>
-              <li><b>Luas Baku Sawah (LBS) wajib diketik</b> (bertanda <span className="text-red-600">*</span>). Desa yang tidak punya sawah: ketik <b>0</b>.</li>
+              <li><b>Luas Baku Sawah (LBS) wajib diisi</b> (bertanda <span className="text-red-600">*</span>). Bila bulan lalu sudah diisi, LBS otomatis terisi — ubah bila berbeda.</li>
               <li>Kalau desa <b>tidak punya target</b> bulan ini, cukup isi LBS lalu klik <b>Simpan</b>. Kolom target yang kosong otomatis tersimpan 0.</li>
             </>
           ) : (
@@ -56,7 +56,7 @@ export function FormTarget({
       </div>
       {desa.map((d) => {
         const awal = target.find((t) => t.desaId === d.id);
-        // LBS bulan lalu hanya sebagai petunjuk (tidak ikut tersimpan); kolom tetap kosong supaya PPL mengetik sendiri.
+        // Belum ada target bulan ini → LBS otomatis diisi dari BULAN LALU (bila > 0). Tidak ada → kosong, wajib diketik.
         const lalu = awal ? "" : tampil(luasBakuLalu[d.id]);
         return <KartuDesa key={`${d.id}-${tahun}-${bulan}-${kom}`} desa={d} tahun={tahun} bulan={bulan} kom={kom} jenis={jenis} awal={awal} lbsLalu={lalu} />;
       })}
@@ -79,14 +79,14 @@ function KartuDesa({
   kom: Komoditas;
   jenis: JenisRef[];
   awal?: TargetDesaData;
-  /** LBS bulan lalu (teks petunjuk, "" = tidak ditampilkan) */
+  /** LBS bulan lalu (> 0) untuk isi otomatis; "" = tidak ada (kolom kosong) */
   lbsLalu: string;
 }) {
   const [nilai, setNilai] = useState<Record<string, string>>(() => {
     const v: Record<string, string> = {
       tanam: tampil(awal?.tanam ?? 0),
       panen: tampil(awal?.panen ?? 0),
-      luasBaku: tampil(awal?.luasBaku ?? 0),
+      luasBaku: awal ? tampil(awal.luasBaku) : lbsLalu,
     };
     for (const j of jenis) {
       const r = awal?.rincian.find((x) => x.jenisId === j.id);
@@ -191,9 +191,11 @@ function KartuDesa({
             className={`${kelasIn} ${salahLbs ? "border-red-500 bg-red-50" : ""}`}
           />
           {salahLbs ? (
-            <span className="mt-0.5 block text-[10px] font-bold text-red-600">Wajib diisi. Ketik 0 bila tidak ada sawah.</span>
+            <span className="mt-0.5 block text-[10px] font-bold text-red-600">
+              Wajib diisi. Ketik 0 bila tidak ada sawah.
+            </span>
           ) : (
-            lbsLalu && <span className="mt-0.5 block text-[10px] font-normal">Bulan lalu: {lbsLalu} Ha</span>
+            lbsLalu && !awal && <span className="mt-0.5 block text-[10px] font-normal">Otomatis dari bulan lalu ({lbsLalu} Ha), ubah bila berbeda.</span>
           )}
         </label>
         <button

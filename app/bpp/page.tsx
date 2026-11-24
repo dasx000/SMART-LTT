@@ -72,9 +72,9 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
   // Rekapitulasi Desa: satu komoditas, urut nama A–Z. Padi: + lahan bera & olah lahan.
   const isPadi = kom === "Padi";
   const kolomRekap: { k: keyof RincianKom; label: string }[] = [
-    ...(isPadi ? [{ k: "bera" as const, label: "Lahan Bera" }, { k: "olah" as const, label: "Olah Lahan" }] : []),
-    { k: "tanam", label: `Tanam ${kom}` },
-    { k: "panen", label: `Panen ${kom}` },
+    ...(isPadi ? [{ k: "bera" as const, label: "Lahan Bera (Ha)" }, { k: "olah" as const, label: "Olah Lahan (Ha)" }] : []),
+    { k: "tanam", label: `Tanam ${kom} (Ha)` },
+    { k: "panen", label: `Panen ${kom} (Ha)` },
   ];
   const barisRekap = [...r.baris].sort((a, b) => a.nama.localeCompare(b.nama, "id"));
   const jumlahRekap = (k: keyof RincianKom) => barisRekap.reduce((a, b) => a + b.kom[kom][k], 0);
@@ -195,7 +195,8 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
                       key={c.k}
                       className={`p-3 text-right tabular-nums ${c.k === "tanam" ? "font-bold text-green-700" : c.k === "panen" ? "font-bold text-amber-700" : ""}`}
                     >
-                      {formatAngka(b.kom[kom][c.k])} Ha
+                      {/* Nilai 0 dipudarkan supaya angka yang berisi lebih menonjol (sama dengan tabel Realisasi per PPL) */}
+                      {Math.abs(b.kom[kom][c.k]) < 0.005 ? <span className="opacity-35">0</span> : formatAngka(b.kom[kom][c.k])}
                     </td>
                   ))}
                 </tr>
@@ -205,7 +206,7 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
               <tr className="border-t-2 border-gray-200 bg-yellow-50 font-bold text-yellow-800">
                 <td className="p-3">JUMLAH</td>
                 {kolomRekap.map((c) => (
-                  <td key={c.k} className="p-3 text-right tabular-nums">{formatAngka(jumlahRekap(c.k))} Ha</td>
+                  <td key={c.k} className="p-3 text-right tabular-nums">{formatAngka(jumlahRekap(c.k))}</td>
                 ))}
               </tr>
             </tfoot>

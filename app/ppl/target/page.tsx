@@ -35,7 +35,7 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
     ambilTargetDesa(s, ids, { tahun: lalu.tahun, bulan: lalu.bulan, komoditas: kom }),
   ]);
   const target = semua;
-  // Hanya untuk placeholder luas baku (tidak ikut tersimpan bila tidak diisi).
+  // LBS bulan lalu → isi otomatis kolom LBS bila target bulan ini belum ada (keputusan user 24 Nov 2026).
   const luasBakuLalu = Object.fromEntries(targetLalu.map((t) => [t.desaId, t.luasBaku]));
 
   return (
