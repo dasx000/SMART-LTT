@@ -31,6 +31,10 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
+  // Menu lama BPP "Target Kecamatan" digabung ke "Target Komoditas" (24 Nov 2026). Query (?tahun=) ikut terbawa.
+  async redirects() {
+    return [{ source: "/bpp/target-kecamatan", destination: "/bpp/target", permanent: false }];
+  },
 };
 
 export default nextConfig;
