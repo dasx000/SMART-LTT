@@ -1,6 +1,6 @@
 import "server-only";
 import { rentangBulanWIB, tanggalIsoWIB } from "@/lib/format";
-import { ambilLaporan, ambilTargetDesa, daftarDesa, daftarKecamatan, type Komoditas, type Supa } from "@/lib/data";
+import { ambilLaporan, ambilTargetDesa, ambilTargetDesaPmAas, daftarDesa, daftarKecamatan, type Komoditas, type Supa } from "@/lib/data";
 import { daftarAnggota } from "@/lib/pengguna";
 import type { Role } from "@/lib/auth";
 
@@ -25,6 +25,9 @@ import type { Role } from "@/lib/auth";
  *   Seri → capaian provinsi terendah, lalu nama A–Z.
  * Urutan PPL (keputusan user 18 Nov 2026): 1) % desa terisi target terendah, 2) capaian terendah (null paling atas), 3) nama.
  * Desa: capaian terendah (belum ada target paling atas), lalu nama.
+ *
+ * Filter PM-AAS (`pmAas`, keputusan user 26 Nov 2026; hanya Padi, dipakai halaman PPL):
+ *   target = `target_desa_pm_aas`, realisasi = laporan bermetode "PM AAS", target provinsi tidak dipakai.
  *
  * PEMANGGIL WAJIB memeriksa role & cakupan (BPP = kecamatannya, penyuluh = dirinya).
  */
@@ -93,9 +96,10 @@ const urutSelisih = (a: number | null, b: number | null) => {
 
 export async function rekapRealisasiPpl(
   s: Supa,
-  f: { tahun: number; bulan: number; kecamatanId?: number | null; userId?: string | null; komoditas?: Komoditas },
+  f: { tahun: number; bulan: number; kecamatanId?: number | null; userId?: string | null; komoditas?: Komoditas; pmAas?: boolean },
 ): Promise<RekapRealisasiPpl> {
   const komoditas = f.komoditas ?? "Padi";
+  const pmAas = komoditas === "Padi" && Boolean(f.pmAas);
   const { dari, sampai } = rentangBulanWIB(f.tahun, f.bulan);
   const hariIni = tanggalIsoWIB();
   const akhirBulan = tanggalIsoWIB(new Date(new Date(sampai).getTime() - 1));
@@ -111,14 +115,17 @@ export async function rekapRealisasiPpl(
   const ids = [...new Set(ppl.flatMap((u) => u.desaIds))].filter((id) => desaPeta.has(id));
 
   const [target, lap, prov] = await Promise.all([
-    ambilTargetDesa(s, ids, { tahun: f.tahun, bulan: f.bulan, komoditas }),
+    pmAas ? ambilTargetDesaPmAas(s, ids, { tahun: f.tahun, bulan: f.bulan }) : ambilTargetDesa(s, ids, { tahun: f.tahun, bulan: f.bulan, komoditas }),
     ids.length ? ambilLaporan(s, { dari, sampai, komoditas, desaIds: ids }, kecs) : Promise.resolve([]),
-    f.userId ? Promise.resolve(null) : ambilTargetProvinsi(s, { tahun: f.tahun, bulan: f.bulan, komoditas }),
+    f.userId || pmAas ? Promise.resolve(null) : ambilTargetProvinsi(s, { tahun: f.tahun, bulan: f.bulan, komoditas }),
   ]);
   const tgtDesa = new Map<number, number>();
   for (const t of target) tgtDesa.set(t.desaId, (tgtDesa.get(t.desaId) ?? 0) + t.tanam);
   const realDesa = new Map<number, number>();
-  for (const l of lap) realDesa.set(l.desaId, (realDesa.get(l.desaId) ?? 0) + l.tanam);
+  for (const l of lap) {
+    if (pmAas && l.metode !== "PM AAS") continue;
+    realDesa.set(l.desaId, (realDesa.get(l.desaId) ?? 0) + l.tanam);
+  }
 
   const perKec = new Map<number, PplRealisasi[]>();
   for (const u of ppl) {

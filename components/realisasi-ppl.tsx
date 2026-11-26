@@ -4,7 +4,7 @@ import { NAMA_BULAN, formatAngka } from "@/lib/format";
 import type { ReactNode } from "react";
 import { LEGENDA, levelPersen, warnaSelisih } from "@/lib/warna-persen";
 import { SelCapaianPpl, StatusTarget } from "@/components/tabel-realisasi-ppl";
-import type { PplRealisasi, RekapRealisasiPpl } from "@/lib/realisasi-ppl";
+import type { DesaRealisasi, PplRealisasi, RekapRealisasiPpl } from "@/lib/realisasi-ppl";
 
 /** "1 s.d. 17 November 2026" — periode data realisasi. */
 export function teksPeriodeRealisasi(d: RekapRealisasiPpl) {
@@ -31,15 +31,15 @@ function Kotak({ label, nilai, satuan, ket, kelas = "border-gray-100 bg-white", 
  * - Akun PPL (`saya`): Target isian, Realisasi, Capaian, Status target sendiri.
  * - Kab/BPP: Target Provinsi, Realisasi, Capaian vs provinsi, Isian PPL vs Provinsi.
  */
-export function RingkasanRealisasi({ d, lingkup, saya, komoditas = "Padi" }: { d: RekapRealisasiPpl; lingkup: string; saya?: PplRealisasi | null; komoditas?: string }) {
+export function RingkasanRealisasi({ d, lingkup, saya, komoditas = "Padi", pmAas = false }: { d: RekapRealisasiPpl; lingkup: string; saya?: PplRealisasi | null; komoditas?: string; pmAas?: boolean }) {
   if (!saya) return <RingkasanProvinsi d={d} lingkup={lingkup} komoditas={komoditas} />;
   const kom = komoditas.toLowerCase();
   const cap = d.capaian;
   const lv = cap == null ? null : levelPersen(cap);
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <Kotak label={`Target Tanam · ${lingkup}`} nilai={formatAngka(d.target)} satuan="Ha" ket={`Jumlah target desa ${kom}`} />
-      <Kotak label="Realisasi Tanam" nilai={formatAngka(d.realisasi)} satuan="Ha" ket={`${komoditas} semua jenis LTT`} />
+      <Kotak label={`Target Tanam${pmAas ? " PM-AAS" : ""} · ${lingkup}`} nilai={formatAngka(d.target)} satuan="Ha" ket={pmAas ? "Jumlah target PM-AAS desa" : `Jumlah target desa ${kom}`} />
+      <Kotak label={`Realisasi Tanam${pmAas ? " PM-AAS" : ""}`} nilai={formatAngka(d.realisasi)} satuan="Ha" ket={pmAas ? "Padi metode PM-AAS, semua jenis LTT" : `${komoditas} semua jenis LTT`} />
       <Kotak
         label="Capaian"
         nilai={cap == null ? "–" : `${formatAngka(cap)}%`}
@@ -48,7 +48,7 @@ export function RingkasanRealisasi({ d, lingkup, saya, komoditas = "Padi" }: { d
         warnaLabel="opacity-85"
         warnaKet="font-bold opacity-85"
       />
-      <Kotak label="Status Target Anda" nilai={`${saya.terisi}/${saya.desa.length}`} satuan="desa" ket="Desa binaan yang sudah ada targetnya" />
+      <Kotak label={`Status Target${pmAas ? " PM-AAS" : ""} Anda`} nilai={`${saya.terisi}/${saya.desa.length}`} satuan="desa" ket={`Desa binaan yang sudah ada target${pmAas ? " PM-AAS" : "nya"}`} />
     </div>
   );
 }
@@ -137,8 +137,11 @@ export function AlertTargetPpl({ p, href }: { p: PplRealisasi; href: string }) {
   );
 }
 
-/** Tabel rincian desa milik satu PPL (tampilan akun penyuluh). */
-export function TabelDesaSaya({ p }: { p: PplRealisasi }) {
+/**
+ * Tabel rincian desa milik satu PPL (tampilan akun penyuluh).
+ * `aksi` (opsional) = isi tambahan di bawah nama desa, mis. tombol Isi Target PM-AAS.
+ */
+export function TabelDesaSaya({ p, aksi }: { p: PplRealisasi; aksi?: (d: DesaRealisasi) => ReactNode }) {
   // Muat di layar HP (±320px) tanpa geser samping: tanpa min-width, padding rapat
   const td = "border border-gray-100 px-1.5 py-2 sm:p-2.5";
   const angka = `${td} text-right tabular-nums whitespace-nowrap`;
@@ -158,7 +161,8 @@ export function TabelDesaSaya({ p }: { p: PplRealisasi }) {
             <tr key={d.id}>
               <td className={td}>
                 <p className="font-bold text-gray-800">{d.nama}</p>
-                {d.target == null && <span className="text-[10px] font-extrabold text-red-600">Target kosong</span>}
+                {d.target == null && <span className="block text-[10px] font-extrabold text-red-600">Target kosong</span>}
+                {aksi?.(d)}
               </td>
               <td className={angka}>{d.target == null ? <span className="text-gray-300">–</span> : formatAngka(d.target)}</td>
               <td className={angka}>{formatAngka(d.realisasi)}</td>

@@ -572,6 +572,28 @@ export async function ambilTargetDesa(s: Supa, desaIds: number[], f: { tahun: nu
   }));
 }
 
+/** Target PM AAS per desa (padi, migrasi 0020) — diisi PPL dari halaman Realisasi LTT. */
+export type TargetDesaPmAas = { desaId: number; tanam: number; panen: number; rincian: { jenisId: number; tanam: number; panen: number }[] };
+
+/** Tabel belum dibuat (migrasi 0020 belum dijalankan) → daftar kosong. */
+export async function ambilTargetDesaPmAas(s: Supa, desaIds: number[], f: { tahun: number; bulan: number }): Promise<TargetDesaPmAas[]> {
+  if (desaIds.length === 0) return [];
+  const { data, error } = await s
+    .from("target_desa_pm_aas")
+    .select("desa_id, target_tanam, target_panen, rincian:target_desa_pm_aas_rincian(jenis_ltt_id, target_tanam, target_panen)")
+    .eq("tahun", f.tahun)
+    .eq("bulan", f.bulan)
+    .in("desa_id", desaIds);
+  if (error) return [];
+  type R = { desa_id: number; target_tanam: number; target_panen: number; rincian: { jenis_ltt_id: number; target_tanam: number; target_panen: number }[] | null };
+  return ((data ?? []) as R[]).map((r) => ({
+    desaId: r.desa_id,
+    tanam: Number(r.target_tanam) || 0,
+    panen: Number(r.target_panen) || 0,
+    rincian: (r.rincian ?? []).map((x) => ({ jenisId: x.jenis_ltt_id, tanam: Number(x.target_tanam) || 0, panen: Number(x.target_panen) || 0 })),
+  }));
+}
+
 // ─── Daftar laporan berhalaman (Kab & BPP) — filter & halaman lewat URL, diproses di server ───
 
 export const PER_HALAMAN = 50;
