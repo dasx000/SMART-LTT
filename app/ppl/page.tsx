@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Carrot, ChevronRight, Goal, Leaf, LogOut, TriangleAlert, Scale, Shuffle, TableProperties, UserCog, UserRoundCheck, Warehouse, Wheat } from "lucide-react";
+import { Bug, Carrot, ChevronRight, FlaskConical, Goal, Sprout, Leaf, LogOut, TriangleAlert, Scale, Shuffle, TableProperties, UserCog, UserRoundCheck, Warehouse, Wheat } from "lucide-react";
 import { wajibRole } from "@/lib/auth";
 import { KerangkaHalaman } from "@/components/kerangka-halaman";
 import { supabaseServer } from "@/lib/supabase/server";
@@ -10,6 +10,7 @@ import { desaBinaanSaya, type DesaRef } from "@/lib/data";
 import { NAMA_BULAN, ZONA_WIB, tanggalIsoWIB } from "@/lib/format";
 import { logout } from "@/app/(auth)/login/actions";
 import { IkonPasangAplikasi } from "@/components/pasang-aplikasi";
+import { fiturBaruAktif } from "@/lib/fitur-baru";
 
 export const metadata: Metadata = { title: "Penyuluh — SMART LTT" };
 
@@ -40,6 +41,7 @@ async function Isi() {
   const s = await supabaseServer();
   const desa = await desaBinaanSaya(s, p.id);
   const kurang = await targetPadiBelumDiisi(s, desa);
+  const baru = fiturBaruAktif();
 
   return (
     <>
@@ -100,6 +102,9 @@ async function Isi() {
           <Ikon href="/ppl/target" label={<>Target<br />Bulanan</>} warna="bg-cyan-100 text-cyan-600 border-cyan-200"><Goal size={30} /></Ikon>
           <Ikon href="/ppl/produktivitas" label={<>Produk-<br />tivitas</>} warna="bg-lime-100 text-lime-700 border-lime-200"><Scale size={30} /></Ikon>
           <Ikon href="/ppl/produktivitas?tab=sarana" label={<>Sarana<br />Desa</>} warna="bg-orange-100 text-orange-600 border-orange-200"><Warehouse size={30} /></Ikon>
+          <Ikon href="/ppl/tanaman" label={<>Pantau<br />Tanaman</>} warna="bg-emerald-100 text-emerald-700 border-emerald-200" baru={baru.has("tanaman")}><Sprout size={30} /></Ikon>
+          <Ikon href="/ppl/opt" label={<>Cari<br />OPT</>} warna="bg-red-100 text-red-600 border-red-200" baru={baru.has("opt")}><Bug size={30} /></Ikon>
+          <Ikon href="/ppl/pupuk" label={<>Kalkulator<br />Pupuk</>} warna="bg-teal-100 text-teal-700 border-teal-200" baru={baru.has("pupuk")}><FlaskConical size={30} /></Ikon>
           <Ikon href="/profil" label={<>Ubah<br />Profil</>} warna="bg-amber-100 text-amber-600 border-amber-200"><UserCog size={30} /></Ikon>
           <IkonPasangAplikasi />
         </div>
@@ -108,10 +113,17 @@ async function Isi() {
   );
 }
 
-function Ikon({ href, label, warna, children }: { href: string; label: ReactNode; warna: string; children: ReactNode }) {
+function Ikon({ href, label, warna, baru, children }: { href: string; label: ReactNode; warna: string; baru?: boolean; children: ReactNode }) {
   return (
     <Link href={href} className="flex flex-col items-center transition hover:scale-105 active:scale-95">
-      <div className={`mb-2 flex h-16 w-16 items-center justify-center rounded-2xl border shadow ${warna}`}>{children}</div>
+      <div className={`relative mb-2 flex h-16 w-16 items-center justify-center rounded-2xl border shadow ${warna}`}>
+        {children}
+        {baru && (
+          <span className="absolute -top-2 -right-2 animate-pulse rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] font-extrabold tracking-wide text-white shadow ring-2 ring-white">
+            BARU
+          </span>
+        )}
+      </div>
       <span className="text-center text-[11px] leading-tight font-bold text-gray-700">{label}</span>
     </Link>
   );

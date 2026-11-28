@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CircleCheck, ClipboardList, CloudDownload, ExternalLink, Pencil, PlusCircle } from "lucide-react";
+import { CircleCheck, ClipboardList, CloudDownload, Pencil, PlusCircle } from "lucide-react";
 import { wajibRole } from "@/lib/auth";
 import { KerangkaHalaman, KepalaPanel } from "@/components/kerangka-halaman";
 import { supabaseServer } from "@/lib/supabase/server";
@@ -11,11 +11,11 @@ import { TombolHapus } from "@/components/laporan/tombol-hapus";
 import { angkaParam, teksParam, type CariParam } from "@/lib/param";
 import { hapusLaporanAction } from "../../actions";
 import { FormLaporan } from "./form-laporan";
+import { LaporanPadi } from "./laporan-padi";
 
 export const metadata: Metadata = { title: "Lapor LTT — SMART LTT" };
 
 const SLUG: Record<string, Komoditas> = { padi: "Padi", jagung: "Jagung", "ubi-kayu": "Ubi Kayu" };
-const EPUSLUH_LTT = "https://dev.epusluh.id/ltt/list";
 const jam = new Intl.DateTimeFormat("id-ID", { timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit" });
 
 type Props = { params: Promise<{ komoditas: string }>; searchParams: CariParam };
@@ -45,29 +45,8 @@ async function Isi({ params, searchParams }: Props) {
   const dasar = `/ppl/lapor/${slug}`;
   const isPadi = kom === "Padi";
 
-  // Padi dilaporkan & dilihat langsung di e-Pusluh
-  if (isPadi) {
-    return (
-      <>
-        <KepalaPanel judul={kom} />
-        <div className="rounded-2xl border border-green-200 bg-green-50 p-6 text-center shadow-sm">
-          <ClipboardList className="mx-auto mb-3 text-green-500" size={40} />
-          <h3 className="text-base font-bold text-gray-800">Laporan Padi ada di e-Pusluh</h3>
-          <p className="mt-1 text-xs text-gray-500">
-            Input dan daftar laporan LTT padi dikelola di aplikasi e-Pusluh. Data akan ditarik otomatis ke SMART LTT.
-          </p>
-          <a
-            href={EPUSLUH_LTT}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-green-700 active:scale-95"
-          >
-            Buka e-Pusluh <ExternalLink size={16} />
-          </a>
-        </div>
-      </>
-    );
-  }
+  // Padi diinput di e-Pusluh; di sini hanya dilihat (hasil sinkron) — lihat laporan-padi.tsx
+  if (isPadi) return <LaporanPadi pengguna={p} q={q} />;
 
   const baru = !isPadi && teksParam(q, "form") === "baru";
   const editId = isPadi ? 0 : angkaParam(q, "edit", 1, Number.MAX_SAFE_INTEGER, 0);
