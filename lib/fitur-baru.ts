@@ -5,9 +5,10 @@ import { tanggalIsoWIB } from "@/lib/format";
  * tampil sampai tanggal `sampai` (WIB, inklusif), lalu hilang sendiri.
  */
 export const FITUR_BARU = {
-  opt: { nama: "Cari OPT", href: "/ppl/opt", sampai: "2026-12-04" }, // hilang mulai 5 Des 2026 (permintaan pengguna)
-  tanaman: { nama: "Pantau Tanaman", href: "/ppl/tanaman", sampai: "2026-12-12" },
-  pupuk: { nama: "Kalkulator Pupuk", href: "/ppl/pupuk", sampai: "2026-12-12" },
+  // Semua hilang mulai 31 Des 2026 (permintaan pengguna)
+  opt: { nama: "Cari OPT", href: "/ppl/opt", sampai: "2026-12-30" },
+  tanaman: { nama: "Pantau Tanaman", href: "/ppl/tanaman", sampai: "2026-12-30" },
+  pupuk: { nama: "Kalkulator Pupuk", href: "/ppl/pupuk", sampai: "2026-12-30" },
 } as const;
 
 export type KunciFiturBaru = keyof typeof FITUR_BARU;
