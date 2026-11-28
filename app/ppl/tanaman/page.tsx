@@ -17,8 +17,7 @@ import {
   type Petak,
   type StatusPantau,
 } from "./hitung";
-import { muatPantau, saringSelesai } from "./data";
-import { TombolSelesai } from "./tombol-selesai";
+import { muatPantau } from "./data";
 
 export const metadata: Metadata = { title: "Pantau Tanaman — SMART LTT" };
 
@@ -63,7 +62,7 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
   }
 
   const desaIds = desa.map((d) => d.id);
-  const semua = await saringSelesai(s, desaIds, await muatPantau(s, desaIds));
+  const semua = await muatPantau(s, desaIds);
   const petak = filter.kom ? semua.filter((x) => x.komoditas === filter.kom) : semua;
   const per = (st: StatusPantau) => petak.filter((x) => x.status === st);
   const lewat = per("lewat");
@@ -105,22 +104,22 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
         <div className="mt-6 space-y-6">
           {lewat.length > 0 && (
             <Kelompok judul="🔴 Lewat waktu — belum lapor panen" warna="text-red-700">
-              {lewat.map((x) => (
-                <Kartu key={kunci(x)} x={x} desa={namaDesa.get(x.desaId) ?? "-"} />
+              {gabung(lewat).map((g) => (
+                <Kartu key={g.kunci} g={g} desa={namaDesa.get(g.desaId) ?? "-"} />
               ))}
             </Kelompok>
           )}
           {masa.length > 0 && (
             <Kelompok judul="🟢 Sedang masa panen" warna="text-green-700">
-              {masa.map((x) => (
-                <Kartu key={kunci(x)} x={x} desa={namaDesa.get(x.desaId) ?? "-"} />
+              {gabung(masa).map((g) => (
+                <Kartu key={g.kunci} g={g} desa={namaDesa.get(g.desaId) ?? "-"} />
               ))}
             </Kelompok>
           )}
           {belum.length > 0 && (
             <Kelompok judul="⏳ Belum masa panen" warna="text-gray-600">
-              {belum.map((x) => (
-                <Kartu key={kunci(x)} x={x} desa={namaDesa.get(x.desaId) ?? "-"} />
+              {gabung(belum).map((g) => (
+                <Kartu key={g.kunci} g={g} desa={namaDesa.get(g.desaId) ?? "-"} />
               ))}
             </Kelompok>
           )}
@@ -145,10 +144,8 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
           </ul>
           <p className="mt-1">
             Dihitung dari tanggal laporan tanam; laporan panen dipasangkan ke laporan tanam paling lama di desa yang sama dengan jenis
-            LTT dan metode yang sama. Kartu hilang
-            setelah panennya dilaporkan (Padi: setelah data e-Pusluh tersinkron) atau ditandai selesai. Kartu yang ditandai selesai
-            muncul lagi bila data tanggal itu diperbarui. Kartu yang sudah lebih dari {BATAS_TAMPIL_HARI} hari sejak tanam tidak
-            ditampilkan lagi.
+            LTT dan metode yang sama. Kartu hilang setelah panennya dilaporkan (Padi: setelah data e-Pusluh tersinkron), atau
+            otomatis setelah lebih dari {BATAS_TAMPIL_HARI} hari sejak tanam.
           </p>
         </div>
       </div>
@@ -156,7 +153,31 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
   );
 }
 
-const kunci = (x: Petak) => `${x.desaId}-${x.jenisLtt}-${x.metode}-${x.tanggalTanam}`;
+/** Satu kartu tampilan = gabungan tanggal tanam per desa × jenis LTT × metode × status (hitungan tetap per tanggal). */
+type Grup = {
+  kunci: string;
+  desaId: number;
+  komoditas: Petak["komoditas"];
+  jenis: JenisTanam;
+  jenisLtt: string;
+  metode: string;
+  status: StatusPantau;
+  petak: Petak[]; // urut tanggal tanam (lama → baru)
+};
+
+function gabung(list: Petak[]): Grup[] {
+  const m = new Map<string, Grup>();
+  for (const x of list) {
+    const k = `${x.desaId}|${x.komoditas}|${x.jenisLtt}|${x.metode}|${x.status}`;
+    const g = m.get(k);
+    if (g) g.petak.push(x);
+    else m.set(k, { kunci: k, desaId: x.desaId, komoditas: x.komoditas, jenis: x.jenis, jenisLtt: x.jenisLtt, metode: x.metode, status: x.status, petak: [x] });
+  }
+  const hasil = [...m.values()];
+  for (const g of hasil) g.petak.sort((a, b) => a.tanggalTanam.localeCompare(b.tanggalTanam));
+  // tanam paling lama lebih dulu
+  return hasil.sort((a, b) => a.petak[0].tanggalTanam.localeCompare(b.petak[0].tanggalTanam) || a.desaId - b.desaId);
+}
 
 function tgl(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
@@ -191,12 +212,24 @@ function Kelompok({ judul, warna, children }: { judul: string; warna: string; ch
   );
 }
 
-function Kartu({ x, desa }: { x: Petak; desa: string }) {
-  const padi = x.komoditas === "Padi";
+function rentangTgl(a: string, b: string): string {
+  return a === b ? tgl(a) : `${a.slice(0, 4) === b.slice(0, 4) ? tglPendek(a) : tgl(a)} – ${tgl(b)}`;
+}
+
+function rentangAngka(a: number, b: number): string {
+  return a === b ? `${a}` : `${a}–${b}`;
+}
+
+function Kartu({ g, desa }: { g: Grup; desa: string }) {
+  const padi = g.komoditas === "Padi";
   const garis =
-    x.status === "lewat" ? "border-red-200 bg-white" : x.status === "masa" ? "border-green-200 bg-white" : "border-gray-200 bg-white";
-  const sudahPanen = x.panen.reduce((a, p) => a + p.luas, 0);
-  const satuan = UMUR_PANEN[x.jenis].satuan;
+    g.status === "lewat" ? "border-red-200 bg-white" : g.status === "masa" ? "border-green-200 bg-white" : "border-gray-200 bg-white";
+  const satuan = UMUR_PANEN[g.jenis].satuan;
+  const awal = g.petak[0];
+  const akhir = g.petak[g.petak.length - 1];
+  const sisa = g.petak.reduce((a, x) => a + x.sisa, 0);
+  const hstMin = Math.min(...g.petak.map((x) => x.hst));
+  const hstMaks = Math.max(...g.petak.map((x) => x.hst));
 
   return (
     <details className={`group rounded-2xl border shadow-sm ${garis}`}>
@@ -210,21 +243,22 @@ function Kartu({ x, desa }: { x: Petak; desa: string }) {
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-bold text-gray-800">
-            {LABEL_JENIS[x.jenis]} · Desa {desa}
+            {LABEL_JENIS[g.jenis]} · Desa {desa}
           </p>
-          <p className={`text-xs font-bold ${x.status === "lewat" ? "text-red-600" : x.status === "masa" ? "text-green-700" : "text-gray-600"}`}>
-            {formatAngka(x.sisa)} ha {x.status === "belum" ? "" : "belum dilapor panen"}
+          <p className={`text-xs font-bold ${g.status === "lewat" ? "text-red-600" : g.status === "masa" ? "text-green-700" : "text-gray-600"}`}>
+            {formatAngka(sisa)} ha {g.status === "lewat" ? "belum dilapor panen" : g.status === "masa" ? "dalam masa panen" : ""}
           </p>
           <p className="mt-0.5 text-[11px] text-gray-500">
-            Tanam {tgl(x.tanggalTanam)} · <b className="font-bold text-gray-700">{x.hst} {satuan}</b>
+            Tanam {rentangTgl(awal.tanggalTanam, akhir.tanggalTanam)} ·{" "}
+            <b className="font-bold text-gray-700">
+              {rentangAngka(hstMin, hstMaks)} {satuan}
+            </b>
           </p>
           <p className="text-[11px] text-gray-500">
-            {x.status === "belum" ? (
-              <>Perkiraan panen mulai {tgl(x.mulaiPanen)}</>
+            {g.status === "belum" ? (
+              <>Perkiraan panen mulai {tgl(awal.mulaiPanen)}</>
             ) : (
-              <>
-                Masa panen: {tglPendek(x.mulaiPanen)} – {tgl(x.akhirIdeal)}
-              </>
+              <>Masa panen: {rentangTgl(awal.mulaiPanen, akhir.akhirIdeal)}</>
             )}
           </p>
         </div>
@@ -232,27 +266,35 @@ function Kartu({ x, desa }: { x: Petak; desa: string }) {
       </summary>
 
       <div className="border-t border-gray-100 px-3.5 pt-3 pb-3.5 text-xs text-gray-600">
-        {x.komoditas === "Padi" && (
+        {padi && (
           <>
-            <Rincian label="Jenis LTT" nilai={x.jenisLtt} />
-            <Rincian label="Metode tanam" nilai={x.metode === "PM AAS" ? "PM AAS (tabela)" : "Regular"} />
+            <Rincian label="Jenis LTT" nilai={g.jenisLtt} />
+            <Rincian label="Metode tanam" nilai={g.metode === "PM AAS" ? "PM AAS (tabela)" : "Regular"} />
             <div className="my-1.5 border-t border-dashed border-gray-200" />
           </>
         )}
-        <Rincian label={`Laporan tanam ${tgl(x.tanggalTanam)}`} nilai={`${formatAngka(x.luasTanam)} ha`} />
-        <Rincian label="Sudah dilapor panen" nilai={`${formatAngka(sudahPanen)} ha`} />
-        {x.panen.map((p, i) => (
-          <Rincian key={i} label={`└ ${tgl(p.tanggal)} (${p.hst} ${satuan})`} nilai={`${formatAngka(p.luas)} ha`} kecil />
-        ))}
-        <Rincian label="Sisa belum panen" nilai={`${formatAngka(x.sisa)} ha`} tebal />
-        {x.status === "belum" && (
+        {g.petak.map((x) => {
+          const panen = x.panen.reduce((a, p) => a + p.luas, 0);
+          return (
+            <div key={x.tanggalTanam} className="py-0.5">
+              <Rincian label={`Tanam ${tgl(x.tanggalTanam)} (${x.hst} ${satuan})`} nilai={`${formatAngka(x.sisa)} ha`} />
+              {panen > 0 && (
+                <p className="pl-2 text-[10px] text-gray-400">
+                  dari {formatAngka(x.luasTanam)} ha, {formatAngka(panen)} ha sudah dilapor panen
+                </p>
+              )}
+            </div>
+          );
+        })}
+        <Rincian label={g.status === "lewat" ? "Total belum dilapor panen" : "Total"} nilai={`${formatAngka(sisa)} ha`} tebal />
+        {g.status === "belum" && (
           <p className="mt-2 flex items-center gap-1.5 text-[11px] text-gray-500">
             <Hourglass size={12} /> Belum waktunya panen.
           </p>
         )}
       </div>
 
-      {x.status !== "belum" && (
+      {g.status !== "belum" && (
         <div className="flex flex-wrap items-center gap-2 px-3.5 pb-3.5">
           {padi ? (
             <a
@@ -271,9 +313,6 @@ function Kartu({ x, desa }: { x: Petak; desa: string }) {
               <NotebookPen size={14} /> Lapor Panen
             </Link>
           )}
-          <TombolSelesai
-            kartu={{ desaId: x.desaId, komoditas: x.komoditas, jenisLtt: x.jenisLtt, metode: x.metode, tanggalTanam: x.tanggalTanam }}
-          />
         </div>
       )}
     </details>

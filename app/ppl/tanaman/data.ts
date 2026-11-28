@@ -6,11 +6,6 @@ import { hitungPantau, jenisTanam, metodeKelompok, type BarisLaporan, type Komod
 
 type Supa = Awaited<ReturnType<typeof supabaseServer>>;
 
-/** Kunci satu kartu — sama dengan kunci unik ltt.pantau_selesai. */
-export function kunciKartu(x: { desaId: number; komoditas: string; jenisLtt: string; metode: string; tanggalTanam: string }): string {
-  return `${x.desaId}|${x.komoditas}|${x.jenisLtt}|${x.metode}|${x.tanggalTanam}`;
-}
-
 /** Semua kartu Pantau Tanaman untuk desa-desa ini (dihitung dari laporan_ltt, baca saja). */
 export async function muatPantau(s: Supa, desaIds: number[]): Promise<Petak[]> {
   if (desaIds.length === 0) return [];
@@ -53,34 +48,4 @@ export async function muatPantau(s: Supa, desaIds: number[]): Promise<Petak[]> {
   });
 
   return hitungPantau(baris, tanggalIsoWIB());
-}
-
-const bulat = (n: number) => Math.round(n * 100) / 100;
-
-/**
- * Buang kartu yang sudah ditandai selesai. Kartu muncul lagi kalau datanya diperbarui sejak ditandai:
- * luas tanam berubah, atau sisa belum panen bertambah. (Sisa berkurang karena lapor panen → tetap tersembunyi.)
- * Tabel belum ada / gagal dibaca → semua kartu tetap tampil.
- */
-export async function saringSelesai(s: Supa, desaIds: number[], petak: Petak[]): Promise<Petak[]> {
-  if (desaIds.length === 0 || petak.length === 0) return petak;
-  const { data, error } = await s
-    .from("pantau_selesai")
-    .select("desa_id, komoditas, jenis_ltt, metode, tanggal_tanam, luas_tanam, sisa")
-    .in("desa_id", desaIds);
-  if (error || !data) return petak;
-
-  const tanda = new Map(
-    data.map((r) => [
-      kunciKartu({ desaId: r.desa_id, komoditas: r.komoditas, jenisLtt: r.jenis_ltt, metode: r.metode, tanggalTanam: r.tanggal_tanam }),
-      { luas: Number(r.luas_tanam), sisa: Number(r.sisa) },
-    ]),
-  );
-
-  return petak.filter((x) => {
-    const t = tanda.get(kunciKartu(x));
-    if (!t) return true;
-    const diperbarui = bulat(x.luasTanam) !== bulat(t.luas) || bulat(x.sisa) > bulat(t.sisa);
-    return diperbarui;
-  });
 }
