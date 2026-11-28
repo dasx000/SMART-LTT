@@ -9,6 +9,7 @@ import { desaBinaanSaya } from "@/lib/data";
 import { NAMA_BULAN_PENDEK, formatAngka } from "@/lib/format";
 import { teksParam, type CariParam } from "@/lib/param";
 import {
+  BATAS_TAMPIL_HARI,
   LABEL_JENIS,
   UMUR_PANEN,
   type JenisTanam,
@@ -146,7 +147,8 @@ async function Isi({ searchParams }: { searchParams: CariParam }) {
             Dihitung dari tanggal laporan tanam; laporan panen dipasangkan ke laporan tanam paling lama di desa yang sama dengan jenis
             LTT dan metode yang sama. Kartu hilang
             setelah panennya dilaporkan (Padi: setelah data e-Pusluh tersinkron) atau ditandai selesai. Kartu yang ditandai selesai
-            muncul lagi bila data tanggal itu diperbarui.
+            muncul lagi bila data tanggal itu diperbarui. Kartu yang sudah lebih dari {BATAS_TAMPIL_HARI} hari sejak tanam tidak
+            ditampilkan lagi.
           </p>
         </div>
       </div>

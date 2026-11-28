@@ -42,6 +42,12 @@ export function jenisTanam(komoditas: string, metode: string | null, namaJenisLt
   return "Reguler";
 }
 
+/**
+ * Kartu yang umurnya sudah lewat ini (hari sejak tanam, semua jenis) tidak ditampilkan lagi:
+ * di lapangan pasti sudah lama panen, kartunya hanya jadi sisa data. Disepakati pengguna 28 Nov 2026.
+ */
+export const BATAS_TAMPIL_HARI = 150;
+
 /** Panen hanya boleh dipasangkan dengan tanam yang umurnya sudah ≥ ini pada tanggal panen. */
 export const MIN_HST_PANEN = 70;
 
@@ -145,6 +151,7 @@ export function hitungPantau(baris: BarisLaporan[], hariIni: string): Petak[] {
       if (t.sisa <= EPS) continue;
       const umur = UMUR_PANEN[t.jenis];
       const hst = hIni - keHari(t.tanggal);
+      if (hst > BATAS_TAMPIL_HARI) continue;
       const status: StatusPantau = hst > umur.lewat ? "lewat" : hst >= umur.mulai ? "masa" : "belum";
       hasil.push({
         desaId: list[0].desa_id,
